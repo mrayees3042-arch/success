@@ -1,0 +1,79 @@
+﻿[Heading] You said: give this prompt single as step at time
+[User] give this prompt single as step at time
+[Heading] Claude responded: Here's an interactive step-by-step guide for the MUTTAQIN rebuild prompt:
+[Claude] Here's an interactive step-by-step guide for the MUTTAQIN rebuild prompt:
+[Heading] You said: i means single step at time after i say ok give the next prompt
+[User] i means single step at time after i say ok give the next prompt
+[Heading] Claude responded: Got it!
+[Claude] Got it! Here's <strong>Step 1</strong>:
+[Claude] <strong>STEP 1 â€” PROJECT SETUP &amp; COLOR SYSTEM</strong>
+[Claude] Say <strong>ok</strong> when ready for Step 2.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 2 â€” THEME TOGGLE + HEADER
+[Claude] <strong>STEP 2 â€” THEME TOGGLE + HEADER</strong>
+[Claude] Say <strong>ok</strong> for Step 3.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 3 â€” BOTTOM NAVIGATION + FAB
+[Claude] <strong>STEP 3 â€” BOTTOM NAVIGATION + FAB</strong>
+[Claude] Say <strong>ok</strong> for Step 4.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 4 â€” TODAY SCREEN: COUNTERS + STATS ROW
+[Claude] <strong>STEP 4 â€” TODAY SCREEN: COUNTERS + STATS ROW</strong>
+[Claude] Say <strong>ok</strong> for Step 5.
+[Heading] You said: how many prompt left
+[User] how many prompt left
+[Heading] Claude responded: Here's the full breakdown:
+[Claude] Here's the full breakdown:
+[Claude] <strong>13 steps remaining.</strong>
+[Claude] Say <strong>ok</strong> to continue with Step 5.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 5 â€” TAQWA SCORE RING
+[Claude] <strong>STEP 5 â€” TAQWA SCORE RING</strong>
+[Claude] Say <strong>ok</strong> for Step 6.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 6 â€” SUNNAH TRACKER CARD
+[Claude] <strong>STEP 6 â€” SUNNAH TRACKER CARD</strong>
+[Claude] Say <strong>ok</strong> for Step 7.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 7 â€” PRAYERS SECTION
+[Claude] <strong>STEP 7 â€” PRAYERS SECTION</strong>
+[Claude] Say <strong>ok</strong> for Step 8.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 8 â€” DAILY TASKS
+[Claude] <strong>STEP 8 â€” DAILY TASKS</strong>
+[Claude] Say <strong>ok</strong> for Step 9.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 9 â€” WATER INTAKE + WEEKLY HEATMAP
+[Claude] <strong>STEP 9 â€” WATER INTAKE + WEEKLY HEATMAP</strong>
+[Claude] Say <strong>ok</strong> for Step 10.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 10 â€” GOALS SCREEN
+[Claude] <strong>STEP 10 â€” GOALS SCREEN</strong>
+[Claude] Say <strong>ok</strong> for Step 11.
+[Heading] You said: 404
+[User] 404
+[Heading] Claude responded: MEMORY SNAPSHOT â€” MUTTAQIN APP BUILD
+[Claude] <strong>MEMORY SNAPSHOT â€” MUTTAQIN APP BUILD</strong>
+[Claude] <strong>PROJECT:</strong> MUTTAQIN â€” Muslim Productivity React App (single file, inline styles, localStorage, mobile-first 390px)
+[Claude] <strong>STACK:</strong> React hooks, inline styles only, localStorage, no external CSS libs, no <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">&lt;form&gt;</code> tags
+[Claude] <strong>COLOR CONSTANTS:</strong> <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">const C = {...}</code> defined at top (bg, card, green, gold, text, muted, border, teal, red, blue, orange)
+[Claude] <strong>COMPLETED STEPS:</strong>
+[Claude] <strong>PENDING STEPS:</strong>
+[Claude] <strong>KEY STATE VARS:</strong>
+[Claude] <strong>KEY FUNCTIONS:</strong>
+[Claude] <strong>LOCALSTORAGE KEYS:</strong>
+<code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_prayers</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_tasks</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_water</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_sunnah</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_streaks</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_history</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_lastDate</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_snapshot</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_workout</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_income</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">muttaqin_todo</code>
+[Claude] <strong>ANIMATIONS (injected via <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">&lt;style&gt;</code> tag):</strong>
+<code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">pulse-glow</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">gold-shimmer</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">wave</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">ripple</code>, <code class="bg-text-200/5 border border-0.5 border-border-300 text-danger-000 whitespace-pre-wrap rounded-[0.4rem] px-1 py-px text-[0.9rem]">fadeInGreen</code>
+[Claude] <strong>DESIGN RULES:</strong>
+[Claude] <strong>NEXT STEP TO CONTINUE:</strong> Step 11 â€” Habits Screen
+[Claude] Say <strong>ok</strong> to continue with Step 11.

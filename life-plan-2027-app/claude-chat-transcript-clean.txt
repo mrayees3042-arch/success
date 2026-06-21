@@ -1,0 +1,79 @@
+﻿[Heading] You said: give this prompt single as step at time
+[User] give this prompt single as step at time
+[Heading] Claude responded: Here's an interactive step-by-step guide for the MUTTAQIN rebuild prompt:
+[Claude] Here's an interactive step-by-step guide for the MUTTAQIN rebuild prompt:
+[Heading] You said: i means single step at time after i say ok give the next prompt
+[User] i means single step at time after i say ok give the next prompt
+[Heading] Claude responded: Got it!
+[Claude] Got it! Here's Step 1:
+[Claude] STEP 1 — PROJECT SETUP & COLOR SYSTEM
+[Claude] Say ok when ready for Step 2.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 2 — THEME TOGGLE + HEADER
+[Claude] STEP 2 — THEME TOGGLE + HEADER
+[Claude] Say ok for Step 3.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 3 — BOTTOM NAVIGATION + FAB
+[Claude] STEP 3 — BOTTOM NAVIGATION + FAB
+[Claude] Say ok for Step 4.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 4 — TODAY SCREEN: COUNTERS + STATS ROW
+[Claude] STEP 4 — TODAY SCREEN: COUNTERS + STATS ROW
+[Claude] Say ok for Step 5.
+[Heading] You said: how many prompt left
+[User] how many prompt left
+[Heading] Claude responded: Here's the full breakdown:
+[Claude] Here's the full breakdown:
+[Claude] 13 steps remaining.
+[Claude] Say ok to continue with Step 5.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 5 — TAQWA SCORE RING
+[Claude] STEP 5 — TAQWA SCORE RING
+[Claude] Say ok for Step 6.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 6 — SUNNAH TRACKER CARD
+[Claude] STEP 6 — SUNNAH TRACKER CARD
+[Claude] Say ok for Step 7.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 7 — PRAYERS SECTION
+[Claude] STEP 7 — PRAYERS SECTION
+[Claude] Say ok for Step 8.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 8 — DAILY TASKS
+[Claude] STEP 8 — DAILY TASKS
+[Claude] Say ok for Step 9.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 9 — WATER INTAKE + WEEKLY HEATMAP
+[Claude] STEP 9 — WATER INTAKE + WEEKLY HEATMAP
+[Claude] Say ok for Step 10.
+[Heading] You said: ok
+[User] ok
+[Heading] Claude responded: STEP 10 — GOALS SCREEN
+[Claude] STEP 10 — GOALS SCREEN
+[Claude] Say ok for Step 11.
+[Heading] You said: 404
+[User] 404
+[Heading] Claude responded: MEMORY SNAPSHOT — MUTTAQIN APP BUILD
+[Claude] MEMORY SNAPSHOT — MUTTAQIN APP BUILD
+[Claude] PROJECT: MUTTAQIN — Muslim Productivity React App (single file, inline styles, localStorage, mobile-first 390px)
+[Claude] STACK: React hooks, inline styles only, localStorage, no external CSS libs, no  tags
+[Claude] COLOR CONSTANTS: const C = {...} defined at top (bg, card, green, gold, text, muted, border, teal, red, blue, orange)
+[Claude] COMPLETED STEPS:
+[Claude] PENDING STEPS:
+[Claude] KEY STATE VARS:
+[Claude] KEY FUNCTIONS:
+[Claude] LOCALSTORAGE KEYS:
+muttaqin_prayers, muttaqin_tasks, muttaqin_water, muttaqin_sunnah, muttaqin_streaks, muttaqin_history, muttaqin_lastDate, muttaqin_snapshot, muttaqin_workout, muttaqin_income, muttaqin_todo
+[Claude] ANIMATIONS (injected via  tag):
+pulse-glow, gold-shimmer, wave, ripple, fadeInGreen
+[Claude] DESIGN RULES:
+[Claude] NEXT STEP TO CONTINUE: Step 11 — Habits Screen
+[Claude] Say ok to continue with Step 11.
