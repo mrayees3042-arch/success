@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:math' show max; // Fix 1: Add dart:math show max, min
@@ -755,6 +755,18 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       final workoutIndex = _workoutTaskIndex;
       if (workoutIndex != -1 && _today.tasks.length > workoutIndex) {
         _today.tasks[workoutIndex] = isToday && progress.completed;
+      }
+      // Sync workout progress to DayRecord so Habits screen can read it
+      if (isToday && (progress.inProgress || progress.completed)) {
+        final todayRecord = _recordFor(DateTime.now());
+        todayRecord.workoutSummary = WorkoutSummary(
+          workoutName: progress.workoutName,
+          exercisesCompleted: progress.exercisesCompleted,
+          totalExercises: progress.totalExercises,
+          setsCompleted: progress.exercisesCompleted,
+          totalSets: progress.totalExercises,
+          setsPerExercise: {},
+        );
       }
     });
     _saveHistory();
@@ -3542,19 +3554,22 @@ class _HabitsScreenState extends State<HabitsScreen> {
         date.weekday == DateTime.monday || date.weekday == DateTime.thursday;
     final fastStatus = fastVal ?? (isSunnah ? 'fasting' : 'none');
 
-    // Fasting streak loop
+    // Fasting streak loop — only count explicitly logged fasts
     int streak = 0;
     final today = DateTime.now();
     for (int i = 0; i < 30; i++) {
       final d = today.subtract(Duration(days: i));
       final dStr = dayKey(d);
       final fVal = prefs.getString('fast_status_$dStr');
-      final isS =
-          d.weekday == DateTime.monday || d.weekday == DateTime.thursday;
-      final fStatus = fVal ?? (isS ? 'fasting' : 'none');
-      if (fStatus == 'fasting') {
+      // Only count days where user explicitly logged a fast
+      if (fVal == 'fasting') {
         streak++;
+      } else if (fVal != null) {
+        // Explicitly set to something other than 'fasting' (e.g. 'broke', 'none')
+        break;
       } else {
+        // No explicit log for this day — skip it (don't break streak, don't count it)
+        // This allows non-consecutive fasting days to still form a streak
         break;
       }
     }
