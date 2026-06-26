@@ -1,7 +1,7 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:math' show max, min; // Fix 1: Add dart:math show max, min
+import 'dart:math' show max; // Fix 1: Add dart:math show max, min
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -597,6 +597,30 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     _saveExpenses();
   }
 
+  Future<void> _resetDayData(DateTime date) async {
+    final key = dayKey(date);
+    setState(() {
+      _history[key] = DayRecord.empty();
+      _incomeLog[key] = 0;
+      _expenseLog[key] = 0;
+    });
+    await _saveHistory();
+    await _saveIncome();
+    await _saveExpenses();
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('fast_status_$key');
+    await prefs.remove('water_$key');
+    for (var name in [
+      "Quran 1 page",
+      "Evening adhkar",
+      "No phone 1hr after Fajr",
+      "Sleep before midnight",
+    ]) {
+      await prefs.remove('islamic_habit_${name}_$key');
+    }
+  }
+
   Future<void> _loadWater() async {
     try {
       final key = 'water_${dayKey(DateTime.now())}';
@@ -635,39 +659,47 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   void _editTask(int index, TodayTask task) {
     if (index < 0 || index >= kTodayTasks.length) return;
-    if (!mounted) return;
-    setState(() {
-      kTodayTasks[index] = task;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          kTodayTasks[index] = task;
+        });
+        _saveTaskDefinitions();
+      }
     });
-    _saveTaskDefinitions();
   }
 
   void _addDailyTask(TodayTask task) {
-    if (!mounted) return;
-    setState(() {
-      kTodayTasks.add(task);
-      for (final record in _history.values) {
-        // Ensure all existing records have a corresponding task entry
-        record.tasks.add(false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          kTodayTasks.add(task);
+          for (final record in _history.values) {
+            record.tasks.add(false);
+          }
+        });
+        _saveTaskDefinitions();
+        _saveHistory();
       }
     });
-    _saveTaskDefinitions();
-    _saveHistory();
   }
 
   void _deleteTask(int index) {
     if (index < 0 || index >= kTodayTasks.length) return;
-    if (!mounted) return;
-    setState(() {
-      kTodayTasks.removeAt(index);
-      for (final record in _history.values) {
-        if (record.tasks.length > index) {
-          record.tasks.removeAt(index);
-        }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          kTodayTasks.removeAt(index);
+          for (final record in _history.values) {
+            if (record.tasks.length > index) {
+              record.tasks.removeAt(index);
+            }
+          }
+        });
+        _saveTaskDefinitions();
+        _saveHistory();
       }
     });
-    _saveTaskDefinitions();
-    _saveHistory();
   }
 
   void _reorderTask(int oldIndex, int newIndex) {
@@ -747,11 +779,11 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       text2: Color(0xFF2A2A3E), // Light theme text
       text3: Color(0xFF8A8580), // Light theme muted text
       text4: Color(0xFF9A9585), // Light theme very muted text
-      gold: cGold, // Use new gold constant
-      teal: cEmerald, // Use new emerald constant
-      blue: cAzure, // Use new azure constant
-      red: cRose, // Use new rose constant
-      green: cEmerald, // Use new emerald constant for general green
+      gold: Color(0xFFB8860B),
+      teal: Color(0xFF0A7A5A),
+      blue: Color(0xFF1A6FA0),
+      red: Color(0xFFC0392B),
+      green: Color(0xFF0A7A5A),
     );
   }
 
@@ -908,6 +940,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           expenseLog: _expenseLog,
           onSetIncome: _setIncomeForDate,
           onSetExpense: _setExpenseForDate,
+          onResetDay: _resetDayData,
         ),
       ),
       SizedBox.expand(
@@ -1129,6 +1162,121 @@ class ScoreRing extends StatelessWidget {
   }
 }
 
+class _TaskEditSheet extends StatefulWidget {
+  final ThemeColors theme;
+  final MapEntry<int, TodayTask>? entry;
+  final void Function(TodayTask) onSave;
+  final VoidCallback? onDelete;
+
+  const _TaskEditSheet({
+    required this.theme,
+    this.entry,
+    required this.onSave,
+    this.onDelete,
+  });
+
+  @override
+  State<_TaskEditSheet> createState() => _TaskEditSheetState();
+}
+
+class _TaskEditSheetState extends State<_TaskEditSheet> {
+  late TextEditingController _titleCtrl;
+  late TextEditingController _tagCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtrl = TextEditingController(text: widget.entry?.value.title ?? '');
+    _tagCtrl = TextEditingController(text: widget.entry?.value.tag ?? '');
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _tagCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.entry != null;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isEditing ? 'Edit daily task' : 'Add daily task',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: widget.theme.text1,
+            ),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: _titleCtrl,
+            autofocus: true,
+            style: TextStyle(color: widget.theme.text1),
+            decoration: InputDecoration(
+              labelText: 'Task name',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _tagCtrl,
+            style: TextStyle(color: widget.theme.text1),
+            decoration: InputDecoration(
+              labelText: 'Time / condition subtitle',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              if (isEditing && widget.onDelete != null)
+                TextButton.icon(
+                  onPressed: widget.onDelete,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete'),
+                ),
+              const Spacer(),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: widget.theme.gold,
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: () {
+                  final title = _titleCtrl.text.trim();
+                  final tag = _tagCtrl.text.trim();
+                  if (title.isEmpty || tag.isEmpty) return;
+
+                  final task = isEditing
+                      ? widget.entry!.value.copyWith(title: title, tag: tag)
+                      : TodayTask(Icons.check_circle_outline, title, tag);
+                  widget.onSave(task);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class TodayScreen extends StatefulWidget {
   const TodayScreen({
     super.key,
@@ -1179,7 +1327,6 @@ class _TodayScreenState extends State<TodayScreen>
   int _countdownTick = 0;
   String _fastStatus = 'fasting';
   bool _suhoorAlarmSet = false;
-  bool _quranReflected = false;
   final int _ayahIndex = 0;
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _prayersKey = GlobalKey();
@@ -1342,11 +1489,6 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   void _showTaskSheet({MapEntry<int, TodayTask>? entry}) {
-    final isEditing = entry != null;
-    final task = entry?.value;
-    final titleCtrl = TextEditingController(text: task?.title ?? '');
-    final tagCtrl = TextEditingController(text: task?.tag ?? '');
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1355,105 +1497,29 @@ class _TodayScreenState extends State<TodayScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (BuildContext sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                isEditing ? 'Edit daily task' : 'Add daily task',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: widget.theme.text1,
-                ),
-              ),
-              const SizedBox(height: 18),
-              TextField(
-                controller: titleCtrl,
-                autofocus: true,
-                style: TextStyle(color: widget.theme.text1),
-                decoration: InputDecoration(
-                  labelText: 'Task name',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: tagCtrl,
-                style: TextStyle(color: widget.theme.text1),
-                decoration: InputDecoration(
-                  labelText: 'Time / condition subtitle',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  if (isEditing)
-                    TextButton.icon(
-                      onPressed: () {
-                        titleCtrl.dispose();
-                        tagCtrl.dispose();
-
-                        Navigator.pop(sheetContext);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) widget.onTaskDelete(entry.key);
-                        });
-                      },
-                      icon: const Icon(Icons.delete_outline),
-                      label: Text('Delete'),
-                    ),
-                  const Spacer(),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: widget.theme.gold,
-                      foregroundColor: Colors.black,
-                    ),
-                    onPressed: () {
-                      final title = titleCtrl.text.trim();
-                      final tag = tagCtrl.text.trim();
-                      if (title.isEmpty || tag.isEmpty) return;
-
-                      final updatedTask = isEditing
-                          ? task!.copyWith(title: title, tag: tag)
-                          : TodayTask(
-                              Icons
-                                  .check_circle_outline, // Fix 3: Too many positional arguments
-                              title, // No color in TodayTask
-                              tag, // No color in TodayTask
-                            );
-
-                      titleCtrl.dispose();
-                      tagCtrl.dispose();
-
-                      Navigator.pop(sheetContext);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          if (isEditing) {
-                            widget.onTaskEdit(entry.key, updatedTask);
-                          } else {
-                            widget.onTaskAdd(updatedTask);
-                          }
-                        }
-                      });
-                    },
-                    child: Text('Save'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        return _TaskEditSheet(
+          theme: widget.theme,
+          entry: entry,
+          onSave: (updatedTask) {
+            Navigator.pop(sheetContext);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                if (entry != null) {
+                  widget.onTaskEdit(entry.key, updatedTask);
+                } else {
+                  widget.onTaskAdd(updatedTask);
+                }
+              }
+            });
+          },
+          onDelete: () {
+            Navigator.pop(sheetContext);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && entry != null) {
+                widget.onTaskDelete(entry.key);
+              }
+            });
+          },
         );
       },
     );
@@ -1507,7 +1573,7 @@ class _TodayScreenState extends State<TodayScreen>
                     _taskSubtitle(entry),
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: widget.theme.text3,
                     ),
                   ),
                 ],
@@ -1572,7 +1638,7 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Before Fajr · Mon fast',
+                  'Before Fajr → Mon fast',
                   style: TextStyle(fontSize: 11, color: widget.theme.text3),
                 ),
               ],
@@ -1599,151 +1665,103 @@ class _TodayScreenState extends State<TodayScreen>
 
   Widget _waterTracker() {
     final double consumed = (widget.waterGlasses * 260) / 1000;
-    final colorScheme = Theme.of(context).colorScheme;
-    final emptyGlassColor = colorScheme.outlineVariant;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: _GlassCard(
-        theme: widget.theme,
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: consumed.toStringAsFixed(1),
-                            style: GoogleFonts.syne(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: colorScheme.primary,
-                              shadows: [
-                                Shadow(
-                                  color: colorScheme.primary,
-                                  blurRadius: 10,
-                                ),
-                              ],
-                            ),
-                          ),
-                          TextSpan(
-                            text: ' L',
-                            style: GoogleFonts.syne(
-                              fontSize: 12,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.water_drop_outlined,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '2.6 L goal',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            color: Theme.of(context).textTheme.bodySmall?.color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: widget.theme.card,
+        border: Border.all(color: widget.theme.border, width: 0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          // Header row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '\u{1F4A7} Water Intake',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: widget.theme.text1,
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${widget.waterGlasses} / 10 glasses',
-                      style: GoogleFonts.syne(
-                        fontSize: 16,
-                        color: widget.theme.text1,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      '260 ml each',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        color: widget.theme.text3,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(
-                value: widget.waterGlasses / 10.0,
-                minHeight: 4,
-                backgroundColor: widget.theme.border.withValues(alpha: 0.5),
-                valueColor: AlwaysStoppedAnimation(widget.theme.blue),
               ),
+              Text(
+                '${consumed.toStringAsFixed(1)} L / 2.6 L goal',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: widget.theme.text3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: widget.waterGlasses / 10.0,
+              minHeight: 4,
+              backgroundColor: widget.theme.isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : widget.theme.border,
+              valueColor: AlwaysStoppedAnimation(widget.theme.blue),
             ),
-            const SizedBox(height: 14),
-            GridView.count(
-              crossAxisCount: 5,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              cacheExtent: 1000,
-              padding: EdgeInsets.zero,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.8,
-              children: List.generate(10, (i) {
-                final full = i < widget.waterGlasses;
-                return GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    widget.onWaterChange(full ? i : i + 1);
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 36,
-                        height: 44,
-                        child: CustomPaint(
-                          painter: _GlassPainter(
-                            filled: full,
-                            fillColor: colorScheme.primary,
-                            borderColor: full
-                                ? colorScheme.primary
-                                : emptyGlassColor,
-                          ),
+          ),
+          const SizedBox(height: 14),
+          // Glasses grid
+          GridView.count(
+            crossAxisCount: 5,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            cacheExtent: 1000,
+            padding: EdgeInsets.zero,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 0.8,
+            children: List.generate(10, (i) {
+              final full = i < widget.waterGlasses;
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  widget.onWaterChange(full ? i : i + 1);
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 36,
+                      height: 44,
+                      child: CustomPaint(
+                        painter: _GlassPainter(
+                          filled: full,
+                          fillColor: widget.theme.blue.withValues(alpha: 0.4),
+                          borderColor: full
+                              ? widget.theme.blue
+                              : (widget.theme.isDark
+                                    ? Colors.white.withValues(alpha: 0.2)
+                                    : widget.theme.border),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${i + 1}',
-                        style: GoogleFonts.syne(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: widget.theme.text4,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${i + 1}',
+                      style: GoogleFonts.syne(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: widget.theme.text4,
                       ),
-                    ],
-                  ),
-                );
-              }),
-            ),
-          ],
-        ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
@@ -1781,40 +1799,13 @@ class _TodayScreenState extends State<TodayScreen>
     return (elapsed / const Duration(hours: 14).inSeconds).clamp(0.0, 1.0);
   }
 
-  Widget _iftarProgressRing() {
-    final progress = _fastElapsedProgress();
-    final percent = (progress * 100).round();
-    return SizedBox(
-      width: 32,
-      height: 32,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircularProgressIndicator(
-            value: progress,
-            strokeWidth: 3,
-            backgroundColor: Colors.white.withValues(alpha: 0.08),
-            valueColor: const AlwaysStoppedAnimation(Color(0xFFD4AF37)),
-          ),
-          Text(
-            '$percent',
-            style: const TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFFD4AF37),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _loadFastStatus() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
       _fastStatus =
-          prefs.getString('fast_status_${dayKey(DateTime.now())}') ?? 'fasting';
+          prefs.getString('fast_status_${dayKey(DateTime.now())}') ??
+          (_isSunnahDay() ? 'fasting' : 'none');
     });
   }
 
@@ -1826,105 +1817,109 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   Widget _fastingStatusCard() {
-    const accent = Color(0xFFD4AF37);
-    const mutedRed = Color(0xFFB86A62);
-    final isFasting = _fastStatus == 'fasting';
-    final isNoFastToday = !_isSunnahDay();
-    final title = _fastingDayName().replaceFirst('Sunnah ', '');
+    final isSunnah = _isSunnahDay();
+    final countdown = _getCountdown();
+    final progress = _fastElapsedProgress();
+    const gold = Color(0xFFE8B84B);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E2235),
-        border: Border.all(color: accent.withValues(alpha: 0.2), width: 1),
+        color: widget.theme.card,
+        border: Border.all(color: widget.theme.border, width: 0.5),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
-              const Icon(Icons.nightlight_round, color: accent, size: 22),
-              const SizedBox(width: 10),
+              const Text('\u{1F319}', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
+                  isSunnah
+                      ? _fastingDayName().replaceFirst('Sunnah ', '')
+                      : (_fastStatus == 'fasting' ? 'Personal Fast' : 'No Fast Today'),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: widget.theme.text1,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 6),
+          // Sub label
+          Text(
+            'IFTAR IN',
+            style: GoogleFonts.dmSans(
+              fontSize: 10,
+              letterSpacing: 3,
+              color: widget.theme.text3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Timer row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Text(
+                countdown,
+                style: GoogleFonts.syne(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w700,
+                  color: gold,
+                ),
+              ),
+              // Progress ring
+              SizedBox(
+                width: 52,
+                height: 52,
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    Text(
-                      'IFTAR IN',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.6,
-                        color: Colors.white.withValues(alpha: 0.52),
-                      ),
+                    CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 4,
+                      backgroundColor: widget.theme.isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : widget.theme.border,
+                      valueColor: const AlwaysStoppedAnimation(gold),
                     ),
-                    const SizedBox(height: 6),
                     Text(
-                      _getCountdown(),
+                      '${(progress * 100).round()}%',
                       style: const TextStyle(
-                        fontSize: 30,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: accent,
-                        letterSpacing: 2,
-                        fontFeatures: [ui.FontFeature.tabularFigures()],
+                        color: gold,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
-              _iftarProgressRing(),
             ],
           ),
-          const SizedBox(height: 18),
-          if (isNoFastToday)
-            GestureDetector(
-              onTap: () => _setFastStatus('fasting'),
-              child: const Text(
-                'Log Fast',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: accent,
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: isFasting ? mutedRed : accent,
-                  side: BorderSide(color: isFasting ? mutedRed : accent),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: () =>
-                    _setFastStatus(isFasting ? 'broke' : 'fasting'),
-                child: Text(isFasting ? 'Broke Fast' : 'Start Fast'),
+          const SizedBox(height: 12),
+          // Log Fast button
+          GestureDetector(
+            onTap: () =>
+                _setFastStatus(_fastStatus == 'fasting' ? (_isSunnahDay() ? 'broke' : 'none') : 'fasting'),
+            child: Text(
+              isSunnah
+                  ? (_fastStatus == 'fasting' ? 'Broke Fast' : '+ Start Fast')
+                  : (_fastStatus == 'fasting' ? 'Cancel Fast' : '+ Log Fast'),
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                color: gold,
+                fontWeight: FontWeight.w500,
               ),
             ),
+          ),
         ],
       ),
     );
@@ -1934,63 +1929,89 @@ class _TodayScreenState extends State<TodayScreen>
     final done = widget.record.prayers[prayer] ?? false;
     final missed = !done && isPrayerPassed(prayer);
     final isNext = !done && !missed && _getNextPrayer()['name'] == prayer;
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final missedColor = colorScheme.error;
-    final doneColor = colorScheme.primary;
-    final upcomingColor = isDark ? Colors.grey[400]! : Colors.grey[500]!;
-    final arabicColor = done
-        ? doneColor
-        : missed
-        ? missedColor
-        : isNext
-        ? Theme.of(context).colorScheme.secondary
-        : Theme.of(context).textTheme.bodyLarge?.color ?? upcomingColor;
-    final icon = done
-        ? Icons.check
-        : missed
-        ? Icons.close_rounded
-        : Icons.radio_button_unchecked;
-    final iconColor = done ? doneColor : (missed ? missedColor : upcomingColor);
-    final statusIcon = missed
-        ? Container(
-            decoration: BoxDecoration(
-              color: colorScheme.errorContainer,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 16, color: colorScheme.error),
-          )
-        : Icon(icon, size: 16, color: iconColor);
+
+    // Define the prayer timings mapping
+    final times = {
+      'Tahajjud': '03:00',
+      'Fajr': '05:12',
+      'Dhuha': '06:22',
+      'Dhuhr': '12:14',
+      'Asr': '15:41',
+      'Maghrib': '18:42',
+      'Isha': '20:00',
+    };
+    final timeStr = times[prayer] ?? '00:00';
+
+    Color borderColor;
+    Color timeColor;
+    Widget? iconWidget;
+
+    if (done) {
+      borderColor = const Color(0x6600C896); // completed border
+      timeColor = const Color(0xFF00C896);
+      iconWidget = const Text(
+        ' ✓',
+        style: TextStyle(
+          color: Color(0xFF00C896),
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+    } else if (isNext) {
+      borderColor = const Color(0x99E8B84B); // current border
+      timeColor = const Color(0xFFE8B84B);
+    } else if (missed) {
+      borderColor = const Color(0x4DFF4444); // missed border
+      timeColor = const Color(0xFFFF4444);
+      iconWidget = const Text(
+        ' ✗',
+        style: TextStyle(
+          color: Color(0x99FF4444),
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+    } else {
+      borderColor = widget.theme.isDark
+          ? Colors.white.withValues(alpha: 0.05)
+          : widget.theme.border; // upcoming/default border
+      timeColor = widget.theme.text2;
+    }
 
     return GestureDetector(
       onTap: () => widget.onPrayerToggle(prayer),
-      child: _GlassCard(
-        theme: widget.theme,
-        radius: 16,
-        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: widget.theme.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor, width: 0.5),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              arabic,
-              textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: 'NotoNaskhArabic',
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: arabicColor,
-              ),
-            ),
-            Text(
               prayer,
-              style: GoogleFonts.syne(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w600,
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
                 color: widget.theme.text3,
               ),
             ),
-            const SizedBox(height: 6),
-            statusIcon,
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  timeStr,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: timeColor,
+                  ),
+                ),
+                ?iconWidget,
+              ],
+            ),
           ],
         ),
       ),
@@ -2039,72 +2060,44 @@ class _TodayScreenState extends State<TodayScreen>
     final nextPrayer = _getNextPrayer();
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
+        color: widget.theme.teal.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(50), // full capsule
+        border: Border.all(
+          color: widget.theme.teal.withValues(alpha: 0.25),
+          width: 0.5,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'NEXT PRAYER',
-            style: TextStyle(
-              fontSize: 11,
-              letterSpacing: 1.5,
-              color: Theme.of(context).textTheme.bodySmall?.color,
-            ),
-          ),
-          const SizedBox(height: 6),
           Row(
             children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        nextPrayer['name']!,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _TodayScreenState.arabicNames[nextPrayer['name']] ?? '',
-                      textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontFamily: 'NotoNaskhArabic',
-                        fontSize: 16,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                    ),
-                  ],
+              PulsingDot(color: widget.theme.teal, size: 8),
+              const SizedBox(width: 10),
+              Text(
+                nextPrayer['name']!,
+                style: GoogleFonts.dmSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: widget.theme.text1,
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    nextPrayer['time']!,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  Text(
-                    nextPrayer['in']!,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context).textTheme.bodySmall?.color,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 6),
+              Text(
+                nextPrayer['time']!,
+                style: GoogleFonts.dmSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: widget.theme.teal,
+                ),
               ),
             ],
+          ),
+          Text(
+            nextPrayer['in']!,
+            style: GoogleFonts.dmSans(fontSize: 12, color: widget.theme.text3),
           ),
         ],
       ),
@@ -2112,113 +2105,69 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   Widget _buildHeader() {
-    final arabicHeaderColor = Theme.of(context).colorScheme.secondary;
     final themeNotifier = Provider.of<ThemeNotifier>(context);
-
     return Container(
-      width: double.infinity, // Use padding from instructions
-      padding: const EdgeInsets.fromLTRB(22, 18, 22, 10),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 48, 20, 10),
       child: SafeArea(
-        bottom: false, // Use Row for top bar
+        bottom: false,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(width: 56), // spacer to center the title
             Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // This is the Hero Name section
-                Text(
-                  '\u0628\u0633\u0645 \u0627\u0644\u0644\u0647',
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontFamily: 'NotoNaskhArabic',
-                    fontSize: 13,
-                    color: arabicHeaderColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  // Use Syne
-                  'Rayees',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: widget.theme.text1,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  // Badge row
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 5,
-                    horizontal: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: widget.theme.gold.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: widget.theme.gold.withValues(alpha: 0.2),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFFE8B84B), Color(0xFFF5D78E)],
+                  ).createShader(bounds),
+                  child: Text(
+                    'Rayees',
+                    style: GoogleFonts.syne(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
-                  child: _buildMuttaqinBadge(),
-                ), // Removed days to 2027, date, day from here
-                const SizedBox(height: 24),
-                Text(
-                  '$_daysLeft',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 64,
-                    fontWeight: FontWeight.w900,
-                    color: Theme.of(context).colorScheme.secondary,
-                    height: 1,
-                    shadows: [
-                      Shadow(
-                        // Using .withValues(alpha: x)
-                        color: widget.theme.gold.withValues(alpha: 0.6),
-                        blurRadius: 20,
-                        offset: const Offset(0, 0),
-                      ),
-                    ],
-                  ),
                 ),
-                const SizedBox(height: 6),
                 Text(
-                  'DAYS TO 2027',
-                  style: GoogleFonts.syne(
-                    // Use Syne
+                  'MUTTAQIN',
+                  style: GoogleFonts.dmSans(
                     fontSize: 10,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    letterSpacing: 3,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$_date \u2022 $_day', // Use DM Sans
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Theme.of(context).textTheme.bodySmall?.color,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 6,
+                    color: const Color(0x80E8B84B),
                   ),
                 ),
               ],
             ),
-            Align(
-              alignment: Alignment.topRight,
-              child: Switch(
-                value: themeNotifier.isDark,
-                onChanged: (_) => themeNotifier.toggle(),
-                activeThumbColor: Theme.of(context).colorScheme.primary,
-                activeTrackColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.5),
-                inactiveThumbColor: Colors.white,
-                inactiveTrackColor: Colors.grey[300],
+            GestureDetector(
+              onTap: () => themeNotifier.toggle(),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0x40E8B84B),
+                    width: 1.0,
+                  ),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFFE8B84B).withValues(alpha: 0.1),
+                      Colors.white.withValues(alpha: 0.02),
+                    ],
+                  ),
+                ),
+                child: Icon(
+                  themeNotifier.isDark ? Icons.nights_stay : Icons.wb_sunny,
+                  color: const Color(0xFFE8B84B),
+                  size: 18,
+                ),
               ),
             ),
           ],
@@ -2227,39 +2176,56 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
-  Widget _buildMuttaqinBadge() {
-    final arabicBadgeColor = Theme.of(context).colorScheme.secondary;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildHeroCountdown() {
+    return Column(
       children: [
-        Text(
-          '\u0645\u064f\u062a\u064e\u0651\u0642\u0650\u064a\u0646',
-          textDirection: TextDirection.rtl,
-          style: TextStyle(
-            fontFamily: 'NotoNaskhArabic',
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: arabicBadgeColor,
+        SizedBox(
+          width: 200,
+          height: 110,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CustomPaint(
+                size: const Size(200, 110),
+                painter: _HeroArcPainter(
+                  progress: _daysLeft / 365.0,
+                  color: const Color(0xFFE8B84B),
+                ),
+              ),
+              Positioned(
+                top: 20,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$_daysLeft',
+                      style: GoogleFonts.syne(
+                        fontSize: 42,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFE8B84B),
+                      ),
+                    ),
+                    Text(
+                      'Days to 2027',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: widget.theme.text3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 8),
-        Container(
-          width: 3,
-          height: 3,
-          decoration: BoxDecoration(
-            color: widget.theme.gold,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 8),
+        const SizedBox(height: 12),
         Text(
-          'MUTTAQIN',
-          style: GoogleFonts.syne(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 2.5,
-            color: widget.theme.gold,
+          '$_date \u2022 $_day',
+          style: GoogleFonts.dmSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: widget.theme.text4,
           ),
         ),
       ],
@@ -2268,77 +2234,84 @@ class _TodayScreenState extends State<TodayScreen>
 
   @override
   Widget build(BuildContext context) {
-    final visibleTaskCount =
-        _visibleTasks.length; // This is used in _buildMetricRow
+    final visibleTaskCount = _visibleTasks.length;
+    final totalPrayers = kPrayerNames.length;
+    final prayersDoneCount = widget.record.prayerDone;
+    final totalTasks = _visibleTasks.length;
+    final tasksDone = _visibleTaskDone;
+    const waterGoal = 10;
+    final waterDone = widget.waterGlasses.clamp(0, waterGoal);
+
+    final prayerProgress = totalPrayers == 0
+        ? 0.0
+        : (prayersDoneCount / totalPrayers).clamp(0.0, 1.0);
+    final taskProgress = totalTasks == 0
+        ? 0.0
+        : (tasksDone / totalTasks).clamp(0.0, 1.0);
+    final waterProgress = waterGoal == 0
+        ? 0.0
+        : (waterDone / waterGoal).clamp(0.0, 1.0);
+    final todayScore =
+        ((prayerProgress * 50) + (taskProgress * 30) + (waterProgress * 20))
+            .round();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: widget.theme.bg,
       body: Stack(
         children: [
-          // --- Radial Orbs ---
-          Positioned(
-            top: -80, // Orb 1: top:-80, left:-60
-            left: -50,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  // Orb 1 opacity
-                  colors: [
-                    widget.theme.gold.withValues(alpha: 0.12),
-                    Colors.transparent,
-                  ], // Orb 1: theme gold overlay
+          // 1. Ambient fixed auroras (only in dark mode)
+          if (widget.theme.isDark) ...[
+            Positioned(
+              top: -40,
+              right: -60,
+              child: Container(
+                width: 320,
+                height: 320,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0x2000C896), // Emerald (#00c89620 opacity)
                 ),
               ),
             ),
-          ),
-          Positioned(
-            bottom: 100,
-            right: -50,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    widget.theme.teal.withValues(
-                      alpha: 0.07,
-                    ), // Orb 2: color emerald opacity 0.07
-                    Colors.transparent,
-                  ],
+            Positioned(
+              top: 244,
+              left: -100,
+              child: Container(
+                width: 360,
+                height: 360,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0x15E8B84B), // Gold (#e8b84b15)
                 ),
               ),
             ),
-          ),
-          Center(
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  // Orb 3 opacity
-                  colors: [
-                    widget.theme.blue.withValues(alpha: 0.06),
-                    Colors.transparent,
-                  ],
+            Positioned(
+              bottom: -60,
+              right: -80,
+              child: Container(
+                width: 380,
+                height: 380,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0x250D4F3C), // Deep teal (#0d4f3c25)
                 ),
               ),
             ),
-          ),
-          // 2. Geometric Pattern
-          const Opacity(
-            opacity: 0.025,
-            child: CustomPaint(
-              painter: StarPatternPainter(),
-              size: Size.infinite,
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                child: const SizedBox.shrink(),
+              ),
             ),
-          ),
-
-          // --- Main Content ---
+            // 2. Faint 8-pointed star pattern overlay
+            const Positioned.fill(
+              child: Opacity(
+                opacity: 0.03, // 3% opacity
+                child: CustomPaint(painter: StarPatternPainter()),
+              ),
+            ),
+          ],
+          // 3. Scrollable Content
           Column(
             children: [
               _buildHeader(),
@@ -2350,21 +2323,34 @@ class _TodayScreenState extends State<TodayScreen>
                   ),
                   clipBehavior: Clip.none,
                   padding: const EdgeInsets.fromLTRB(
+                    20,
                     0,
-                    0,
-                    0,
+                    20,
                     90,
-                  ), // Padded bottom 90px
+                  ), // Padded bottom
                   child: Column(
                     children: [
+                      _wrapWithStaggered(0, _buildHeroCountdown()),
+                      const SizedBox(height: 28),
                       _wrapWithStaggered(
-                        0,
+                        1,
                         _buildAyahCard(_TodayScreenState.ayahs[_ayahIndex]),
                       ),
-                      _wrapWithStaggered(1, _buildMetricRow(visibleTaskCount)),
-                      _wrapWithStaggered(2, _nextPrayerBanner()),
-                      _wrapWithStaggered(3, _quranDotPill()),
-                      _wrapWithStaggered(4, _buildScoreCard()),
+                      const SizedBox(height: 24),
+                      _wrapWithStaggered(2, _buildMetricRow(visibleTaskCount)),
+                      const SizedBox(height: 20),
+                      _wrapWithStaggered(
+                        3,
+                        _buildScoreCard(
+                          todayScore,
+                          prayerProgress,
+                          taskProgress,
+                          waterProgress,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _wrapWithStaggered(4, _nextPrayerBanner()),
+                      const SizedBox(height: 20),
                       _wrapWithStaggered(
                         5,
                         KeyedSubtree(
@@ -2372,15 +2358,19 @@ class _TodayScreenState extends State<TodayScreen>
                           child: _buildPrayerGrid(),
                         ),
                       ),
+                      const SizedBox(height: 20),
                       _wrapWithStaggered(
                         6,
                         KeyedSubtree(key: _tasksKey, child: _buildTasksList()),
                       ),
+                      const SizedBox(height: 20),
                       _wrapWithStaggered(7, _suhoorReminderCard()),
+                      const SizedBox(height: 20),
                       _wrapWithStaggered(
                         8,
                         KeyedSubtree(key: _waterKey, child: _waterTracker()),
                       ),
+                      const SizedBox(height: 20),
                       _wrapWithStaggered(9, _fastingStatusCard()),
                     ],
                   ),
@@ -2397,76 +2387,10 @@ class _TodayScreenState extends State<TodayScreen>
     return FadeTransition(
       opacity: _staggeredAnims[index],
       child: SlideTransition(
-        // translateY 16?0
         position: _staggeredAnims[index].drive(
           Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero),
         ),
         child: child,
-      ),
-    );
-  }
-
-  Widget _quranDotPill() {
-    final reflected = _quranReflected;
-    return GestureDetector(
-      onTap: () => setState(() => _quranReflected = true),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: reflected
-              ? widget.theme.gold.withValues(alpha: 0.12)
-              : widget.theme.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: reflected ? widget.theme.gold : widget.theme.border,
-            width: 0.8,
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'إِنَّ مَعَ الْعُسْرِ يُسْرًا',
-                    textDirection: TextDirection.rtl,
-                    style: TextStyle(
-                      fontFamily: 'NotoNaskhArabic',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: widget.theme.text1,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Quran 94:6',
-                    style: GoogleFonts.syne(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: widget.theme.gold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: reflected ? Colors.white : widget.theme.gold,
-                backgroundColor: reflected ? widget.theme.gold : null,
-                side: BorderSide(color: widget.theme.gold),
-                minimumSize: const Size(78, 34),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-              onPressed: () => setState(() => _quranReflected = true),
-              child: Text(reflected ? '✓ Done' : 'Reflect'),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -2476,10 +2400,7 @@ class _TodayScreenState extends State<TodayScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: _GlassCard(
         theme: widget.theme,
-        border: Border.all(
-          color: Theme.of(context).colorScheme.secondary,
-          width: 0.5,
-        ),
+        border: Border.all(color: const Color(0x66E8B84B), width: 0.5),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -2492,21 +2413,27 @@ class _TodayScreenState extends State<TodayScreen>
                 textDirection: TextDirection.rtl,
                 style: TextStyle(
                   fontFamily: 'NotoNaskhArabic',
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
+                  color: widget.theme.isDark
+                      ? const Color(0xFFF5D78E)
+                      : widget.theme.gold,
                   height: 1.5,
                 ),
               ),
               const SizedBox(height: 12),
-              Container(width: 40, height: 1.5, color: widget.theme.gold),
+              Container(
+                width: 40,
+                height: 1.5,
+                color: widget.theme.gold.withValues(alpha: 0.25),
+              ),
               const SizedBox(height: 12),
               Text(
                 ayah[1],
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 13,
+                  color: widget.theme.text2,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -2516,7 +2443,7 @@ class _TodayScreenState extends State<TodayScreen>
                 textAlign: TextAlign.center,
                 style: GoogleFonts.syne(
                   fontSize: 10,
-                  color: widget.theme.blue.withValues(alpha: 0.5),
+                  color: widget.theme.text3,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
                 ),
@@ -2540,43 +2467,34 @@ class _TodayScreenState extends State<TodayScreen>
   );
 
   Widget _buildMetricRow(int visibleTaskCount) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          _metricRingCard(
-            'Prayers',
-            widget.record.prayerDone,
-            7,
-            widget.theme.gold,
-            _prayersKey,
-          ),
-          const SizedBox(width: 12),
-          _metricRingCard(
-            'Tasks',
-            _visibleTaskDone,
-            visibleTaskCount,
-            widget.theme.teal,
-            _tasksKey,
-          ),
-          const SizedBox(width: 12),
-          _metricRingCard(
-            'Water',
-            widget.waterGlasses,
-            10,
-            widget.theme.blue,
-            _waterKey,
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _metricRingCard(
+          'Prayers',
+          widget.record.prayerDone,
+          7,
+          const Color(0xFFE8B84B),
+          _prayersKey,
+        ),
+        const SizedBox(width: 12),
+        _metricRingCard(
+          'Tasks',
+          _visibleTaskDone,
+          visibleTaskCount,
+          const Color(0xFF00C896),
+          _tasksKey,
+        ),
+        const SizedBox(width: 12),
+        _metricRingCard(
+          'Water',
+          widget.waterGlasses,
+          10,
+          const Color(0xFF38BDF8),
+          _waterKey,
+        ),
+      ],
     );
-  }
-
-  Color _completionColor(double progress) {
-    if (progress <= 0) return Theme.of(context).colorScheme.onSurface;
-    if (progress < 0.5) return widget.theme.gold;
-    if (progress < 1) return Theme.of(context).colorScheme.primary;
-    return widget.theme.green;
   }
 
   Widget _metricRingCard(
@@ -2587,159 +2505,46 @@ class _TodayScreenState extends State<TodayScreen>
     GlobalKey targetKey,
   ) {
     final progress = max <= 0 ? 0.0 : (val / max).clamp(0.0, 1.0);
-    final ringColor = _completionColor(progress);
+    final pct = (progress * 100).round();
 
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _scrollTo(targetKey),
-        child: _GlassCard(
-          theme: widget.theme,
-          border: Border.all(
-            color: ringColor.withValues(alpha: 0.65),
-            width: 0.8,
+        child: Container(
+          decoration: BoxDecoration(
+            color: widget.theme.card,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: widget.theme.border, width: 0.5),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-            child: Column(
-              children: [
-                SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: CustomPaint(
-                    painter: _MetricRingPainter(
-                      progress: progress,
-                      color: ringColor,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$val',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: ringColor,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  label.toUpperCase(),
-                  style: GoogleFonts.syne(
-                    fontSize: 9,
-                    letterSpacing: 0.5,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildScoreCard() {
-    final totalPrayers = kPrayerNames.length;
-    final prayersDone = widget.record.prayerDone;
-    final totalTasks = _visibleTasks.length;
-    final tasksDone = _visibleTaskDone;
-    const waterGoal = 10;
-    final waterDone = widget.waterGlasses.clamp(0, waterGoal);
-
-    final prayerProgress = totalPrayers == 0
-        ? 0.0
-        : (prayersDone / totalPrayers).clamp(0.0, 1.0);
-    final taskProgress = totalTasks == 0
-        ? 0.0
-        : (tasksDone / totalTasks).clamp(0.0, 1.0);
-    final waterProgress = waterGoal == 0
-        ? 0.0
-        : (waterDone / waterGoal).clamp(0.0, 1.0);
-    final todayScore =
-        ((prayerProgress * 40) + (taskProgress * 40) + (waterProgress * 20))
-            .round();
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: _GlassCard(
-        theme: widget.theme,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          child: Column(
             children: [
               SizedBox(
-                width: 112,
-                height: 112,
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween<double>(end: todayScore / 100),
-                  duration: const Duration(milliseconds: 700),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, arcProgress, child) {
-                    return CustomPaint(
-                      painter: _ScoreArcPainter(
-                        progress: arcProgress,
-                        color: widget.theme.gold,
-                      ),
-                      child: child,
-                    );
-                  },
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _CountUpInt(
-                          value: todayScore,
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            color: widget.theme.text1,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Today's Score",
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 1),
-                        Text(
-                          '$todayScore / 100',
-                          style: GoogleFonts.syne(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
+                width: 64,
+                height: 64,
+                child: CustomPaint(
+                  painter: _MetricRingPainter(
+                    progress: progress,
+                    color: fallbackColor,
                   ),
                 ),
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  children: [
-                    _scoreProgressRow(
-                      'Prayer',
-                      widget.theme.gold,
-                      prayerProgress,
-                    ),
-                    const SizedBox(height: 10),
-                    _scoreProgressRow('Tasks', widget.theme.teal, taskProgress),
-                    const SizedBox(height: 10),
-                    _scoreProgressRow(
-                      'Water',
-                      widget.theme.blue,
-                      waterProgress,
-                    ),
-                  ],
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  color: widget.theme.text3,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '$pct%',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: fallbackColor,
                 ),
               ),
             ],
@@ -2749,108 +2554,111 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
-  Widget _scoreProgressRow(String label, Color color, double progress) {
+  Widget _buildScoreCard(
+    int todayScore,
+    double prayerProgress,
+    double taskProgress,
+    double waterProgress,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.theme.card,
+        border: Border.all(color: widget.theme.border, width: 0.5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Today's Score",
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: widget.theme.text3,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$todayScore / 100',
+                style: GoogleFonts.syne(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: widget.theme.text1,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(
+            width: 70,
+            height: 70,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: todayScore / 100),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (context, arcProgress, child) {
+                return CustomPaint(
+                  painter: _ScoreArcPainter(
+                    progress: arcProgress,
+                    color: const Color(0xFFE8B84B),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrayerGrid() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label, // Use DM Sans
-              style: GoogleFonts.dmSans(
-                fontSize: 10,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            Text(
-              '${(progress * 100).toInt()}%',
-              style: GoogleFonts.syne(
-                // Use Syne
-                fontSize: 9, // Smaller font size
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600, // Weight 600
-              ), // Use widget.theme.gold
-            ),
-          ],
+          children: kPrayerNames
+              .take(4)
+              .map(
+                (p) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+                  ),
+                ),
+              )
+              .toList(),
         ),
-        const SizedBox(height: 4),
-        TweenAnimationBuilder<double>(
-          tween: Tween<double>(end: progress.clamp(0.0, 1.0)),
-          duration: const Duration(milliseconds: 650),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, _) {
-            return LinearProgressIndicator(
-              value: value,
-              backgroundColor: widget.theme.border.withValues(alpha: 0.6),
-              valueColor: AlwaysStoppedAnimation(color),
-              minHeight: 3,
-              borderRadius: BorderRadius.circular(2),
-            );
-          },
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: kPrayerNames
+              .skip(4)
+              .map(
+                (p) => SizedBox(
+                  width: (MediaQuery.of(context).size.width - 56) / 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+                  ),
+                ),
+              )
+              .toList(),
         ),
       ],
     );
   }
 
-  Widget _buildPrayerGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(
-        // Two rows using GridView or Row x 2, mx 16, gap 8
-        children: [
-          Row(
-            children: kPrayerNames
-                .take(4)
-                .map(
-                  (p) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
-                    ), // Each pcell _glassCard(radius:16, padding:11x6, center column)
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 4),
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            cacheExtent: 1000,
-            padding: EdgeInsets.zero,
-            mainAxisSpacing: 0,
-            crossAxisSpacing: 0,
-            childAspectRatio: 1.25,
-            children: kPrayerNames
-                .skip(4)
-                .map(
-                  (p) => Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
-                  ),
-                )
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTasksList() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-      ), // _sectionHeader("Daily Tasks")
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader("Daily Tasks"),
-          ..._visibleTasks.map(
-            (entry) => RepaintBoundary(child: _taskRow(entry)),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("Daily Tasks"),
+        ..._visibleTasks.map(
+          (entry) => RepaintBoundary(child: _taskRow(entry)),
+        ),
+      ],
     );
   }
 
@@ -2863,6 +2671,7 @@ class _TodayScreenState extends State<TodayScreen>
     'Maghrib': '\u0645\u063a\u0631\u0628',
     'Isha': '\u0639\u0634\u0627\u0621',
   };
+
   static const ayahs = [
     [
       '\u0625\u0650\u0646\u064e\u0651 \u0645\u064e\u0639\u064e \u0627\u0644\u0652\u0639\u064f\u0633\u0652\u0631\u0650 \u064a\u064f\u0633\u0652\u0631\u064b\u0627',
@@ -2870,7 +2679,7 @@ class _TodayScreenState extends State<TodayScreen>
       '94:6',
     ],
     [
-      '\u0648\u064e\u0645\u064e\u0646 \u064a\u064e\u062a\u064e\u0651\u0642\u0650 \u0627\u0644\u0644\u064e\u0651\u0647\u064e \u064a\u064e\u062c\u0652\u0639\u064e\u0644 \u0644\u064e\u0651\u0647\u064f \u0645\u064e\u062e\u0652\u0631\u064e\u062c\u064b\u0627',
+      '\u0648\u064e\u0645\u064e\u0646 \u064a\u064e\u062a\u064e\u0651\u0642\u0650 \u0627\u0644\u0644\u064e\u0651\u0647\u064e \u064a\u064e\u062c\u0652\u0639\u064e\u0644 \u0644\u064e\u0651\u0647\u064e \u0645\u064e\u062e\u0652\u0631\u064e\u062c\u064b\u0627',
       'Whoever fears Allah, He makes a way out.',
       '65:2',
     ],
@@ -2938,25 +2747,6 @@ class _GlassCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _CountUpInt extends StatelessWidget {
-  const _CountUpInt({required this.value, required this.style});
-
-  final int value;
-  final TextStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(end: value.toDouble()),
-      duration: const Duration(milliseconds: 700),
-      curve: Curves.easeOutCubic,
-      builder: (context, animatedValue, _) {
-        return Text(animatedValue.round().toString(), style: style);
-      },
     );
   }
 }
@@ -3134,6 +2924,115 @@ class StarPatternPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class _HeroArcPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _HeroArcPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height);
+    final radius = size.width / 2 - 10;
+
+    // Background arc
+    final bgPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi,
+      math.pi,
+      false,
+      bgPaint,
+    );
+
+    // Active progress arc
+    final progressPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      math.pi,
+      math.pi * progress.clamp(0.0, 1.0),
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _HeroArcPainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.color != color;
+  }
+}
+
+class PulsingDot extends StatefulWidget {
+  final Color color;
+  final double size;
+
+  const PulsingDot({super.key, required this.color, this.size = 8});
+
+  @override
+  State<PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          width: widget.size * (1.0 + (1.0 - _animation.value) * 0.5),
+          height: widget.size * (1.0 + (1.0 - _animation.value) * 0.5),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: widget.color.withValues(alpha: _animation.value),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withValues(
+                  alpha: 0.5 * (1.0 - _animation.value),
+                ),
+                blurRadius: widget.size,
+                spreadRadius: widget.size * 0.5,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class GoalsScreen extends StatefulWidget {
@@ -3570,16 +3469,18 @@ class HabitsScreen extends StatefulWidget {
     required this.expenseLog,
     required this.onSetIncome,
     required this.onSetExpense,
+    required this.onResetDay,
   });
 
   final ThemeColors theme;
   final Map<String, DayRecord> history;
   final VoidCallback onPrintPdf;
   final String? lastPdfPath;
-  final Map<String, int> incomeLog; // Not used in this file
+  final Map<String, int> incomeLog;
   final Map<String, int> expenseLog;
   final void Function(DateTime, int) onSetIncome;
   final void Function(DateTime, int) onSetExpense;
+  final void Function(DateTime) onResetDay;
 
   @override
   State<HabitsScreen> createState() => _HabitsScreenState();
@@ -3861,7 +3762,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
               children: [
                 Text(
                   'Less',
-                  style: TextStyle(fontSize: 12, color: theme.text4),
+                  style: TextStyle(fontSize: 13, color: theme.text4),
                 ),
                 const SizedBox(width: 4), // Heatmap colors
                 for (final c
@@ -3892,7 +3793,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 const SizedBox(width: 4),
                 Text(
                   'More',
-                  style: TextStyle(fontSize: 12, color: theme.text4),
+                  style: TextStyle(fontSize: 13, color: theme.text4),
                 ),
               ], // Use Syne
             ),
@@ -3968,7 +3869,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
               Text(
                 'Last PDF: ${widget.lastPdfPath}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: theme.text3,
                   fontWeight: FontWeight.w600,
                 ),
@@ -3991,7 +3892,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   'Net Income: \u20B9$monthNet',
                   style: TextStyle(
                     fontFamily: 'Roboto',
-                    fontSize: 12, // Use Syne
+                    fontSize: 13, // Use Syne
                     fontWeight: FontWeight.w800,
                     color: monthNet >= 0 ? kTeal : kRed,
                     letterSpacing: 0.5,
@@ -4010,6 +3911,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 expense: widget.expenseLog[dayKey(date)] ?? 0,
                 onSetIncome: widget.onSetIncome,
                 onSetExpense: widget.onSetExpense,
+                onResetDay: widget.onResetDay,
               );
             }),
             Container(
@@ -4534,6 +4436,37 @@ class _HabitsScreenState extends State<HabitsScreen> {
   }
 }
 
+class FastingStatusChip extends StatelessWidget {
+  final DateTime date;
+  final ThemeColors theme;
+  const FastingStatusChip({super.key, required this.date, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<SharedPreferences>(
+      future: SharedPreferences.getInstance(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+        final prefs = snapshot.data!;
+        final status = prefs.getString('fast_status_${dayKey(date)}');
+        
+        final isSunnah = date.weekday == DateTime.monday || date.weekday == DateTime.thursday;
+        final isFasting = status == 'fasting' || (isSunnah && status != 'broke' && status != 'none');
+        
+        if (isFasting) {
+          return StatusChip(
+            theme: theme,
+            label: 'Fasting',
+            done: true,
+            color: const Color(0xFFE8B84B), // Gold color for fasting
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
 class DayHistoryCard extends StatelessWidget {
   const DayHistoryCard({
     super.key,
@@ -4544,6 +4477,7 @@ class DayHistoryCard extends StatelessWidget {
     this.expense = 0,
     required this.onSetIncome,
     required this.onSetExpense,
+    required this.onResetDay,
   });
 
   final ThemeColors theme;
@@ -4553,6 +4487,7 @@ class DayHistoryCard extends StatelessWidget {
   final int expense;
   final void Function(DateTime, int) onSetIncome;
   final void Function(DateTime, int) onSetExpense;
+  final void Function(DateTime) onResetDay;
 
   void _showIncomeExpenseSheet(BuildContext context) {
     final incomeCtrl = TextEditingController();
@@ -4752,13 +4687,58 @@ class DayHistoryCard extends StatelessWidget {
                   color: theme.text1,
                 ),
               ),
-              Text(
-                '${record.doneTotal}/${record.total}',
-                style: TextStyle(
-                  fontSize: 13, // Use Syne
-                  fontWeight: FontWeight.w800,
-                  color: theme.gold,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${record.doneTotal}/${record.total}',
+                    style: TextStyle(
+                      fontSize: 13, // Use Syne
+                      fontWeight: FontWeight.w800,
+                      color: theme.gold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, size: 16),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    color: theme.text3,
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext dialogContext) {
+                          return AlertDialog(
+                            backgroundColor: theme.bg,
+                            title: Text(
+                              'Reset Day Data?',
+                              style: TextStyle(color: theme.text1),
+                            ),
+                            content: Text(
+                              'This will permanently clear all tasks, prayers, fasting log, and financial data for ${shortDate(date)}.',
+                              style: TextStyle(color: theme.text2),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogContext),
+                                child: Text('Cancel', style: TextStyle(color: theme.text3)),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(dialogContext);
+                                  onResetDay(date);
+                                },
+                                child: const Text('Reset', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    tooltip: 'Reset Day',
+                  ),
+                ],
               ),
             ],
           ),
@@ -4795,6 +4775,7 @@ class DayHistoryCard extends StatelessWidget {
                   done: record.prayers[prayer] ?? false,
                   color: prayerColor(prayer, theme),
                 ),
+              FastingStatusChip(date: date, theme: theme),
               if (record.workoutSummary != null)
                 GestureDetector(
                   onTap: () =>
@@ -5132,12 +5113,12 @@ DayRecord recordFor(Map<String, DayRecord> history, DateTime date) {
 }
 
 const _prayerTimes = {
-  'Tahajjud': TimeOfDay(hour: 3, minute: 30),
-  'Fajr': TimeOfDay(hour: 5, minute: 15),
-  'Dhuha': TimeOfDay(hour: 8, minute: 0),
-  'Dhuhr': TimeOfDay(hour: 12, minute: 30),
-  'Asr': TimeOfDay(hour: 15, minute: 45),
-  'Maghrib': TimeOfDay(hour: 18, minute: 30),
+  'Tahajjud': TimeOfDay(hour: 3, minute: 0),
+  'Fajr': TimeOfDay(hour: 5, minute: 12),
+  'Dhuha': TimeOfDay(hour: 6, minute: 22),
+  'Dhuhr': TimeOfDay(hour: 12, minute: 14),
+  'Asr': TimeOfDay(hour: 15, minute: 41),
+  'Maghrib': TimeOfDay(hour: 18, minute: 42),
   'Isha': TimeOfDay(hour: 20, minute: 0),
 };
 
@@ -5356,7 +5337,7 @@ class WorkoutExerciseState {
 
   final String exerciseKey;
   final int totalSets;
-  final int maxReps;
+  int maxReps;
   int currentSet;
   int repsRemaining;
   bool awaitingNextSet;
@@ -5424,51 +5405,31 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   final List<WorkoutDay> _plan = const [
     WorkoutDay(
-      title: 'Day 1 - Push',
-      freq: 'Mon / Thu',
+      title: 'Upper Body',
+      freq: 'Mon / Wed / Sat',
       icon: Icons.fitness_center,
-      color: kRed,
+      color: Colors.teal,
       exercises: [
-        ['Push-ups', '4 x 20-25 reps', 'Chest, shoulders, triceps'],
-        ['Diamond push-ups', '3 x 15 reps', 'Inner chest & triceps'],
-        ['Pike push-ups', '4 x 12 reps', 'Shoulders'],
-        ['Tricep dips (chair)', '3 x 15 reps', 'Triceps'],
+        ['Push-ups', '3 x 8 reps', 'Chest, shoulders, triceps'],
+        ['Incline Push-ups', '3 x 10 reps', 'Feet on chair, upper chest'],
+        ['Pike Push-ups', '3 x 6 reps', 'Shoulders, hips high'],
+        ['Door Rows', '3 x 12 reps', 'Back & biceps, grip doorframe'],
+        ['Arm Circles', '3 x 15 reps', 'Shoulder mobility'],
+        ['Plank Hold', '3 x 30 seconds', 'Core stability'],
       ],
     ),
     WorkoutDay(
-      title: 'Day 2 - Legs & Core',
-      freq: 'Tue / Fri',
+      title: 'Lower Body',
+      freq: 'Tue / Thu / Fri',
       icon: Icons.directions_run,
-      color: kGreen,
+      color: Colors.teal,
       exercises: [
-        ['Bodyweight squats', '4 x 20-25 reps', 'Quads'],
-        ['Jump squats', '3 x 15 reps', 'Fat burn'],
-        ['Lunges', '3 x 12 each leg', 'Hamstrings'],
-        ['Plank hold', '4 x 45-60 seconds', 'Core'],
-        ['Leg raises', '3 x 15 reps', 'Lower abs'],
-      ],
-    ),
-    WorkoutDay(
-      title: 'Day 3 - Back & Biceps',
-      freq: 'Wed / Sat',
-      icon: Icons.accessibility_new,
-      color: kGold,
-      exercises: [
-        ['Pull-ups / Chin-ups', '4 x max reps', 'Back & Biceps'],
-        ['Inverted rows (table)', '4 x 12 reps', 'Back'],
-        ['Towel bicep curls', '3 x 15 each arm', 'Biceps'],
-      ],
-    ),
-    WorkoutDay(
-      title: 'Day 4 - HIIT Full Body',
-      freq: 'Sun - Max fat burn',
-      icon: Icons.local_fire_department,
-      color: kRed,
-      exercises: [
-        ['Burpees', '4 x 10 reps', 'Full body'],
-        ['Mountain climbers', '4 x 30 seconds', 'Belly fat'],
-        ['Russian twists', '3 x 20 reps', 'Obliques'],
-        ['High knees', '4 x 30 seconds', 'Cardio'],
+        ['Bodyweight Squats', '3 x 15 reps', 'Full depth'],
+        ['Jump Squats', '3 x 10 reps', 'Explosive'],
+        ['Lunges', '3 x 10 reps', 'Each leg'],
+        ['Glute Bridges', '3 x 15 reps', 'Posterior chain'],
+        ['Calf Raises', '3 x 20 reps', 'Slow down, explode up'],
+        ['Leg Raises', '3 x 12 reps', 'Lower abs'],
       ],
     ),
   ];
@@ -5481,19 +5442,24 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   String? _activeWorkoutDateKey;
   Timer? _restTimer;
   int _restSeconds = 0;
-  int _totalSets = 0;
-  int _completedSets = 0;
   int _completedExercises = 0;
   double _setProgress = 0.0;
   bool _isResting = false;
   String? _restExerciseKey;
-  late WorkoutDay _todayDay = _plan.first;
-  String _buttonLabel = '';
+
+  // New Workout Screen state variables
+  late WorkoutDay _selectedSplit = _plan.first;
+  bool _showRepCounter = false;
+  WorkoutExerciseState? _activeExerciseState;
+  String? _activeExerciseName;
+  int _repsRemaining = 0;
+  bool _showEditRepsModal = false;
+  final TextEditingController _editRepsController = TextEditingController();
+
+  // Streak & Weight state
   bool _isEditingBodyWeight = false;
   int _bodyWeight = 68;
-  final TextEditingController _bodyWeightController = TextEditingController(
-    text: '68',
-  );
+  final TextEditingController _bodyWeightController = TextEditingController(text: '68');
   final FocusNode _bodyWeightFocusNode = FocusNode();
 
   @override
@@ -5512,20 +5478,23 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   void _recalculateStats() {
     if (!mounted) return;
-    final today = _todayWorkoutDay() ?? _plan.first;
-    _todayDay = today;
-    _totalSets = _dayTotalSets(today);
-    _completedSets = _dayCompletedSets(today);
-    _completedExercises = _dayCompletedExercises(today);
-    _setProgress = _totalSets == 0 ? 0.0 : _completedSets / _totalSets;
-    _buttonLabel = _completedExercises == today.exercises.length
+    final activeSplit = _selectedSplit;
+    _completedExercises = _dayCompletedExercises(activeSplit);
+
+    // Progress ring matches completed exercises count
+    final totalCount = activeSplit.exercises.length;
+    _setProgress = totalCount == 0 ? 0.0 : _completedExercises / totalCount;
+
+    _buttonLabel = _completedExercises == activeSplit.exercises.length
         ? 'Workout complete'
-        : _hasProgress(today)
-        ? 'Resume Workout'
-        : "Start today's workout";
+        : _hasProgress(activeSplit)
+            ? 'Resume workout'
+            : "Start today's workout";
 
     setState(() {});
   }
+
+  String _buttonLabel = "Start today's workout";
 
   @override
   void dispose() {
@@ -5533,6 +5502,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     _scrollController.dispose();
     _bodyWeightFocusNode.dispose();
     _bodyWeightController.dispose();
+    _editRepsController.dispose();
     super.dispose();
   }
 
@@ -5625,6 +5595,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           );
         }
       }
+      
+      // Default to show split assigned to today's workout
+      final todaySplit = _todayWorkoutDay() ?? _plan.first;
+      if (activeDayTitle != null) {
+        _selectedSplit = _plan.firstWhere((d) => d.title == activeDayTitle, orElse: () => todaySplit);
+      } else {
+        _selectedSplit = todaySplit;
+      }
+
       if (restEndMillis != null && restExerciseKey != null) {
         final remaining = DateTime.fromMillisecondsSinceEpoch(
           restEndMillis,
@@ -5735,9 +5714,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     widget.onWorkoutProgressChanged(snapshot);
   }
 
-  int _dayTotalSets(WorkoutDay day) {
-    return day.exercises.fold(0, (sum, e) => sum + parseSets(e[1]));
-  }
+
 
   int _dayCompletedSets(WorkoutDay day) {
     return day.exercises.fold(0, (sum, exercise) {
@@ -5814,13 +5791,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _startTodayWorkout() {
-    final today = _todayWorkoutDay();
-    if (today == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No workout scheduled for today.')),
-      );
-      return;
-    }
+    final today = _selectedSplit;
     if (!(_expandedCards[today.title] ?? false)) {
       _toggleCard(today.title);
     }
@@ -5830,9 +5801,30 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     });
     _savePreferences();
     _saveWorkoutProgress(today);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Ready for ${today.title}!')));
+    
+    // Find first undone exercise and open rep counter
+    final undoneExercise = today.exercises.firstWhere(
+      (e) {
+        final key = '${today.title}|${e[0]}';
+        return _exerciseStates[key]?.completed != true;
+      },
+      orElse: () => [],
+    );
+    if (undoneExercise.isNotEmpty) {
+      final key = '${today.title}|${undoneExercise[0]}';
+      final state = _exerciseStates[key];
+      if (state != null) {
+        setState(() {
+          _activeExerciseState = state;
+          _activeExerciseName = undoneExercise[0];
+          _repsRemaining = state.repsRemaining;
+          if (_repsRemaining <= 0) {
+            _repsRemaining = state.maxReps;
+          }
+          _showRepCounter = true;
+        });
+      }
+    }
   }
 
   void _startRestTimer() {
@@ -5857,28 +5849,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   void _completeRest() {
     _restTimer?.cancel();
-    if (_restExerciseKey == null) {
-      _clearRest();
-      return;
-    }
-    final key = _restExerciseKey!;
-    final state = _exerciseStates[key];
-    if (state != null && !state.completed) {
-      state.awaitingNextSet = false;
-      state.currentSet = min(state.currentSet + 1, state.totalSets);
-      state.repsRemaining = state.maxReps;
-      HapticFeedback.lightImpact();
-      SystemSound.play(SystemSoundType.click);
-      _savePreferences();
-      _recalculateStats();
-      final activeDay = _plan.firstWhere(
-        (day) => day.exercises.any(
-          (exercise) => '${day.title}|${exercise[0]}' == key,
-        ),
-        orElse: () => _todayWorkoutDay() ?? _plan.first,
-      );
-      _saveWorkoutProgress(activeDay);
-    }
+    HapticFeedback.lightImpact();
     _clearRest();
   }
 
@@ -5900,10 +5871,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _maybeCompleteWorkout() {
-    final today = _todayWorkoutDay();
-    if (today == null) {
-      return;
-    }
+    final today = _selectedSplit;
     final allCompleted = today.exercises.every((exercise) {
       final key = '${today.title}|${exercise[0]}';
       return _exerciseStates[key]?.completed == true;
@@ -5967,15 +5935,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   Widget _buildWorkoutContent(BuildContext context) {
     final theme = widget.theme;
-    final today = _todayDay;
-    final colorScheme = Theme.of(context).colorScheme;
-    final workoutPrimary = theme.isDark
-        ? theme.teal
-        : HSLColor.fromColor(colorScheme.primary).withLightness(0.26).toColor();
-    final ringFill = workoutPrimary;
-    final buttonColor = theme.isDark ? kTeal : workoutPrimary;
     final cardBorder = theme.border;
-    final progressTrack = theme.isDark ? theme.border : theme.text4;
 
     return SafeArea(
       child: Stack(
@@ -5991,36 +5951,76 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Training',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.6,
-                      color: theme.text3,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Workout',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: theme.text1,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${_weekdayName(DateTime.now())} · ${today.title}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: theme.text3,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  // 1. HEADER
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'TRAINING',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 3.0,
+                                color: theme.gold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Workout',
+                              style: GoogleFonts.syne(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                color: theme.text1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_weekdayName(DateTime.now())} · ${_selectedSplit.title}',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                color: theme.text3,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+                          themeNotifier.toggle();
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: theme.card,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: theme.border, width: 0.5),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            theme.isDark ? '☀️' : '🌙',
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 18),
-                  _workoutStatsGrid(theme, workoutPrimary),
+
+                  // 2. STATS ROW
+                  _workoutStatsGrid(theme, theme.teal),
+                  
+                  // 4. SPLIT SELECTOR
+                  _splitSelector(theme),
                   const SizedBox(height: 20),
+
+                  // 3. PROGRESS RING CARD
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -6028,32 +6028,41 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: theme.card,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: cardBorder, width: 0.4),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: cardBorder, width: 0.5),
                     ),
                     child: Row(
                       children: [
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            SizedBox(
-                              width: 84,
-                              height: 84,
-                              child: CircularProgressIndicator(
-                                value: _setProgress,
-                                strokeWidth: 10,
-                                valueColor: AlwaysStoppedAnimation(ringFill),
-                                backgroundColor: progressTrack,
-                              ),
-                            ),
-                            Text(
-                              '${(_setProgress * 100).round()}%',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0.0, end: _setProgress),
+                          duration: const Duration(milliseconds: 800),
+                          curve: Curves.easeOut,
+                          builder: (context, value, child) {
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 80,
+                                  height: 80,
+                                  child: CustomPaint(
+                                    painter: ProgressRingPainter(
+                                      progress: value,
+                                      trackColor: theme.isDark ? theme.border : theme.text4.withValues(alpha: 0.15),
+                                      progressColor: theme.teal,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  '${(value * 100).round()}%',
+                                  style: GoogleFonts.syne(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.text1,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -6063,19 +6072,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             children: [
                               Text(
                                 "Today's session",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.text1,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 4),
                               Text(
-                                '$_completedExercises/${today.exercises.length} exercises done',
-                                style: TextStyle(
+                                '$_completedExercises/${_selectedSplit.exercises.length} exercises done',
+                                style: GoogleFonts.dmSans(
                                   fontSize: 13,
                                   color: theme.text3,
-                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -6084,122 +6092,58 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  _exerciseLogSection(theme, today, workoutPrimary, cardBorder),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
+
+                  // 5. EXERCISE LIST
+                  _exerciseLogSection(theme, _selectedSplit, theme.teal, cardBorder),
+                  const SizedBox(height: 24),
+
+                  // 9. START BUTTON
                   SizedBox(
                     width: double.infinity,
+                    height: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: buttonColor,
+                        backgroundColor: theme.teal,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      onPressed: _completedExercises == today.exercises.length
+                      onPressed: _completedExercises == _selectedSplit.exercises.length
                           ? null
                           : _startTodayWorkout,
                       child: Text(
                         _buttonLabel,
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 22),
                   const SizedBox(height: 140),
                 ],
               ),
             ),
           ),
+          
+          // 6. REP COUNTER OVERLAY
+          if (_showRepCounter)
+            Positioned.fill(
+              child: _buildRepCounterOverlay(theme),
+            ),
+            
+          // 8. REST TIMER OVERLAY
           if (_isResting)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: IgnorePointer(
-                ignoring: !_isResting,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 22,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.card,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: cardBorder, width: 0.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        blurRadius: 22,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Rest timer',
-                        style: TextStyle(
-                          color: theme.text1,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 110,
-                            height: 110,
-                            child: CircularProgressIndicator(
-                              value: _restSeconds / 90,
-                              strokeWidth: 10,
-                              valueColor: AlwaysStoppedAnimation(theme.gold),
-                              backgroundColor: theme.border,
-                            ),
-                          ),
-                          Text(
-                            '${_restSeconds}s',
-                            style: TextStyle(
-                              color: theme.text1,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Next set starts automatically when the rest ends.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: theme.text3, fontSize: 12),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: theme.text4.withValues(
-                              alpha: 0.14,
-                            ),
-                            foregroundColor: theme.text1,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          onPressed: _skipRest,
-                          child: const Text('Skip rest'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            Positioned.fill(
+              child: _buildRestTimerOverlay(theme),
+            ),
+            
+          // 7. EDIT REPS MODAL
+          if (_showEditRepsModal)
+            Positioned.fill(
+              child: _buildEditRepsModal(theme),
             ),
         ],
       ),
@@ -6221,10 +6165,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   Widget _workoutStatsGrid(ThemeColors theme, Color workoutPrimary) {
     final todayCompleted =
-        _dayCompletedExercises(_todayDay) == _todayDay.exercises.length;
+        _dayCompletedExercises(_selectedSplit) == _selectedSplit.exercises.length;
     final currentStreak = todayCompleted ? 1 : 0;
     final monthSessions = todayCompleted ? 1 : 0;
-    final hoursThisWeek = (_dayCompletedSets(_todayDay) * 0.18).clamp(0.0, 9.9);
+    final hoursThisWeek = (_dayCompletedSets(_selectedSplit) * 0.18).clamp(0.0, 9.9);
 
     return Row(
       children: [
@@ -6237,7 +6181,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             icon: Icons.local_fire_department,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         Expanded(
           child: _statChip(
             theme,
@@ -6247,7 +6191,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             icon: Icons.fitness_center,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         Expanded(
           child: _statChip(
             theme,
@@ -6258,7 +6202,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             editableWeight: true,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         Expanded(
           child: _statChip(
             theme,
@@ -6281,7 +6225,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     bool editableWeight = false,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -6364,14 +6308,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               ),
             ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-            style: TextStyle(
-              fontSize: 10,
-              color: theme.text3,
-              fontWeight: FontWeight.w700,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: theme.text3,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -6379,122 +6324,582 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
   }
 
+  Widget _splitSelector(ThemeColors theme) {
+    return Container(
+      margin: const EdgeInsets.only(top: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: _splitButton(theme, _plan[0]),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _splitButton(theme, _plan[1]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _splitButton(ThemeColors theme, WorkoutDay split) {
+    final isSelected = _selectedSplit.title == split.title;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedSplit = split;
+          _recalculateStats();
+        });
+      },
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: isSelected ? theme.teal.withValues(alpha: 0.1) : theme.card,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? theme.teal.withValues(alpha: 0.2) : theme.border,
+            width: 1,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          split.title,
+          style: GoogleFonts.dmSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? theme.teal : theme.text3,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _exerciseLogSection(
     ThemeColors theme,
-    WorkoutDay today,
+    WorkoutDay selectedSplit,
     Color workoutPrimary,
     Color cardBorder,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cardBorder, width: 0.5),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Exercise log',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: theme.text1,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Exercise log',
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: theme.text1,
+              ),
+            ),
+            GestureDetector(
+              onTap: _startTodayWorkout,
+              child: Text(
+                '+ Add',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: theme.teal,
                 ),
               ),
-              TextButton.icon(
-                onPressed: _startTodayWorkout,
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add'),
-                style: TextButton.styleFrom(foregroundColor: workoutPrimary),
-              ),
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        for (final exercise in selectedSplit.exercises)
+          _exerciseLogRow(theme, exercise),
+      ],
+    );
+  }
+
+  Color _getMuscleGroupColor(ThemeColors theme, List<String> exercise) {
+    final name = exercise[0].toLowerCase();
+    final desc = (exercise.length > 2 ? exercise[2] : '').toLowerCase();
+
+    // Back, Biceps, Core -> gold
+    if (name.contains('row') ||
+        name.contains('plank') ||
+        name.contains('leg raise') ||
+        desc.contains('back') ||
+        desc.contains('biceps') ||
+        desc.contains('core') ||
+        desc.contains('abs')) {
+      return theme.gold;
+    }
+    // Chest, Triceps, Shoulders, Legs -> emerald
+    return theme.teal;
+  }
+
+  Widget _circleCheckbox(ThemeColors theme, bool done, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: done ? theme.teal.withValues(alpha: 0.15) : Colors.transparent,
+          border: Border.all(
+            color: done ? theme.teal : (theme.isDark ? theme.border : theme.text4.withValues(alpha: 0.3)),
+            width: 2,
           ),
-          const SizedBox(height: 6),
-          for (final exercise in today.exercises)
-            _exerciseLogRow(theme, today, exercise, workoutPrimary),
-        ],
+        ),
+        child: done
+            ? Center(
+                child: Icon(
+                  Icons.check,
+                  size: 20,
+                  color: theme.teal,
+                ),
+              )
+            : null,
       ),
     );
   }
 
   Widget _exerciseLogRow(
     ThemeColors theme,
-    WorkoutDay day,
     List<String> exercise,
-    Color workoutPrimary,
   ) {
-    final key = '${day.title}|${exercise[0]}';
+    final key = '${_selectedSplit.title}|${exercise[0]}';
     final state = _exerciseStates[key];
     final completed = state?.completed == true;
     final sets = parseSets(exercise[1]);
-    final reps = parseReps(exercise[1]);
+    final reps = state != null ? state.maxReps : parseReps(exercise[1]);
     final muscle = exercise.length > 2 ? exercise[2] : '';
-    final groupColor = muscle.contains('Bicep')
-        ? theme.gold
-        : muscle.contains('Back')
-        ? Colors.blueAccent
-        : workoutPrimary;
+    final barColor = _getMuscleGroupColor(theme, exercise);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: groupColor, width: 3)),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: theme.border, width: 0.5),
         ),
-        child: Padding(
-          padding: const EdgeInsets.only(left: 10),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () => _toggleExercise(key),
-                child: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: completed
-                      ? workoutPrimary
-                      : Colors.transparent,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24, width: 1.5),
-                    ),
-                    child: completed
-                        ? const Center(
-                            child: Icon(
-                              Icons.check,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          )
-                        : null,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 36,
+            decoration: BoxDecoration(
+              color: barColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _circleCheckbox(theme, completed, () => _toggleExercise(key)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  exercise[0],
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: theme.text1,
                   ),
                 ),
+                const SizedBox(height: 3),
+                Text(
+                  '$sets sets × $reps reps · $muscle',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: theme.text3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              if (state != null) {
+                setState(() {
+                  _activeExerciseState = state;
+                  _activeExerciseName = exercise[0];
+                  _repsRemaining = state.repsRemaining;
+                  if (_repsRemaining <= 0) {
+                    _repsRemaining = state.maxReps;
+                  }
+                  _showRepCounter = true;
+                });
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Text(
+                '$reps',
+                style: GoogleFonts.syne(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: completed ? theme.teal : theme.gold,
+                ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      exercise[0],
-                      style: TextStyle(
-                        color: theme.text1,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRepCounterOverlay(ThemeColors theme) {
+    if (_activeExerciseState == null || _activeExerciseName == null) return const SizedBox.shrink();
+
+    return Container(
+      color: theme.bg,
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Positioned(
+              top: 20,
+              left: 16,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: theme.text1),
+                onPressed: () => setState(() => _showRepCounter = false),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _activeExerciseName!,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: theme.text1,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Text(
+                    '$_repsRemaining',
+                    style: GoogleFonts.syne(
+                      fontSize: 80,
+                      fontWeight: FontWeight.w800,
+                      color: theme.gold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Tap to count down',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      color: theme.text2,
+                    ),
+                  ),
+                  const SizedBox(height: 50),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        if (_repsRemaining > 0) {
+                          _repsRemaining--;
+                        }
+                        if (_repsRemaining == 0) {
+                          _showRepCounter = false;
+                          final key = _activeExerciseState!.exerciseKey;
+                          _exerciseStates[key]?.completed = true;
+                          _exerciseStates[key]?.repsRemaining = 0;
+                          _recalculateStats();
+                          _savePreferences();
+                          _saveWorkoutProgress(
+                            _selectedSplit,
+                            completed: _dayCompletedExercises(_selectedSplit) == _selectedSplit.exercises.length,
+                          );
+                          _maybeCompleteWorkout();
+
+                          // Start rest timer!
+                          _restSeconds = 90;
+                          _restExerciseKey = key;
+                          _isResting = true;
+                          _startRestTimer();
+                        }
+                      });
+                    },
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: theme.gold,
+                          width: 3,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'TAP',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: theme.gold,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$sets x $reps x bodyweight',
-                      style: TextStyle(color: theme.text3, fontSize: 11),
+                  ),
+                  const SizedBox(height: 60),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          _editRepsController.text = '${_activeExerciseState!.maxReps}';
+                          setState(() {
+                            _showEditRepsModal = true;
+                          });
+                        },
+                        child: Text(
+                          '✎ Edit',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            color: theme.text2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 40),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _showRepCounter = false;
+                          });
+                        },
+                        child: Text(
+                          'Skip',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            color: theme.text2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditRepsModal(ThemeColors theme) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _showEditRepsModal = false;
+        });
+      },
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.6),
+        child: Center(
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: 320,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: theme.border, width: 0.5),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Edit Reps',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: theme.text1,
                     ),
-                  ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'TARGET REPS',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: theme.text3,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: theme.bg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: theme.border, width: 0.5),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    alignment: Alignment.center,
+                    child: TextField(
+                      controller: _editRepsController,
+                      keyboardType: TextInputType.number,
+                      style: GoogleFonts.syne(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: theme.text1,
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _showEditRepsModal = false;
+                          });
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: theme.card,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: theme.border, width: 0.5),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.dmSans(
+                            color: theme.text2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      TextButton(
+                        onPressed: () {
+                          final reps = int.tryParse(_editRepsController.text.trim());
+                          if (reps != null && reps > 0) {
+                            setState(() {
+                              _activeExerciseState!.maxReps = reps;
+                              _activeExerciseState!.repsRemaining = reps;
+                              _repsRemaining = reps;
+                              _showEditRepsModal = false;
+                              _recalculateStats();
+                            });
+                            _savePreferences();
+                          }
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: theme.teal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Save',
+                          style: GoogleFonts.dmSans(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+}
+
+  Widget _buildRestTimerOverlay(ThemeColors theme) {
+    var nextExerciseName = 'Workout complete!';
+    if (_activeExerciseState != null) {
+      final exercises = _selectedSplit.exercises;
+      final currentIdx = exercises.indexWhere((e) => '${_selectedSplit.title}|${e[0]}' == _activeExerciseState!.exerciseKey);
+      if (currentIdx != -1 && currentIdx < exercises.length - 1) {
+        nextExerciseName = exercises[currentIdx + 1][0];
+      }
+    }
+
+    return Container(
+      color: theme.bg,
+      child: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Rest between sets',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: theme.text2,
+                ),
+              ),
+              const SizedBox(height: 40),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 160,
+                    height: 160,
+                    child: CustomPaint(
+                      painter: ProgressRingPainter(
+                        progress: _restSeconds / 90.0,
+                        trackColor: theme.isDark ? theme.border : theme.text4.withValues(alpha: 0.15),
+                        progressColor: theme.teal,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$_restSeconds',
+                    style: GoogleFonts.syne(
+                      fontSize: 64,
+                      fontWeight: FontWeight.w800,
+                      color: theme.teal,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 40),
+              Text(
+                nextExerciseName == 'Workout complete!'
+                    ? 'Next: Workout complete!'
+                    : 'Next: $nextExerciseName',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: theme.text3,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 50),
+              GestureDetector(
+                onTap: () {
+                  _skipRest();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: theme.card,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: theme.border, width: 0.5),
+                  ),
+                  child: Text(
+                    'Skip Rest',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: theme.text2,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -6505,7 +6910,50 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 }
 
-class IncomeScreen extends StatefulWidget {
+class ProgressRingPainter extends CustomPainter {
+  final double progress;
+  final Color trackColor;
+  final Color progressColor;
+
+  ProgressRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.progressColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width / 2, size.height / 2) - 6;
+
+    final paintTrack = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+
+    final paintProgress = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, paintTrack);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress,
+      false,
+      paintProgress,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant ProgressRingPainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.trackColor != trackColor ||
+      oldDelegate.progressColor != progressColor;
+}class IncomeScreen extends StatefulWidget {
   const IncomeScreen({
     super.key,
     required this.theme,
@@ -6527,47 +6975,41 @@ class IncomeScreen extends StatefulWidget {
 
 class _IncomeScreenState extends State<IncomeScreen> {
   final TextEditingController _incomeCtrl = TextEditingController();
-  final TextEditingController _expenseCtrl = TextEditingController();
-  String _filter = 'All';
-  // Editable sources state
+  String _filter = 'All'; // 'All', 'Earned', 'Spent'
+
+  // Editable sources state from SharedPreferences
   late List<Map<String, dynamic>> _sources = _defaultIncomeSources();
-  final TextEditingController _subtitleCtrl = TextEditingController();
-  bool _editingSubtitle = false;
-  late FocusNode _subtitleFocusNode;
+
+  bool _isInputIncome = true;
+  final int _selectedSourceIndex = 0;
+
 
   @override
   void initState() {
     super.initState();
     _loadIncomeSourcesForMonth();
-    _subtitleCtrl.text = 'Automation career to \u20B93 lakhs/month';
-    _subtitleFocusNode = FocusNode();
-    _subtitleFocusNode.addListener(() {
-      if (!_subtitleFocusNode.hasFocus && _editingSubtitle) {
-        setState(() => _editingSubtitle = false);
-      }
-    });
   }
 
   List<Map<String, dynamic>> _defaultIncomeSources() {
     return [
       {
-        'name': 'Autonexuz — YouTube',
+        'name': 'Autonexuz – YouTube',
         'type': 'Ad Revenue + Sponsorship',
-        'color': kGold,
+        'color': const Color(0xFFE8B84B),
         'amount': 0,
         'editing': false,
       },
       {
         'name': 'Remote PLC Support',
         'type': 'Upwork · 3 clients',
-        'color': kBlue,
+        'color': const Color(0xFF38BDF8),
         'amount': 0,
         'editing': false,
       },
       {
         'name': 'Salary',
         'type': 'Industrial Automation',
-        'color': kGreen,
+        'color': const Color(0xFF00C896),
         'amount': 0,
         'editing': false,
       },
@@ -6575,7 +7017,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
   }
 
   String _incomeSourcesKey(DateTime date) {
-    return 'income_sources_${date.year}-${date.month.toString().padLeft(2, '0')}';
+    return 'income_sources_-';
   }
 
   Future<void> _loadIncomeSourcesForMonth() async {
@@ -6600,7 +7042,8 @@ class _IncomeScreenState extends State<IncomeScreen> {
               'name': source['name'] as String? ?? 'Income source',
               'type': source['type'] as String? ?? 'Monthly income',
               'color': Color(
-                (source['color'] as num?)?.toInt() ?? kGold.toARGB32(),
+                (source['color'] as num?)?.toInt() ??
+                    const Color(0xFFE8B84B).toARGB32(),
               ),
               'amount': (source['amount'] as num?)?.toInt() ?? 0,
               'editing': false,
@@ -6635,51 +7078,10 @@ class _IncomeScreenState extends State<IncomeScreen> {
     );
   }
 
-  String _monthYear(DateTime date) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[date.month - 1]} ${date.year}';
-  }
-
   @override
   void dispose() {
     _incomeCtrl.dispose();
-    _expenseCtrl.dispose();
-    _subtitleCtrl.dispose();
-    _subtitleFocusNode.dispose();
     super.dispose();
-  }
-
-  void _addIncome() {
-    final amount = int.tryParse(_incomeCtrl.text.trim());
-    if (amount != null && amount > 0) {
-      setState(() {
-        _sources.first['amount'] = (_sources.first['amount'] as int) + amount;
-      });
-      _saveIncomeSourcesForMonth();
-      widget.onAddEntry(amount);
-      _incomeCtrl.clear();
-    }
-  }
-
-  void _addExpense() {
-    final amount = int.tryParse(_expenseCtrl.text.trim());
-    if (amount != null && amount > 0) {
-      widget.onAddExpense(amount);
-      _expenseCtrl.clear();
-    }
   }
 
   int _monthTotal(Map<String, int> log, DateTime now) {
@@ -6701,522 +7103,109 @@ class _IncomeScreenState extends State<IncomeScreen> {
     return '\u20B9$value';
   }
 
-  Widget _summaryTile(String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: widget.theme.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: widget.theme.border, width: 0.5),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color: widget.theme.text4,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 14,
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  String formatDayRowDate(DateTime date) {
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
   }
 
-  Widget _amountInput({
-    required TextEditingController controller,
-    required String hint,
-    required Color color,
-    required IconData icon,
-    required VoidCallback onSubmit,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              color: widget.theme.text1,
-              fontSize: 14,
-            ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                fontFamily: 'Roboto',
-                color: widget.theme.text4,
-              ),
-              filled: true,
-              fillColor: widget.theme.card,
-              prefixIcon: Icon(icon, color: color, size: 18),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: widget.theme.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: widget.theme.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: color, width: 1.2),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 13,
-              ),
-            ),
-            onSubmitted: (_) => onSubmit(),
-          ),
-        ),
-        const SizedBox(width: 8),
-        IconButton.filled(
-          onPressed: onSubmit,
-          style: IconButton.styleFrom(
-            backgroundColor: color.withValues(
-              alpha: widget.theme.isDark ? 0.18 : 0.12,
-            ),
-            foregroundColor: color,
-            side: BorderSide(color: color.withValues(alpha: 0.35)),
-          ),
-          icon: const Icon(Icons.add),
-        ),
-      ],
-    );
+  String getDayName(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final compareDate = DateTime(date.year, date.month, date.day);
+    if (compareDate == today) {
+      return 'Today';
+    } else if (compareDate == yesterday) {
+      return 'Yesterday';
+    } else {
+      const weekdays = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+      ];
+      return weekdays[date.weekday - 1];
+    }
   }
 
-  Widget _filterChip(String label) {
+  void _submitAmount() {
+    final amount = int.tryParse(_incomeCtrl.text.trim());
+    if (amount == null || amount <= 0) return;
+
+    if (_isInputIncome) {
+      setState(() {
+        if (_selectedSourceIndex < _sources.length) {
+          _sources[_selectedSourceIndex]['amount'] =
+              (_sources[_selectedSourceIndex]['amount'] as int) + amount;
+        }
+      });
+      _saveIncomeSourcesForMonth();
+      widget.onAddEntry(amount);
+    } else {
+      widget.onAddExpense(amount);
+    }
+    _incomeCtrl.clear();
+    FocusScope.of(context).unfocus();
+  }
+
+  Widget _filterChip(String label, AppColors colors) {
     final selected = _filter == label;
     return GestureDetector(
       onTap: () => setState(() => _filter = label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 32),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
         decoration: BoxDecoration(
-          color: selected
-              ? widget.theme.gold.withValues(alpha: 0.14)
-              : widget.theme.card,
-          borderRadius: BorderRadius.circular(10),
+          color: selected ? colors.gold3 : colors.card,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? kGold : widget.theme.border,
-            width: selected ? 1 : 0.5,
+            color: selected
+                ? colors.gold.withValues(alpha: 0.2)
+                : colors.cardBorder,
+            width: 1,
           ),
         ),
-        alignment: Alignment.center,
         child: Text(
           label,
-          style: TextStyle(
+          style: GoogleFonts.dmSans(
             fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: selected ? kGold : widget.theme.text3,
+            fontWeight: FontWeight.bold,
+            color: selected ? colors.gold : colors.text3,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _amountText({required int amount, required bool income}) {
-    final color = amount == 0
-        ? Colors.grey.shade500
-        : income
-        ? widget.theme.teal
-        : widget.theme.red;
-    final prefix = amount == 0
-        ? ''
-        : income
-        ? '+'
-        : '-';
-    return Text(
-      '$prefix${_money(amount)}',
-      style: TextStyle(
-        fontFamily: 'Roboto',
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: color,
-      ),
-    );
-  }
-
-  Widget _incomeSourcesList(ThemeColors theme, int totalEarned) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.border, width: 0.5),
-      ),
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Sources',
-              style: TextStyle(
-                fontSize: 12,
-                color: theme.text3,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          for (var i = 0; i < _sources.length; i++) ...[
-            _incomeSourceRow(theme, i),
-            if (i != _sources.length - 1)
-              Divider(color: theme.border, height: 18),
-          ],
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _sources.add({
-                  'name': 'New source',
-                  'type': 'Type',
-                  'color': kGold,
-                  'amount': 0,
-                  'editing': true,
-                });
-                // ensure only this row is editing
-                for (var j = 0; j < _sources.length; j++) {
-                  _sources[j]['editing'] = j == _sources.length - 1;
-                }
-              });
-              _saveIncomeSourcesForMonth();
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: theme.border,
-                  width: 1,
-                  style: BorderStyle.solid,
-                ),
-                color: Colors.transparent,
-              ),
-              child: Center(
-                child: Text(
-                  '+ Add Source',
-                  style: TextStyle(
-                    color: theme.text4,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _incomeSourceRow(ThemeColors theme, int index) {
-    final src = _sources[index];
-    final editing = src['editing'] == true;
-    final nameCtrl = TextEditingController(text: src['name'] as String);
-    final typeCtrl = TextEditingController(text: src['type'] as String);
-    final amountCtrl = TextEditingController(
-      text: (src['amount'] as int).toString(),
-    );
-
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 220),
-      child: editing
-          ? Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: src['color'] as Color,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            TextField(
-                              controller: nameCtrl,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                color: theme.text1,
-                              ),
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: Colors.white.withValues(alpha: 0.04),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            TextField(
-                              controller: typeCtrl,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: theme.text3,
-                              ),
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: Colors.white.withValues(alpha: 0.04),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 110,
-                        child: TextField(
-                          controller: amountCtrl,
-                          keyboardType: TextInputType.number,
-                          style: GoogleFonts.cormorantGaramond(
-                            fontSize: 20,
-                            color: kGold,
-                          ),
-                          decoration: InputDecoration(
-                            prefixText: '\u20B9',
-                            filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.04),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.1),
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            src['name'] = nameCtrl.text.trim();
-                            src['type'] = typeCtrl.text.trim();
-                            src['amount'] =
-                                int.tryParse(amountCtrl.text.trim()) ??
-                                (src['amount'] as int);
-                            src['editing'] = false;
-                          });
-                          _saveIncomeSourcesForMonth();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromRGBO(
-                            45,
-                            158,
-                            107,
-                            0.2,
-                          ),
-                          foregroundColor: const Color(0xFF2D9E6B),
-                          side: BorderSide(
-                            color: const Color.fromRGBO(45, 158, 107, 0.4),
-                          ),
-                        ),
-                        child: const Text('Save'),
-                      ),
-                      const SizedBox(width: 10),
-                      OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            src['editing'] = false;
-                          });
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
-                          foregroundColor: theme.text3,
-                        ),
-                        child: const Text('Cancel'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            )
-          : Row(
-              children: [
-                Container(
-                  width: 9,
-                  height: 9,
-                  decoration: BoxDecoration(
-                    color: src['color'] as Color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        src['name'] as String,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: theme.text1,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        src['type'] as String,
-                        style: TextStyle(fontSize: 11, color: theme.text3),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  _money(src['amount'] as int),
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: 20,
-                    color: src['color'] as Color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    // open edit for this row and close others
-                    setState(() {
-                      for (var j = 0; j < _sources.length; j++) {
-                        _sources[j]['editing'] = j == index;
-                      }
-                    });
-                  },
-                  child: Text('✎', style: TextStyle(color: theme.text4)),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _annualGoalCard(ThemeColors theme, int totalEarned) {
-    const annualGoal = 200000;
-    final annualEarned = totalEarned;
-    final progress = (annualEarned / annualGoal).clamp(0.0, 1.0);
-    final monthsRemaining = 6; // per spec example
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: kGold.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: kGold.withValues(alpha: 0.12), width: 0.8),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Annual Goal',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: theme.text1,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              Text(
-                '${(progress * 100).round()}%',
-                style: GoogleFonts.cormorantGaramond(
-                  fontSize: 22,
-                  color: kGold,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 3,
-              backgroundColor: theme.border,
-              valueColor: const AlwaysStoppedAnimation(kGold),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '${_money(annualEarned)} of ${_money(annualGoal)} · $monthsRemaining months remaining',
-              style: TextStyle(fontSize: 11, color: theme.text3),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = widget.theme;
+    final colors = AppColors(widget.theme);
     final now = DateTime.now();
-    // Compute total from editable sources (in-memory)
-    final totalEarned = _sources.fold<int>(
-      0,
-      (sum, s) => sum + (s['amount'] as int),
-    );
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+
+    final totalEarned = _monthTotal(widget.incomeLog, now);
     final totalSpent = _monthTotal(widget.expenseLog, now);
     final netSavings = totalEarned - totalSpent;
-    final dailyAvg = totalEarned / now.day;
-    final dailyAvgSpent = totalSpent / now.day;
-    final target = 300000;
-    final targetProgress = (totalEarned / target).clamp(0.0, 1.0);
-    final comparisonMax = max(totalEarned, totalSpent);
+    final dailyAvgEarned = (totalEarned / 31).round();
+    final dailyAvgSpent = (totalSpent / 31).round();
+
+
     final visibleDays =
         List.generate(
           now.day,
@@ -7224,10 +7213,11 @@ class _IncomeScreenState extends State<IncomeScreen> {
         ).where((date) {
           final earned = widget.incomeLog[dayKey(date)] ?? 0;
           final spent = widget.expenseLog[dayKey(date)] ?? 0;
-          if (_filter == 'Income') {
+          if (earned == 0 && spent == 0) return false;
+          if (_filter == 'Earned') {
             return earned > 0;
           }
-          if (_filter == 'Expenses') {
+          if (_filter == 'Spent') {
             return spent > 0;
           }
           return true;
@@ -7239,405 +7229,456 @@ class _IncomeScreenState extends State<IncomeScreen> {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         clipBehavior: Clip.none,
-        padding: const EdgeInsets.fromLTRB(14, 48, 14, 90),
+        padding: const EdgeInsets.fromLTRB(16, 48, 16, 110),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Finance'.toUpperCase(),
-              style: TextStyle(
-                fontSize: 8,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.8,
-                color: kGold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Income',
-              style: GoogleFonts.cormorantGaramond(
-                fontSize: 32,
-                fontWeight: FontWeight.w300,
-                color: theme.text1,
-              ),
-            ),
-            const SizedBox(height: 4),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _editingSubtitle = true;
-                });
-              },
-              child: _editingSubtitle
-                  ? TextField(
-                      controller: _subtitleCtrl,
-                      autofocus: true,
-                      style: TextStyle(fontSize: 14, color: theme.text1),
-                      decoration: InputDecoration(border: InputBorder.none),
-                      onSubmitted: (_) =>
-                          setState(() => _editingSubtitle = false),
-                    )
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _subtitleCtrl.text,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.text3,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text('✎', style: TextStyle(color: theme.text4)),
-                      ],
-                    ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.card,
-                border: Border.all(
-                  color: kMuted.withValues(alpha: 0.14),
-                  width: 1,
-                ),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // 1. HEADER
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Month · Total · ${_monthYear(now)}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: theme.text4,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Transform.translate(
-                                offset: const Offset(0, -6),
-                                child: Text(
-                                  '\u20B9',
-                                  style: GoogleFonts.cormorantGaramond(
-                                    fontSize: 14,
-                                    color: kGold,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _money(totalEarned).replaceAll('\u20B9', ''),
-                                style: GoogleFonts.cormorantGaramond(
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w300,
-                                  color: kGold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'of ${_money(200000)} annual goal',
-                            style: TextStyle(fontSize: 12, color: theme.text3),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.trending_up,
-                                size: 12,
-                                color: kTeal,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '▲ 12% vs last month',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: kTeal,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                      Text(
+                        'FINANCE',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 3.0,
+                          color: colors.gold,
+                        ),
                       ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.trending_up,
-                                size: 12,
-                                color: kTeal,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${_money(dailyAvg)}/day',
-                                style: TextStyle(
-                                  fontFamily: 'Roboto',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: kTeal,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.trending_down,
-                                size: 12,
-                                color: kRed,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${_money(dailyAvgSpent)}/day',
-                                style: TextStyle(
-                                  fontFamily: 'Roboto',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: kRed,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'daily avg',
-                            style: TextStyle(fontSize: 11, color: theme.text4),
-                          ),
-                        ],
+                      const SizedBox(height: 4),
+                      Text(
+                        'Income',
+                        style: GoogleFonts.syne(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: colors.text1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Automation career to \u20B93L/month',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          color: colors.text2,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: targetProgress,
-                      backgroundColor: Colors.white.withValues(alpha: 0.07),
-                      valueColor: const AlwaysStoppedAnimation(kGold),
-                      minHeight: 6,
+                ),
+                GestureDetector(
+                  onTap: () => themeNotifier.toggle(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.card,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colors.cardBorder, width: 0.5),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      colors.theme.isDark ? '☀️' : '🌙',
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${(targetProgress * 100).toStringAsFixed(1)}% of ${_money(target)} target',
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      fontSize: 12,
-                      color: kGold,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            _incomeSourcesList(theme, totalEarned),
-            const SizedBox(height: 12),
-            _annualGoalCard(theme, totalEarned),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _summaryTile(
-                  'EARNED',
-                  _money(totalEarned),
-                  totalEarned > 0 ? kTeal : kMuted,
-                ),
-                const SizedBox(width: 8),
-                _summaryTile(
-                  'SPENT',
-                  _money(totalSpent),
-                  totalSpent > 0 ? kRed : kMuted,
-                ),
-                const SizedBox(width: 8),
-                _summaryTile(
-                  'SAVINGS',
-                  '${netSavings < 0 ? '-' : ''}${_money(netSavings)}',
-                  netSavings > 0
-                      ? theme.green
-                      : netSavings < 0
-                      ? theme.red
-                      : Colors.grey.shade500,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _summaryTile(
-                  'AVG EARNED',
-                  '${_money(dailyAvg)}/day',
-                  dailyAvg > 0 ? kTeal : kMuted,
-                ),
-                const SizedBox(width: 8),
-                _summaryTile(
-                  'AVG SPENT',
-                  '${_money(dailyAvgSpent)}/day',
-                  dailyAvgSpent > 0 ? kRed : kMuted,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 24),
+
+            // 2. SUMMARY CARD
             Container(
-              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.card,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: theme.border, width: 0.5),
+                color: colors.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: colors.cardBorder, width: 0.5),
+                boxShadow: colors.shadow,
               ),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 children: [
-                  Stack(
-                    children: [
-                      Container(
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                      ),
-                      if (comparisonMax > 0)
-                        FractionallySizedBox(
-                          widthFactor: (totalEarned / comparisonMax).clamp(
-                            0.0,
-                            1.0,
-                          ),
-                          child: Container(
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: kTeal,
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                          ),
-                        ),
-                      if (comparisonMax > 0)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: FractionallySizedBox(
-                            widthFactor: (totalSpent / comparisonMax).clamp(
-                              0.0,
-                              1.0,
-                            ),
-                            child: Container(
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: kRed,
-                                borderRadius: BorderRadius.circular(99),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                  Text(
+                    _money(netSavings),
+                    style: GoogleFonts.syne(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: colors.gold,
+                    ),
                   ),
-                  const SizedBox(height: 7),
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  const SizedBox(height: 4),
+                  Text(
+                    'THIS MONTH',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.0,
+                      color: colors.text3,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
                     children: [
-                      Text(
-                        'Earned',
-                        style: TextStyle(fontSize: 11, color: kTeal),
+                      // Left Earned Card
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colors.emerald2,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: colors.emerald.withValues(alpha: 0.15),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _money(totalEarned),
+                                style: GoogleFonts.syne(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.emerald,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'EARNED',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.0,
+                                  color: colors.text3,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${_money(dailyAvgEarned)}/day',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: colors.text2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      Text(
-                        'Spent',
-                        style: TextStyle(fontSize: 11, color: kRed),
+                      const SizedBox(width: 10),
+                      // Right Spent Card
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colors.red2,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: colors.red.withValues(alpha: 0.15),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _money(totalSpent),
+                                style: GoogleFonts.syne(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.red,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'SPENT',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.0,
+                                  color: colors.text3,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${_money(dailyAvgSpent)}/day',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: colors.text2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            _amountInput(
-              controller: _incomeCtrl,
-              hint: 'Enter today earnings \u20B9',
-              color: kTeal,
-              icon: Icons.trending_up,
-              onSubmit: _addIncome,
-            ),
-            const SizedBox(height: 8),
-            _amountInput(
-              controller: _expenseCtrl,
-              hint: 'Enter today expense \u20B9',
-              color: kRed,
-              icon: Icons.trending_down,
-              onSubmit: _addExpense,
-            ),
-            const SizedBox(height: 16),
-            Center(child: _filterChip('All')),
-            const SizedBox(height: 12),
+            const SizedBox(height: 24),
+
+            // 3. DAY-BY-DAY LIST
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'DATE | EARNED | SPENT',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: theme.text4,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5,
+                  'Day by Day',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: colors.text1,
                   ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _filterChip('All', colors),
+                    const SizedBox(width: 6),
+                    _filterChip('Earned', colors),
+                    const SizedBox(width: 6),
+                    _filterChip('Spent', colors),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            ...visibleDays.map((date) {
-              final earned = widget.incomeLog[dayKey(date)] ?? 0;
-              final spent = widget.expenseLog[dayKey(date)] ?? 0;
-              return RepaintBoundary(
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.card,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: theme.border, width: 0.5),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            const SizedBox(height: 12),
+            if (visibleDays.isEmpty)
+              Container(
+                height: 100,
+                alignment: Alignment.center,
+                child: Text(
+                  'No transactions yet',
+                  style: GoogleFonts.dmSans(fontSize: 13, color: colors.text3),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                itemCount: visibleDays.length,
+                itemBuilder: (context, idx) {
+                  final date = visibleDays[idx];
+                  final earned = widget.incomeLog[dayKey(date)] ?? 0;
+                  final spent = widget.expenseLog[dayKey(date)] ?? 0;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.card,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: colors.cardBorder, width: 0.5),
+                      boxShadow: colors.shadow,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              getDayName(date),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: colors.text1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              formatDayRowDate(date),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: colors.text3,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _money(earned),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: earned > 0
+                                    ? colors.emerald
+                                    : colors.text4,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              spent > 0 ? '−${_money(spent)}' : _money(0),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: spent > 0 ? colors.red : colors.text4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            const SizedBox(height: 24),
+
+            // 4. INPUT SECTION
+            Container(
+              decoration: BoxDecoration(
+                color: colors.card,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: colors.cardBorder, width: 0.5),
+                boxShadow: colors.shadow,
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Toggle row
+                  Row(
                     children: [
-                      Text(
-                        shortDate(date),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: theme.text2,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _isInputIncome = true),
+                          child: Container(
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: _isInputIncome
+                                  ? colors.emerald2
+                                  : colors.bg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _isInputIncome
+                                    ? colors.emerald.withValues(alpha: 0.25)
+                                    : colors.cardBorder,
+                                width: 1,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Income',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: _isInputIncome
+                                    ? colors.emerald
+                                    : colors.text3,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _amountText(amount: earned, income: true),
-                          const SizedBox(width: 14),
-                          _amountText(amount: spent, income: false),
-                        ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _isInputIncome = false),
+                          child: Container(
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: !_isInputIncome ? colors.red2 : colors.bg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: !_isInputIncome
+                                    ? colors.red.withValues(alpha: 0.25)
+                                    : colors.cardBorder,
+                                width: 1,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Expense',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: !_isInputIncome
+                                    ? colors.red
+                                    : colors.text3,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              );
-            }),
+                  const SizedBox(height: 16),
+
+
+
+                  // Input row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: colors.bg,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: colors.cardBorder,
+                              width: 0.5,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          alignment: Alignment.center,
+                          child: TextField(
+                            controller: _incomeCtrl,
+                            keyboardType: TextInputType.number,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Enter amount (\u20B9)...',
+                              hintStyle: GoogleFonts.dmSans(
+                                color: colors.text4,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            onSubmitted: (_) => _submitAmount(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: _submitAmount,
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: _isInputIncome ? colors.emerald : colors.red,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            '+',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

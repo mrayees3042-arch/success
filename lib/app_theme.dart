@@ -80,11 +80,11 @@ ThemeColors getTheme() {
       text2: Color(0xFF2A2A3E),
       text3: Color(0xFF8A8580),
       text4: Color(0xFF9A9585),
-      gold: cGold,
-      teal: cEmerald,
-      blue: cAzure,
-      red: cRose,
-      green: cEmerald,
+      gold: Color(0xFFB8860B),
+      teal: Color(0xFF0A7A5A),
+      blue: Color(0xFF1A6FA0),
+      red: Color(0xFFC0392B),
+      green: Color(0xFF0A7A5A),
     );
   }
 
@@ -105,4 +105,37 @@ ThemeColors getTheme() {
     red: cRose,
     green: cEmerald,
   );
+}
+
+class AppColors {
+  final ThemeColors theme;
+
+  AppColors(this.theme);
+
+  Color get bg => theme.isDark ? const Color(0xFF06060F) : const Color(0xFFF5F0E8);
+  Color get card => theme.isDark ? const Color(0x0AFFFFFF) : const Color(0xFFFFFFFF);
+  Color get cardBorder => theme.isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000);
+  Color get gold => theme.isDark ? const Color(0xFFE8B84B) : const Color(0xFFB8860B);
+  Color get gold2 => theme.isDark ? const Color(0xFFF5D78E) : const Color(0xFFD4A843);
+  Color get gold3 => theme.isDark ? const Color(0x1AE8B84B) : const Color(0x1FB8860B);
+  Color get emerald => theme.isDark ? const Color(0xFF00C896) : const Color(0xFF0A7A5A);
+  Color get emerald2 => theme.isDark ? const Color(0x1400C896) : const Color(0x140A7A5A);
+  Color get red => theme.isDark ? const Color(0xFFFF6B6B) : const Color(0xFFC0392B);
+  Color get red2 => theme.isDark ? const Color(0x14FF6B6B) : const Color(0x14C0392B);
+  Color get text1 => theme.isDark ? const Color(0xFFFFFFFF) : const Color(0xFF1A1A2E);
+  Color get text2 => theme.isDark ? const Color(0x8CFFFFFF) : const Color(0x80000000);
+  Color get text3 => theme.isDark ? const Color(0x4DFFFFFF) : const Color(0x4D000000);
+  Color get text4 => theme.isDark ? const Color(0x19FFFFFF) : const Color(0x1F000000);
+  Color get track => theme.isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000);
+
+  List<BoxShadow>? get shadow {
+    if (theme.isDark) return null;
+    return [
+      const BoxShadow(
+        color: Color(0x0F000000),
+        blurRadius: 12,
+        offset: Offset(0, 2),
+      ),
+    ];
+  }
 }

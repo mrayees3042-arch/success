@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=375, initial-scale=1.0">
+  <title>Muttaqin Dashboard - Rayees</title>
+  <!-- Load fonts: Syne (700,800), DM Sans (400,500,600 + italic), Amiri (400,700) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* CSS VARIABLES — DUAL MODE */
+    :root {
+      /* Dark Theme (Default) */
+      --bg: #06060F;
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.09);
+      --gold: #E8B84B;
+      --gold-dim: rgba(232, 184, 75, 0.6); /* #E8B84B99 */
+      --emerald: #00C896;
+      --azure: #38BDF8;
+      --text1: #FFFFFF;
+      --text2: rgba(255, 255, 255, 0.55);
+      --text3: rgba(255, 255, 255, 0.3);
+      --arc-track: rgba(255, 255, 255, 0.08);
+      --ring-track: rgba(255, 255, 255, 0.08);
+      
+      --shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+      --toast-shadow: 0 4px 12px rgba(0, 200, 150, 0.3);
+    }
+    
+    body[data-mode="day"], #app[data-mode="day"] {
+      /* Day Theme */
+      --bg: #F5F0E8;
+      --card-bg: #FFFFFF;
+      --card-border: rgba(0, 0, 0, 0.07);
+      --gold: #A0720A;
+      --gold-dim: rgba(160, 114, 10, 0.6); /* #A0720A99 */
+      --emerald: #0A7A5A;
+      --azure: #1565A0;
+      --text1: #1A1A2E;
+      --text2: rgba(0, 0, 0, 0.52);
+      --text3: rgba(0, 0, 0, 0.28);
+      --arc-track: rgba(0, 0, 0, 0.08);
+      --ring-track: rgba(0, 0, 0, 0.08);
+      
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      --toast-shadow: 0 4px 12px rgba(10, 122, 90, 0.2);
+    }
+    
+    /* Layout & Reset */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background-color: #030308; /* Deep dark page background to frame the centered layout */
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      font-family: 'DM Sans', sans-serif;
+      overflow-x: hidden;
+      transition: background-color 0.4s;
+    }
+    
+    body[data-mode="day"] {
+      background-color: #e5dfd6; /* Warm cream background to frame the centered layout */
+    }
+    
+    /* App Container (375px wide, scrollbar hidden, no horizontal overflow) */
+    #app {
+      width: 375px;
+      min-height: 100vh;
+      background-color: var(--bg);
+      color: var(--text1);
+      position: relative;
+      overflow-x: hidden;
+      overflow-y: auto;
+      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+      padding: 0 16px 40px;
+      transition: background-color 0.4s, color 0.4s, box-shadow 0.4s;
+    }
+    
+    body[data-mode="day"] #app {
+      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* Hide scrollbars */
+    #app::-webkit-scrollbar, body::-webkit-scrollbar {
+      display: none;
+    }
+    #app, body {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    
+    /* BACKGROUND (dark only) */
+    .aurora-wrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    
+    .aurora {
+      position: absolute;
+      border-radius: 50%;
+    }
+    
+    /* 3 fixed aurora ellipses z-index 0 blur 70-100px */
+    .aurora-1 {
+      width: 260px;
+      height: 260px;
+      background: rgba(0, 200, 150, 0.12); /* Top-right */
+      top: -50px;
+      right: -50px;
+      filter: blur(80px);
+      animation: drift 8s ease-in-out infinite alternate;
+    }
+    
+    .aurora-2 {
+      width: 220px;
+      height: 220px;
+      background: rgba(232, 184, 75, 0.08); /* Center-left */
+      top: 30%;
+      left: -80px;
+      filter: blur(95px);
+      animation: drift 8s ease-in-out 2s infinite alternate-reverse;
+    }
+    
+    .aurora-3 {
+      width: 240px;
+      height: 240px;
+      bottom: 10%;
+      right: -60px;
+      background: rgba(13, 79, 60, 0.14); /* Bottom-right */
+      filter: blur(75px);
+      animation: drift 8s ease-in-out 4s infinite alternate;
+    }
+    
+    @keyframes drift {
+      0% { transform: translate(-15px, -15px); }
+      100% { transform: translate(15px, 15px); }
+    }
+    
+    /* Islamic 8-point star SVG tile, opacity 3%, fixed, z-index 0 */
+    .star-pattern {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M20 2l2.3 13.5L34.6 8 26 18l14 2-14 2 8.6 10-12.3-7.5L20 38l-2.3-13.5L5.4 32 14 22 0 20l14-2L5.4 8l12.3 7.5Z' fill='%23ffffff'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      mix-blend-mode: overlay;
+    }
+    
+    /* Day mode: hide both aurora and star pattern */
+    #app[data-mode="day"] .aurora-wrap,
+    #app[data-mode="day"] .star-pattern {
+      display: none !important;
+    }
+    
+    /* SECTION ANIMATIONS (fadeUp staggered) */
+    .section-animate {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+    
+    @keyframes fadeUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .delay-0 { animation-delay: 0ms; }
+    .delay-1 { animation-delay: 80ms; }
+    .delay-2 { animation-delay: 160ms; }
+    .delay-3 { animation-delay: 240ms; }
+    .delay-4 { animation-delay: 320ms; }
+    .delay-5 { animation-delay: 400ms; }
+    .delay-6 { animation-delay: 480ms; }
+    .delay-7 { animation-delay: 560ms; }
+    .delay-8 { animation-delay: 640ms; }
+    
+    /* Common card stylings */
+    .card-style {
+      background: var(--card-bg);
+      border: 0.5px solid var(--card-border);
+      border-radius: 16px;
+      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+      position: relative;
+      z-index: 1;
+    }
+    
+    #app[data-mode="day"] .card-style {
+      box-shadow: var(--shadow);
+    }
+    
+    /* SECTION 1 — HEADER */
+    .header-section {
+      padding-top: 52px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 10;
+    }
+    
+    .header-left .name {
+      font-family: 'Syne', sans-serif;
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+    }
+    
+    #app[data-mode="dark"] .name {
+      background: linear-gradient(135deg, #E8B84B, #F5D78E);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    #app[data-mode="day"] .name {
+      color: #A0720A;
+      background: none;
+      -webkit-text-fill-color: initial;
+    }
+    
+    .header-left .badge {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 6px;
+      color: var(--gold-dim);
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+    
+    .toggle-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1.5px solid var(--card-border);
+      background: var(--card-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+      outline: none;
+    }
+    
+    .toggle-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    /* SECTION 2 — HERO ARC */
+    .hero-section {
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .hero-arc-svg {
+      overflow: visible;
+      background: transparent;
+    }
+    
+    .hero-sub {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text2);
+      margin-top: 8px;
+    }
+    
+    .hero-date {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+    
+    /* SECTION 3 — QURAN VERSE CARD */
+    .quran-section {
+      margin-top: 24px;
+      border-radius: 18px;
+      padding: 24px 20px;
+      text-align: center;
+    }
+    
+    #app[data-mode="dark"] .quran-section {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 0.5px solid rgba(232, 184, 75, 0.28);
+    }
+    
+    #app[data-mode="day"] .quran-section {
+      background: #FFFFFF;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+      border: 0.5px solid rgba(160, 114, 10, 0.25);
+    }
+    
+    .quran-arabic {
+      font-family: 'Amiri', serif;
+      font-size: 22px;
+      color: var(--gold);
+      direction: rtl;
+      unicode-bidi: isolate;
+      text-align: center;
+      line-height: 1.6;
+    }
+    
+    .quran-divider {
+      width: 50px;
+      height: 0.5px;
+      background-color: var(--gold-dim);
+      margin: 14px auto;
+    }
+    
+    .quran-english {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-style: italic;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+    
+    .quran-ref {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--gold-dim);
+      margin-top: 8px;
+      text-transform: uppercase;
+    }
+    
+    /* SECTION 4 — METRIC RINGS */
+    .metrics-section {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .metric-card {
+      flex: 1;
+      border-radius: 16px;
+      padding: 14px 6px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .metric-card svg {
+      display: block;
+      margin: 0 auto;
+    }
+    
+    .metric-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 8px;
+    }
+    
+    .metric-pct {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    
+    .color-prayers { color: var(--gold); }
+    .color-tasks { color: var(--emerald); }
+    .color-water { color: var(--azure); }
+    
+    /* SECTION 5 — SCORE CARD */
+    .score-section {
+      margin-top: 16px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .score-left {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .score-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    
+    .score-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 30px;
+      font-weight: 700;
+      color: var(--text1);
+      margin-top: 4px;
+    }
+    
+    .score-svg {
+      overflow: visible;
+    }
+    
+    /* SECTION 6 — NEXT PRAYER BANNER */
+    .next-prayer-banner {
+      margin-top: 16px;
+      border-radius: 50px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+      transition: all 0.3s ease;
+    }
+    
+    #app[data-mode="dark"] .next-prayer-banner {
+      background: rgba(0, 200, 150, 0.07);
+      border: 0.5px solid rgba(0, 200, 150, 0.28);
+    }
+    
+    #app[data-mode="day"] .next-prayer-banner {
+      background: rgba(10, 122, 90, 0.07);
+      border: 0.5px solid rgba(10, 122, 90, 0.28);
+    }
+    
+    .pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background-color: var(--emerald);
+      flex-shrink: 0;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.55);
+        opacity: 0.4;
+      }
+    }
+    
+    .np-text {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text1);
+    }
+    
+    .np-time {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--emerald);
+    }
+    
+    .np-spacer {
+      flex: 1;
+    }
+    
+    .np-countdown {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    
+    /* SECTION 7 — PRAYER TIMINGS GRID */
+    .prayer-grid-section {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .prayer-row-1 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    
+    .prayer-row-2 {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .prayer-row-2 .prayer-pill {
+      width: 23%;
+    }
+    
+    .prayer-pill {
+      border-radius: 13px;
+      padding: 10px 4px;
+      text-align: center;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: background 0.3s, border-color 0.3s, transform 0.2s;
+    }
+    
+    .prayer-pill:active {
+      transform: scale(0.96);
+    }
+    
+    .p-name {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      color: var(--text2);
+      display: block;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .p-time {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      display: block;
+      margin-top: 4px;
+    }
+    
+    .p-icon {
+      font-size: 11px;
+      display: block;
+      margin-top: 4px;
+      line-height: 1;
+    }
+    
+    /* Done State */
+    .prayer-pill.state-done {
+      background: rgba(0, 200, 150, 0.07);
+      border-color: rgba(0, 200, 150, 0.32);
+    }
+    body[data-mode="day"] .prayer-pill.state-done {
+      background: rgba(10, 122, 90, 0.07);
+      border-color: rgba(10, 122, 90, 0.32);
+    }
+    .prayer-pill.state-done .p-time,
+    .prayer-pill.state-done .p-icon {
+      color: var(--emerald);
+    }
+    
+    /* Info State */
+    .prayer-pill.state-info {
+      /* default background, custom colors */
+    }
+    .prayer-pill.state-info .p-time,
+    .prayer-pill.state-info .p-icon {
+      color: var(--azure);
+    }
+    
+    /* Current State */
+    .prayer-pill.state-current {
+      background: rgba(232, 184, 75, 0.09);
+      border-color: rgba(232, 184, 75, 0.45);
+      position: relative;
+    }
+    body[data-mode="day"] .prayer-pill.state-current {
+      background: rgba(160, 114, 10, 0.09);
+      border-color: rgba(160, 114, 10, 0.45);
+    }
+    .prayer-pill.state-current .p-time,
+    .prayer-pill.state-current .p-icon {
+      color: var(--gold);
+    }
+    
+    /* Upcoming State */
+    .prayer-pill.state-upcoming {
+      /* default background */
+    }
+    .prayer-pill.state-upcoming .p-time {
+      color: var(--text2);
+    }
+    .prayer-pill.state-upcoming .p-icon {
+      color: var(--text3);
+    }
+    
+    /* SECTION 8 — WATER TRACKER */
+    .water-section {
+      margin-top: 16px;
+      padding: 16px;
+    }
+    
+    .water-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .water-title {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text1);
+    }
+    
+    .water-subtitle {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    
+    .water-progress-track {
+      width: 100%;
+      height: 4px;
+      background-color: var(--ring-track);
+      border-radius: 2px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    
+    .water-progress-fill {
+      height: 100%;
+      background-color: var(--azure);
+      width: 0%;
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+    
+    .water-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    
+    .glass-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.2s;
+    }
+    
+    .glass-wrap:active {
+      transform: scale(0.9);
+    }
+    
+    .glass-wrap svg {
+      overflow: visible;
+      display: block;
+    }
+    
+    /* SECTION 9 — FAST CARD */
+    .fast-section {
+      margin-top: 16px;
+      padding: 18px 18px 16px;
+    }
+    
+    .fast-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    
+    .fast-icon {
+      font-size: 16px;
+    }
+    
+    .fast-title {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text1);
+    }
+    
+    .fast-logged-badge {
+      margin-left: auto;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--emerald);
+      opacity: 1;
+      transition: opacity 0.3s;
+    }
+    
+    .fast-logged-badge.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .fast-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--text3);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    
+    .fast-timer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .fast-time {
+      font-family: 'Syne', sans-serif;
+      font-size: 30px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    
+    .fast-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gold);
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-top: 12px;
+      text-align: left;
+      outline: none;
+      padding: 0;
+      transition: color 0.3s;
+      display: inline-block;
+    }
+    
+    /* Toast styles */
+    .toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background-color: var(--emerald);
+      color: #FFFFFF;
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 9999;
+      box-shadow: var(--toast-shadow);
+      white-space: nowrap;
+    }
+    
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body data-mode="dark">
+
+  <div id="app" data-mode="dark">
+    <!-- Fixed background patterns absolute inside centered #app to crop them cleanly -->
+    <div class="aurora-wrap" aria-hidden="true">
+      <div class="aurora aurora-1"></div>
+      <div class="aurora aurora-2"></div>
+      <div class="aurora aurora-3"></div>
+    </div>
+    <div class="star-pattern" aria-hidden="true"></div>
+
+    <!-- SECTION 1 — HEADER (padding-top 52px) -->
+    <header class="header-section section-animate delay-0">
+      <div class="header-left">
+        <div class="name">Rayees</div>
+        <div class="badge">MUTTAQIN</div>
+      </div>
+      <button class="toggle-btn" id="modeToggle" aria-label="Toggle mode" onclick="toggleMode()">☀ï¸</button>
+    </header>
+
+    <!-- SECTION 2 — HERO ARC -->
+    <section class="hero-section section-animate delay-1">
+      <svg class="hero-arc-svg" viewBox="0 0 240 148" width="240" height="148" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="heroGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <!-- Arc track path: opening at bottom -->
+        <path id="heroArcTrack" d="M 18 130 A 105 105 0 0 1 222 130" fill="none" stroke-width="3.5" stroke-linecap="round" stroke="rgba(255,255,255,0.08)" />
+        <!-- Arc progress fill path -->
+        <path id="heroArcProgress" d="M 18 130 A 105 105 0 0 1 222 130" fill="none" stroke-width="3.5" stroke-linecap="round" stroke="#E8B84B" filter="url(#heroGlow)" stroke-dasharray="330" stroke-dashoffset="330" />
+        <!-- Number sits inside the bowl, y=118, 58px font size, never clipped -->
+        <text id="heroArcText" x="120" y="118" text-anchor="middle" font-family="Syne,sans-serif" font-size="58" font-weight="800" fill="#E8B84B">188</text>
+      </svg>
+      <div class="hero-sub">Days to 2027</div>
+      <div class="hero-date">26 Jun 2026 · Friday</div>
+    </section>
+
+    <!-- SECTION 3 — QURAN VERSE CARD -->
+    <section class="quran-section section-animate delay-2 card-style">
+      <div class="quran-arabic" id="quranArabic">Ø¥ÙÙ†ÙŽÙ‘ Ù…ÙŽØ¹ÙŽ Ø§Ù„Ù’Ø¹ÙØ³Ù’Ø±Ù ÙŠÙØ³Ù’Ø±Ù‹Ø§</div>
+      <div class="quran-divider"></div>
+      <div class="quran-english" id="quranEnglish">Indeed, with hardship comes ease.</div>
+      <div class="quran-ref" id="quranRef">Quran 94:6</div>
+    </section>
+
+    <!-- SECTION 4 — METRIC RINGS -->
+    <section class="metrics-section section-animate delay-3">
+      <!-- Card 1: Prayers -->
+      <div class="metric-card card-style" onclick="togglePrayerGridHighlight()">
+        <svg viewBox="0 0 72 72" width="72" height="72" xmlns="http://www.w3.org/2000/svg">
+          <circle class="ring-track-circle" cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4" />
+          <circle id="prayerProgressRing" cx="36" cy="36" r="28" fill="none" stroke="#E8B84B" stroke-width="4" stroke-linecap="round" stroke-dasharray="175.9" stroke-dashoffset="175.9" transform="rotate(-90 36 36)" />
+        </svg>
+        <span class="metric-label">Prayers</span>
+        <span id="prayerPctVal" class="metric-pct color-prayers">20%</span>
+      </div>
+      <!-- Card 2: Tasks (Cycles on click) -->
+      <div class="metric-card card-style" onclick="cycleTasks()">
+        <svg viewBox="0 0 72 72" width="72" height="72" xmlns="http://www.w3.org/2000/svg">
+          <circle class="ring-track-circle" cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4" />
+          <circle id="taskProgressRing" cx="36" cy="36" r="28" fill="none" stroke="#00C896" stroke-width="4" stroke-linecap="round" stroke-dasharray="175.9" stroke-dashoffset="175.9" transform="rotate(-90 36 36)" />
+        </svg>
+        <span class="metric-label">Tasks</span>
+        <span id="taskPctVal" class="metric-pct color-tasks">0%</span>
+      </div>
+      <!-- Card 3: Water -->
+      <div class="metric-card card-style" onclick="focusWaterSection()">
+        <svg viewBox="0 0 72 72" width="72" height="72" xmlns="http://www.w3.org/2000/svg">
+          <circle class="ring-track-circle" cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4" />
+          <circle id="waterProgressRing" cx="36" cy="36" r="28" fill="none" stroke="#38BDF8" stroke-width="4" stroke-linecap="round" stroke-dasharray="175.9" stroke-dashoffset="175.9" transform="rotate(-90 36 36)" />
+        </svg>
+        <span class="metric-label">Water</span>
+        <span id="waterPctVal" class="metric-pct color-water">0%</span>
+      </div>
+    </section>
+
+    <!-- SECTION 5 — SCORE CARD -->
+    <section class="score-section section-animate delay-4 card-style">
+      <div class="score-left">
+        <span class="score-label">Today's Score</span>
+        <span class="score-val" id="scoreValueText">10 / 100</span>
+      </div>
+      <svg class="score-svg" viewBox="0 0 88 56" width="88" height="56" xmlns="http://www.w3.org/2000/svg">
+        <path id="scoreArcTrack" d="M 8 52 A 40 40 0 0 1 80 52" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="5" stroke-linecap="round" />
+        <path id="scoreArcProgress" d="M 8 52 A 40 40 0 0 1 80 52" fill="none" stroke="#E8B84B" stroke-width="5" stroke-linecap="round" stroke-dasharray="125.6" stroke-dashoffset="125.6" />
+      </svg>
+    </section>
+
+    <!-- SECTION 6 — NEXT PRAYER BANNER -->
+    <section class="next-prayer-banner section-animate delay-5">
+      <div class="pulse-dot"></div>
+      <span id="npName" class="np-text">Dhuhr</span>
+      <span id="npTime" class="np-time">12:14 PM</span>
+      <span class="np-spacer"></span>
+      <span id="npCountdown" class="np-countdown">in 2h 14m</span>
+    </section>
+
+    <!-- SECTION 7 — PRAYER TIMINGS GRID -->
+    <section id="prayerGrid" class="prayer-grid-section section-animate delay-6">
+      <div class="prayer-row-1">
+        <!-- Fajr (done state) -->
+        <div class="prayer-pill state-done" id="pill-Fajr" onclick="togglePrayer('Fajr')">
+          <span class="p-name">Fajr</span>
+          <span class="p-time">05:12</span>
+          <span class="p-icon" id="icon-Fajr">âœ“</span>
+        </div>
+        <!-- Sunrise (info state, non-clickable) -->
+        <div class="prayer-pill state-info" id="pill-Sunrise">
+          <span class="p-name">Sunrise</span>
+          <span class="p-time">06:22</span>
+          <span class="p-icon" id="icon-Sunrise">☀</span>
+        </div>
+        <!-- Dhuhr (current state) -->
+        <div class="prayer-pill state-current" id="pill-Dhuhr" onclick="togglePrayer('Dhuhr')">
+          <span class="p-name">Dhuhr</span>
+          <span class="p-time">12:14</span>
+          <span class="p-icon" id="icon-Dhuhr">â—</span>
+        </div>
+        <!-- Asr (upcoming state) -->
+        <div class="prayer-pill state-upcoming" id="pill-Asr" onclick="togglePrayer('Asr')">
+          <span class="p-name">Asr</span>
+          <span class="p-time">15:41</span>
+          <span class="p-icon" id="icon-Asr">—</span>
+        </div>
+      </div>
+      
+      <div class="prayer-row-2">
+        <!-- Maghrib (upcoming state) -->
+        <div class="prayer-pill state-upcoming" id="pill-Maghrib" onclick="togglePrayer('Maghrib')">
+          <span class="p-name">Maghrib</span>
+          <span class="p-time">18:42</span>
+          <span class="p-icon" id="icon-Maghrib">—</span>
+        </div>
+        <!-- Isha (upcoming state) -->
+        <div class="prayer-pill state-upcoming" id="pill-Isha" onclick="togglePrayer('Isha')">
+          <span class="p-name">Isha</span>
+          <span class="p-time">20:00</span>
+          <span class="p-icon" id="icon-Isha">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 8 — WATER TRACKER -->
+    <section id="waterSection" class="water-section section-animate delay-7 card-style">
+      <div class="water-header">
+        <span class="water-title">💧 Water intake</span>
+        <span class="water-subtitle" id="waterVolumeText">0.0 L / 2.6 L goal</span>
+      </div>
+      <div class="water-progress-track">
+        <div class="water-progress-fill" id="waterProgressBar"></div>
+      </div>
+      <div class="water-grid" id="waterGrid">
+        <!-- 10 glasses generated in JS -->
+      </div>
+    </section>
+
+    <!-- SECTION 9 — FAST CARD -->
+    <section class="fast-section section-animate delay-8 card-style">
+      <div class="fast-header">
+        <span class="fast-icon">🌙</span>
+        <span class="fast-title">No fast today</span>
+        <span class="fast-logged-badge hidden" id="fastLoggedBadge">Logged âœ“</span>
+      </div>
+      <div class="fast-label">IFTAR IN</div>
+      <div class="fast-timer-row">
+        <div class="fast-time" id="fastTimer">07:02:40</div>
+        <!-- SVG arc mini progress circle 52x52 -->
+        <svg viewBox="0 0 52 52" width="52" height="52" xmlns="http://www.w3.org/2000/svg">
+          <circle id="fastTrackCircle" cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3.5" />
+          <circle id="fastProgressCircle" cx="26" cy="26" r="22" fill="none" stroke="#E8B84B" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="138.2" transform="rotate(-90 26 26)" />
+        </svg>
+      </div>
+      <button class="fast-btn" id="logFastBtn" onclick="logFast()">Log fast</button>
+    </section>
+  </div>
+
+  <script>
+    // QURAN VERSES DATABASE
+    const quranVerses = [
+      { ar: "Ø¥ÙÙ†ÙŽÙ‘ Ù…ÙŽØ¹ÙŽ Ø§Ù„Ù’Ø¹ÙØ³Ù’Ø±Ù ÙŠÙØ³Ù’Ø±Ù‹Ø§", en: "Indeed, with hardship comes ease.", ref: "Quran 94:6" },
+      { ar: "ÙˆÙŽØ¹ÙŽØ³ÙŽÙ‰Ù° Ø£ÙŽÙ† ØªÙŽÙƒÙ’Ø±ÙŽÙ‡ÙÙˆØ§ Ø´ÙŽÙŠÙ’Ø¦Ù‹Ø§ ÙˆÙŽÙ‡ÙÙˆÙŽ Ø®ÙŽÙŠÙ’Ø±ÙŒ Ù„ÙŽÙ‘ÙƒÙÙ…Ù’", en: "Perhaps you dislike something and it is good for you.", ref: "Quran 2:216" },
+      { ar: "ÙÙŽØ¥ÙÙ†ÙŽÙ‘ Ù…ÙŽØ¹ÙŽ Ø§Ù„Ù’Ø¹ÙØ³Ù’Ø±Ù ÙŠÙØ³Ù’Ø±Ù‹Ø§", en: "For indeed, with hardship will be ease.", ref: "Quran 94:5" },
+      { ar: "ÙˆÙŽØ¨ÙŽØ´ÙÙ‘Ø±Ù Ø§Ù„ØµÙŽÙ‘Ø§Ø¨ÙØ±ÙÙŠÙ†ÙŽ", en: "And give good tidings to the patient.", ref: "Quran 2:155" },
+      { ar: "Ø­ÙŽØ³Ù’Ø¨ÙÙ†ÙŽØ§ Ø§Ù„Ù„ÙŽÙ‘Ù‡Ù ÙˆÙŽÙ†ÙØ¹Ù’Ù…ÙŽ Ø§Ù„Ù’ÙˆÙŽÙƒÙÙŠÙ„Ù", en: "Allah is sufficient for us and the best disposer of affairs.", ref: "Quran 3:173" },
+      { ar: "ÙˆÙŽØ§Ù„Ù„ÙŽÙ‘Ù‡Ù Ù…ÙŽØ¹ÙŽ Ø§Ù„ØµÙŽÙ‘Ø§Ø¨ÙØ±ÙÙŠÙ†ÙŽ", en: "And Allah is with the patient.", ref: "Quran 2:153" },
+      { ar: "Ø±ÙŽØ¨ÙÙ‘ Ø²ÙØ¯Ù’Ù†ÙÙŠ Ø¹ÙÙ„Ù’Ù…Ù‹Ø§", en: "My Lord, increase me in knowledge.", ref: "Quran 20:114" }
+    ];
+
+    // PRAYER TIMES FOR THRISSUR (JUN 26)
+    const prayerTimes = [
+      { name: 'Fajr', timeStr: '05:12', hour: 5, minute: 12 },
+      { name: 'Sunrise', timeStr: '06:22', hour: 6, minute: 22 },
+      { name: 'Dhuhr', timeStr: '12:14', hour: 12, minute: 14 },
+      { name: 'Asr', timeStr: '15:41', hour: 15, minute: 41 },
+      { name: 'Maghrib', timeStr: '18:42', hour: 18, minute: 42 },
+      { name: 'Isha', timeStr: '20:00', hour: 20, minute: 0 }
+    ];
+
+    // APPLICATION STATE
+    let currentMode = 'dark';
+    let prayersState = {
+      Fajr: true,
+      Dhuhr: false,
+      Asr: false,
+      Maghrib: false,
+      Isha: false
+    };
+    let tasksState = 0; // Cycles from 0 to 4 (0%, 25%, 50%, 75%, 100%)
+    let waterState = 0; // 0 to 10 cups (each represents 0.26L)
+    const waterGoal = 2.6;
+    const maxGlasses = 10;
+    
+    // FAST COUNTDOWN STATE
+    let fastSeconds = 7 * 3600 + 2 * 60 + 40; // 07:02:40 = 25360 seconds
+    const totalFastDuration = 14 * 3600; // 14 hours total fasting duration for reference progress arc
+    let fastLogged = false;
+
+    // INITIALIZATION
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDailyAyah();
+      animateHeroArc();
+      applySvgColors();
+      renderWaterTracker();
+      updatePrayersUI();
+      startFastTimer();
+      updateNextPrayerCountdown();
+      setInterval(updateNextPrayerCountdown, 1000); // Live countdown updates
+    });
+
+    // 1. DUAL MODE TOGGLE
+    function toggleMode() {
+      const body = document.body;
+      const app = document.getElementById('app');
+      const toggleBtn = document.getElementById('modeToggle');
+      
+      currentMode = (body.getAttribute('data-mode') === 'dark') ? 'day' : 'dark';
+      
+      body.setAttribute('data-mode', currentMode);
+      app.setAttribute('data-mode', currentMode);
+      
+      toggleBtn.textContent = (currentMode === 'dark') ? '☀ï¸' : '🌙';
+      
+      applySvgColors();
+    }
+
+    // SVG colors swap via JS since SVGs ignore CSS variables
+    function applySvgColors() {
+      const isDay = (currentMode === 'day');
+      
+      // Hero Arc
+      const heroTrack = document.getElementById('heroArcTrack');
+      const heroProgress = document.getElementById('heroArcProgress');
+      const heroText = document.getElementById('heroArcText');
+      if (heroTrack) heroTrack.setAttribute('stroke', isDay ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)');
+      if (heroProgress) heroProgress.setAttribute('stroke', isDay ? '#A0720A' : '#E8B84B');
+      if (heroText) heroText.setAttribute('fill', isDay ? '#A0720A' : '#E8B84B');
+
+      // Metric Rings Track Circles
+      document.querySelectorAll('.ring-track-circle').forEach(circle => {
+        circle.setAttribute('stroke', isDay ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)');
+      });
+
+      // Metric Progress Circles
+      const prayerRing = document.getElementById('prayerProgressRing');
+      const taskRing = document.getElementById('taskProgressRing');
+      const waterRing = document.getElementById('waterProgressRing');
+      
+      if (prayerRing) prayerRing.setAttribute('stroke', isDay ? '#A0720A' : '#E8B84B');
+      if (taskRing) taskRing.setAttribute('stroke', isDay ? '#0A7A5A' : '#00C896');
+      if (waterRing) waterRing.setAttribute('stroke', isDay ? '#1565A0' : '#38BDF8');
+
+      // Score Arc
+      const scoreTrack = document.getElementById('scoreArcTrack');
+      const scoreProgress = document.getElementById('scoreArcProgress');
+      if (scoreTrack) scoreTrack.setAttribute('stroke', isDay ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)');
+      if (scoreProgress) scoreProgress.setAttribute('stroke', isDay ? '#A0720A' : '#E8B84B');
+
+      // Fast Mini Arc
+      const fastTrack = document.getElementById('fastTrackCircle');
+      const fastProgress = document.getElementById('fastProgressCircle');
+      if (fastTrack) fastTrack.setAttribute('stroke', isDay ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)');
+      if (fastProgress) fastProgress.setAttribute('stroke', isDay ? '#A0720A' : '#E8B84B');
+
+      // Water Glasses SVGs
+      renderWaterTracker();
+    }
+
+    // 2. HERO ARC ANIMATION (stroke-dashoffset 330â†’0 over 330 steps at 10ms interval)
+    function animateHeroArc() {
+      const arc = document.getElementById('heroArcProgress');
+      if (!arc) return;
+      
+      let dashoffset = 330;
+      arc.setAttribute('stroke-dasharray', '330');
+      arc.setAttribute('stroke-dashoffset', '330');
+
+      const interval = setInterval(() => {
+        if (dashoffset <= 0) {
+          clearInterval(interval);
+          arc.setAttribute('stroke-dashoffset', '0');
+        } else {
+          dashoffset--;
+          arc.setAttribute('stroke-dashoffset', dashoffset.toString());
+        }
+      }, 10);
+    }
+
+    // 3. DAILY ROTATING QURAN AYAH BY DATE INDEX (year*366+month*31+day) % 7
+    function loadDailyAyah() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1; // 1-indexed
+      const day = now.getDate();
+      
+      const index = (year * 366 + month * 31 + day) % 7;
+      const ayah = quranVerses[index];
+      
+      document.getElementById('quranArabic').textContent = ayah.ar;
+      document.getElementById('quranEnglish').textContent = `"${ayah.en}"`;
+      document.getElementById('quranRef').textContent = ayah.ref;
+    }
+
+    // 4. METRIC RINGS STATE MANAGEMENT
+    // Cycle tasks between 0% and 100% on click (0 -> 25% -> 50% -> 75% -> 100% -> 0%)
+    function cycleTasks() {
+      tasksState = (tasksState + 1) % 5;
+      
+      const percent = tasksState * 25;
+      document.getElementById('taskPctVal').textContent = `${percent}%`;
+      
+      // Update Task SVG Progress ring (circumference is 175.9)
+      const ring = document.getElementById('taskProgressRing');
+      if (ring) {
+        const offset = 175.9 - (175.9 * percent) / 100;
+        ring.setAttribute('stroke-dashoffset', offset.toFixed(1));
+      }
+      
+      updateOverallScore();
+    }
+
+    // Clicking water card centers/focuses on the water section
+    function focusWaterSection() {
+      const sect = document.getElementById('waterSection');
+      if (sect) {
+        sect.scrollIntoView({ behavior: 'smooth' });
+        // Briefly animate border to highlight
+        sect.style.borderColor = 'var(--azure)';
+        setTimeout(() => {
+          sect.style.borderColor = 'var(--card-border)';
+        }, 1200);
+      }
+    }
+
+    // Highlight prayer grid when metric clicked
+    function togglePrayerGridHighlight() {
+      const grid = document.getElementById('prayerGrid');
+      if (grid) {
+        grid.scrollIntoView({ behavior: 'smooth' });
+        // Flashing highlight
+        grid.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+          grid.style.transform = 'scale(1)';
+        }, 300);
+      }
+    }
+
+    // 5. SCORE CARD GAUGE RECALCULATION
+    function updateOverallScore() {
+      // Calculate individual metrics out of 100 total points
+      // 5 Prayers = 50 pts (10 pts each)
+      // 4 Tasks = 30 pts (7.5 pts each)
+      // 10 Glasses Water = 20 pts (2 pts each)
+      let prayersDone = 0;
+      for (const p in prayersState) {
+        if (prayersState[p]) prayersDone++;
+      }
+      
+      const scorePrayers = prayersDone * 10;
+      const scoreTasks = tasksState * 7.5;
+      const scoreWater = waterState * 2;
+      
+      const finalScore = Math.round(scorePrayers + scoreTasks + scoreWater);
+      
+      // Animate score counter text
+      const scoreTextEl = document.getElementById('scoreValueText');
+      const startScore = parseInt(scoreTextEl.textContent.split(' ')[0]) || 0;
+      animateCounter(scoreTextEl, startScore, finalScore, 0, 100);
+      
+      // Update Score Arc Progress SVG path (circumference length is 125.6)
+      const arc = document.getElementById('scoreArcProgress');
+      if (arc) {
+        const offset = 125.6 - (125.6 * finalScore) / 100;
+        arc.setAttribute('stroke-dashoffset', offset.toFixed(1));
+      }
+    }
+
+    function animateCounter(element, start, end, min, max) {
+      if (start === end) {
+        element.textContent = `${end} / 100`;
+        return;
+      }
+      
+      const duration = 250; // ms
+      const steps = 15;
+      const stepTime = duration / steps;
+      let currentStep = 0;
+      
+      const timer = setInterval(() => {
+        currentStep++;
+        const val = Math.round(start + ((end - start) * currentStep) / steps);
+        element.textContent = `${val} / 100`;
+        if (currentStep >= steps) {
+          clearInterval(timer);
+          element.textContent = `${end} / 100`;
+        }
+      }, stepTime);
+    }
+
+    // 6. NEXT PRAYER BANNER & TIMER COUNTDOWN
+    function updateNextPrayerCountdown() {
+      const now = new Date();
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      
+      let nextP = null;
+      let diffMin = 9999;
+      
+      // Loop through times to find the first one that is strictly in the future today
+      for (const p of prayerTimes) {
+        if (p.name === 'Sunrise') continue; // Sunrise is shuruq, not standard prayer
+        
+        const pMin = p.hour * 60 + p.minute;
+        if (pMin > currentMin) {
+          const diff = pMin - currentMin;
+          if (diff < diffMin) {
+            diffMin = diff;
+            nextP = p;
+          }
+        }
+      }
+      
+      // If no prayer left today, next is Fajr tomorrow
+      if (!nextP) {
+        const fajr = prayerTimes[0]; // Fajr
+        const fajrMin = fajr.hour * 60 + fajr.minute;
+        diffMin = (24 * 60 - currentMin) + fajrMin;
+        nextP = fajr;
+      }
+      
+      // Format details
+      const hoursLeft = Math.floor(diffMin / 60);
+      const minsLeft = diffMin % 60;
+      
+      let displayTime = '';
+      if (nextP.hour >= 12) {
+        const h12 = nextP.hour === 12 ? 12 : nextP.hour - 12;
+        displayTime = `${h12}:${String(nextP.minute).padStart(2,'0')} PM`;
+      } else {
+        displayTime = `${nextP.hour}:${String(nextP.minute).padStart(2,'0')} AM`;
+      }
+      
+      document.getElementById('npName').textContent = nextP.name;
+      document.getElementById('npTime').textContent = displayTime;
+      document.getElementById('npCountdown').textContent = `in ${hoursLeft}h ${minsLeft}m`;
+    }
+
+    // 7. PRAYER TIMINGS GRID STATE TOGGLE
+    function togglePrayer(name) {
+      if (prayersState[name] !== undefined) {
+        prayersState[name] = !prayersState[name];
+        updatePrayersUI();
+      }
+    }
+
+    function updatePrayersUI() {
+      // 5 daily prayers list
+      const prayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+      
+      // Determine currently active prayer (based on time)
+      const now = new Date();
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      
+      let currentActiveIndex = 0; // Default to Fajr
+      for (let i = 0; i < prayerTimes.length; i++) {
+        const pMin = prayerTimes[i].hour * 60 + prayerTimes[i].minute;
+        if (currentMin >= pMin) {
+          currentActiveIndex = i;
+        }
+      }
+      
+      // Translate index from prayerTimes to our 5 prayers array (skipping Sunrise)
+      let activeName = 'Fajr';
+      if (currentActiveIndex === 0) activeName = 'Fajr';
+      else if (currentActiveIndex === 1) activeName = 'Fajr'; // Sunrise time: Fajr is still active or past? Fajr
+      else if (currentActiveIndex === 2) activeName = 'Dhuhr';
+      else if (currentActiveIndex === 3) activeName = 'Asr';
+      else if (currentActiveIndex === 4) activeName = 'Maghrib';
+      else if (currentActiveIndex === 5) activeName = 'Isha';
+
+      // Update UI state classes
+      prayers.forEach(p => {
+        const pill = document.getElementById(`pill-${p}`);
+        const icon = document.getElementById(`icon-${p}`);
+        if (!pill || !icon) return;
+        
+        // Remove all state classes
+        pill.classList.remove('state-done', 'state-current', 'state-upcoming');
+        
+        if (prayersState[p] === true) {
+          // Completed
+          pill.classList.add('state-done');
+          icon.textContent = 'âœ“';
+        } else if (p === activeName) {
+          // Active & incomplete
+          pill.classList.add('state-current');
+          icon.textContent = 'â—';
+        } else {
+          // Future / upcoming & incomplete
+          pill.classList.add('state-upcoming');
+          icon.textContent = '—';
+        }
+      });
+      
+      // Update Prayers Progress Ring (circumference is 175.9)
+      let completedCount = 0;
+      prayers.forEach(p => { if (prayersState[p]) completedCount++; });
+      const percent = Math.round((completedCount / 5) * 100);
+      
+      document.getElementById('prayerPctVal').textContent = `${percent}%`;
+      const ring = document.getElementById('prayerProgressRing');
+      if (ring) {
+        const offset = 175.9 - (175.9 * percent) / 100;
+        ring.setAttribute('stroke-dashoffset', offset.toFixed(1));
+      }
+      
+      updateOverallScore();
+    }
+
+    // 8. WATER TRACKER INTERACTION
+    function renderWaterTracker() {
+      const container = document.getElementById('waterGrid');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      const isDay = (currentMode === 'day');
+      const filledStroke = isDay ? '#1565A0' : '#38BDF8';
+      const emptyStroke = isDay ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)';
+      const filledFill = isDay ? 'rgba(21,101,160,0.4)' : 'rgba(56,189,248,0.4)';
+      
+      for (let i = 0; i < maxGlasses; i++) {
+        const wrap = document.createElement('div');
+        wrap.className = 'glass-wrap';
+        
+        const isFilled = i < waterState;
+        const strokeColor = isFilled ? filledStroke : emptyStroke;
+        const fillColor = isFilled ? filledFill : 'none';
+        
+        // Custom SVG viewBox -1 -1 30 38, explicit overflow visible, path matches specifications
+        wrap.innerHTML = `
+          <svg viewBox="-1 -1 30 38" width="30" height="38" style="overflow:visible;">
+            <path d="M4 0 L24 0 L21 36 L7 36 Z" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2" stroke-linejoin="round" />
+          </svg>
+        `;
+        
+        wrap.onclick = () => {
+          if (waterState === i + 1) {
+            waterState = i; // Toggle off if clicking the last active
+          } else {
+            waterState = i + 1; // Set active level
+          }
+          
+          updateWaterUI();
+        };
+        
+        container.appendChild(wrap);
+      }
+    }
+
+    function updateWaterUI() {
+      // 10 glasses = 2.6L total, each is 0.26L
+      const currentLitres = (waterState * (waterGoal / maxGlasses)).toFixed(1);
+      const percent = (waterState / maxGlasses) * 100;
+      
+      document.getElementById('waterVolumeText').textContent = `${currentLitres} L / ${waterGoal} L goal`;
+      document.getElementById('waterProgressBar').style.width = `${percent}%`;
+      
+      // Update Water SVG Progress ring (circumference is 175.9)
+      const ring = document.getElementById('waterProgressRing');
+      if (ring) {
+        const offset = 175.9 - (175.9 * percent) / 100;
+        ring.setAttribute('stroke-dashoffset', offset.toFixed(1));
+      }
+      
+      document.getElementById('waterPctVal').textContent = `${percent}%`;
+      
+      // Refresh glasses strokes & fills
+      renderWaterTracker();
+      
+      updateOverallScore();
+    }
+
+    // 9. FAST CARD COUNTDOWN & HABITS FILE LOGGER
+    function startFastTimer() {
+      const timerEl = document.getElementById('fastTimer');
+      const progressRing = document.getElementById('fastProgressCircle');
+      
+      const interval = setInterval(() => {
+        if (fastSeconds <= 0) {
+          clearInterval(interval);
+          timerEl.textContent = "00:00:00";
+          if (progressRing) progressRing.setAttribute('stroke-dashoffset', '0');
+          return;
+        }
+        
+        fastSeconds--;
+        
+        // Format to hh:mm:ss
+        const h = String(Math.floor(fastSeconds / 3600)).padStart(2, '0');
+        const m = String(Math.floor((fastSeconds % 3600) / 60)).padStart(2, '0');
+        const s = String(fastSeconds % 60).padStart(2, '0');
+        timerEl.textContent = `${h}:${m}:${s}`;
+        
+        // Update circular arc progress (circumference is 138.2)
+        if (progressRing) {
+          // Elapsed percent
+          const elapsed = totalFastDuration - fastSeconds;
+          const pct = Math.max(0, Math.min(100, (elapsed / totalFastDuration) * 100));
+          const offset = 138.2 - (138.2 * pct) / 100;
+          progressRing.setAttribute('stroke-dashoffset', offset.toFixed(1));
+        }
+      }, 1000);
+    }
+
+    function logFast() {
+      if (fastLogged) return; // Prevent double-tap
+      fastLogged = true;
+      
+      // 1. Update button text & style
+      const btn = document.getElementById('logFastBtn');
+      btn.textContent = 'Fasting logged';
+      btn.style.color = 'var(--emerald)';
+      btn.style.cursor = 'default';
+      
+      // 2. Show "Logged âœ“" badge
+      document.getElementById('fastLoggedBadge').classList.remove('hidden');
+      
+      // 3. Show Toast "Fast logged to Habits" bottom center, emerald bg, 2.5s fade
+      showToast('Fast logged to Habits');
+      
+      // 4. Log to console: date string + file path: C:\Users\mraye\success\data\DD_Mon_YYYY.txt
+      const now = new Date();
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mon = months[now.getMonth()];
+      const yyyy = now.getFullYear();
+      const dateString = `${dd}_${mon}_${yyyy}`;
+      const filepath = `C:\\Users\\mraye\\success\\data\\${dateString}.txt`;
+      
+      console.log(`Fasting logged on ${now.toDateString()} to ${filepath}`);
+    }
+
+    function showToast(message) {
+      // Remove any existing toast
+      const oldToast = document.querySelector('.toast');
+      if (oldToast) oldToast.remove();
+      
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      // Triggers transition
+      setTimeout(() => {
+        toast.classList.add('show');
+      }, 10);
+      
+      // Hide and destroy after 2.5 seconds
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 2500);
+    }
+  </script>
+</body>
+</html>
