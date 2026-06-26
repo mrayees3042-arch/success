@@ -168,6 +168,8 @@ class WorkoutProgressSnapshot {
     required this.workoutName,
     required this.exercisesCompleted,
     required this.totalExercises,
+    this.setsCompleted = 0,
+    this.totalSets = 0,
     required this.completed,
     required this.inProgress,
     required this.dateKey,
@@ -178,6 +180,8 @@ class WorkoutProgressSnapshot {
       workoutName: json['workoutName'] as String? ?? 'Workout',
       exercisesCompleted: (json['exercisesCompleted'] as num?)?.toInt() ?? 0,
       totalExercises: (json['totalExercises'] as num?)?.toInt() ?? 0,
+      setsCompleted: (json['setsCompleted'] as num?)?.toInt() ?? 0,
+      totalSets: (json['totalSets'] as num?)?.toInt() ?? 0,
       completed: json['completed'] == true,
       inProgress: json['inProgress'] == true,
       dateKey: json['dateKey'] as String? ?? '',
@@ -187,6 +191,8 @@ class WorkoutProgressSnapshot {
   final String workoutName;
   final int exercisesCompleted;
   final int totalExercises;
+  final int setsCompleted;
+  final int totalSets;
   final bool completed;
   final bool inProgress;
   final String dateKey;
@@ -205,6 +211,8 @@ class WorkoutProgressSnapshot {
     'workoutName': workoutName,
     'exercisesCompleted': exercisesCompleted,
     'totalExercises': totalExercises,
+    'setsCompleted': setsCompleted,
+    'totalSets': totalSets,
     'completed': completed,
     'inProgress': inProgress,
     'dateKey': dateKey,
@@ -739,6 +747,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         workoutName: summary.workoutName,
         exercisesCompleted: summary.exercisesCompleted,
         totalExercises: summary.totalExercises,
+        setsCompleted: summary.setsCompleted,
+        totalSets: summary.totalSets,
         completed: true,
         inProgress: false,
         dateKey: dayKey(DateTime.now()),
@@ -757,16 +767,20 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         _today.tasks[workoutIndex] = isToday && progress.completed;
       }
       // Sync workout progress to DayRecord so Habits screen can read it
-      if (isToday && (progress.inProgress || progress.completed)) {
+      if (isToday) {
         final todayRecord = _recordFor(DateTime.now());
-        todayRecord.workoutSummary = WorkoutSummary(
-          workoutName: progress.workoutName,
-          exercisesCompleted: progress.exercisesCompleted,
-          totalExercises: progress.totalExercises,
-          setsCompleted: progress.exercisesCompleted,
-          totalSets: progress.totalExercises,
-          setsPerExercise: {},
-        );
+        if (progress.inProgress || progress.completed) {
+          todayRecord.workoutSummary = WorkoutSummary(
+            workoutName: progress.workoutName,
+            exercisesCompleted: progress.exercisesCompleted,
+            totalExercises: progress.totalExercises,
+            setsCompleted: progress.setsCompleted,
+            totalSets: progress.totalSets,
+            setsPerExercise: {},
+          );
+        } else {
+          todayRecord.workoutSummary = null;
+        }
       }
     });
     _saveHistory();
@@ -3557,20 +3571,23 @@ class _HabitsScreenState extends State<HabitsScreen> {
     // Fasting streak loop — only count explicitly logged fasts
     int streak = 0;
     final today = DateTime.now();
-    for (int i = 0; i < 30; i++) {
-      final d = today.subtract(Duration(days: i));
-      final dStr = dayKey(d);
-      final fVal = prefs.getString('fast_status_$dStr');
-      // Only count days where user explicitly logged a fast
-      if (fVal == 'fasting') {
-        streak++;
-      } else if (fVal != null) {
-        // Explicitly set to something other than 'fasting' (e.g. 'broke', 'none')
-        break;
-      } else {
-        // No explicit log for this day — skip it (don't break streak, don't count it)
-        // This allows non-consecutive fasting days to still form a streak
-        break;
+    final todayVal = prefs.getString('fast_status_${dayKey(today)}');
+    final startDayIndex = (todayVal == 'fasting') ? 0 : 1;
+
+    if (todayVal != null && todayVal != 'fasting') {
+      // If today is explicitly marked as non-fasting or broke, the streak is 0.
+      streak = 0;
+    } else {
+      for (int i = startDayIndex; i < 30; i++) {
+        final d = today.subtract(Duration(days: i));
+        final dStr = dayKey(d);
+        final fVal = prefs.getString('fast_status_$dStr');
+        if (fVal == 'fasting') {
+          streak++;
+        } else {
+          // Any unlogged or non-fasting day in the past breaks the consecutive streak
+          break;
+        }
       }
     }
 
@@ -5767,6 +5784,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       workoutName: day.title,
       exercisesCompleted: _dayCompletedExercises(day),
       totalExercises: day.exercises.length,
+      setsCompleted: _dayCompletedSets(day),
+      totalSets: _dayTotalSets(day),
       completed: completed,
       inProgress: !completed && _hasProgress(day),
       dateKey:
@@ -5788,6 +5807,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       final key = '${day.title}|${exercise[0]}';
       final state = _exerciseStates[key];
       return sum + (state?.completedSets ?? 0);
+    });
+  }
+
+  int _dayTotalSets(WorkoutDay day) {
+    return day.exercises.fold(0, (sum, exercise) {
+      final key = '${day.title}|${exercise[0]}';
+      final state = _exerciseStates[key];
+      return sum + (state?.totalSets ?? parseSets(exercise[1]));
     });
   }
 
