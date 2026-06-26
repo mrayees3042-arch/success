@@ -3487,7 +3487,11 @@ class HabitsScreen extends StatefulWidget {
 }
 
 class _HabitsScreenState extends State<HabitsScreen> {
-  final Map<String, bool> _islamicHabits = {};
+  DateTime _selectedDate = DateTime.now();
+  int _selectedWaterGlasses = 0;
+  String _selectedFastStatus = 'none';
+  int _fastingStreak = 0;
+  final Map<String, bool> _selectedIslamicHabits = {};
 
   static const _extraHabitNames = [
     "Quran 1 page",
@@ -3499,81 +3503,205 @@ class _HabitsScreenState extends State<HabitsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadHabits();
+    _loadDayData(_selectedDate);
   }
 
-  Future<void> _loadHabits() async {
+  Future<void> _loadDayData(DateTime date) async {
     final prefs = await SharedPreferences.getInstance();
-    final dateStr = dayKey(DateTime.now());
+    final dateStr = dayKey(date);
+
+    // 1. Load water glasses
+    int waterVal = 0;
+    try {
+      final MethodChannel channel = const MethodChannel('rayees.history/storage');
+      final raw = await channel.invokeMethod<String>('getString', 'water_$dateStr');
+      waterVal = int.tryParse(raw ?? '') ?? 0;
+    } catch (_) {}
+
+    // 2. Load fasting status & calculate streak
+    final fastVal = prefs.getString('fast_status_$dateStr');
+    final isSunnah = date.weekday == DateTime.monday || date.weekday == DateTime.thursday;
+    final fastStatus = fastVal ?? (isSunnah ? 'fasting' : 'none');
+
+    // Fasting streak loop
+    int streak = 0;
+    final today = DateTime.now();
+    for (int i = 0; i < 30; i++) {
+      final d = today.subtract(Duration(days: i));
+      final dStr = dayKey(d);
+      final fVal = prefs.getString('fast_status_$dStr');
+      final isS = d.weekday == DateTime.monday || d.weekday == DateTime.thursday;
+      final fStatus = fVal ?? (isS ? 'fasting' : 'none');
+      if (fStatus == 'fasting') {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    // 3. Load extra habits
+    final Map<String, bool> habits = {};
+    for (var name in _extraHabitNames) {
+      habits[name] = prefs.getBool('islamic_habit_${name}_$dateStr') ?? false;
+    }
+
     if (!mounted) return;
     setState(() {
-      for (var name in _extraHabitNames) {
-        _islamicHabits[name] =
-            prefs.getBool('islamic_habit_${name}_$dateStr') ?? false;
-      }
+      _selectedWaterGlasses = waterVal.clamp(0, 10);
+      _selectedFastStatus = fastStatus;
+      _fastingStreak = streak;
+      _selectedIslamicHabits.clear();
+      _selectedIslamicHabits.addAll(habits);
     });
   }
 
-  Future<void> _saveHabit(String name, bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    final dateStr = dayKey(DateTime.now());
-    await prefs.setBool('islamic_habit_${name}_$dateStr', value);
+  bool _isPrayerPassed(String prayer, DateTime selectedDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selDate = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    
+    if (selDate.isBefore(today)) {
+      return true;
+    }
+    if (selDate.isAfter(today)) {
+      return false;
+    }
+    
+    final time = _prayerTimes[prayer];
+    if (time == null) return false;
+    final prayerTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
+    );
+    return now.isAfter(prayerTime);
+  }
+
+  String _formatSelectedDate(DateTime date) {
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
+  }
+
+  void _confirmResetDay(BuildContext context, AppColors appColors) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: appColors.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: appColors.cardBorder, width: 0.5),
+          ),
+          title: Text(
+            'Reset Daily Data',
+            style: GoogleFonts.syne(
+              fontWeight: FontWeight.w800,
+              color: appColors.text1,
+            ),
+          ),
+          content: Text(
+            'Reset ALL data for ${_formatSelectedDate(_selectedDate)}?\n\nThis will clear:\n• Tasks\n• Prayers\n• Workout progress\n• Water intake\n• Income entries\n• Fasting log',
+            style: GoogleFonts.dmSans(
+              color: appColors.text2,
+              height: 1.5,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.dmSans(
+                  fontWeight: FontWeight.w600,
+                  color: appColors.text3,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                widget.onResetDay(_selectedDate);
+                await _loadDayData(_selectedDate);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: appColors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Reset',
+                style: GoogleFonts.dmSans(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
-    final history = widget.history;
-    final today = recordFor(history, DateTime.now());
+    final appColors = AppColors(theme);
+    final record = recordFor(widget.history, _selectedDate);
 
-    // Calculate stats
-    int streak = 0;
-    for (int i = 0; i < 30; i++) {
-      final d = DateTime.now().subtract(Duration(days: i));
-      final r = recordFor(history, d);
-      if (r.percent < 50) {
-        break;
+    // 1. Income Data
+    final earned = widget.incomeLog[dayKey(_selectedDate)] ?? 0;
+    final spent = widget.expenseLog[dayKey(_selectedDate)] ?? 0;
+    final netIncome = earned - spent;
+
+    // 2. Fasting status string for header
+    String fastingHeaderStatus = 'Not logged';
+    if (_selectedFastStatus == 'fasting') {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final selDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+      if (selDate.isBefore(today) || (selDate == today && now.hour >= 18 && now.minute >= 42)) {
+        fastingHeaderStatus = 'Logged';
+      } else {
+        fastingHeaderStatus = 'Fasting';
       }
-      streak++;
+    } else if (_selectedFastStatus == 'broke') {
+      fastingHeaderStatus = 'Broke';
     }
 
-    double totalPercent = 0;
-    int missed = 0;
-    for (int i = 0; i < 30; i++) {
-      final d = DateTime.now().subtract(Duration(days: i));
-      final r = recordFor(history, d);
-      totalPercent += r.percent;
-      if (r.percent == 0) {
-        missed++;
+    // 3. Fasting status for card value
+    String fastingCardStatus = '—';
+    if (_selectedFastStatus == 'fasting') {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final selDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+      if (selDate.isBefore(today) || (selDate == today && now.hour >= 18 && now.minute >= 42)) {
+        fastingCardStatus = 'Completed';
+      } else {
+        fastingCardStatus = 'Fasting';
       }
+    } else if (_selectedFastStatus == 'broke') {
+      fastingCardStatus = 'Broke';
     }
-    double avgPercent = totalPercent / 30;
 
-    final now = DateTime.now();
-    int monthEarned = 0;
-    int monthSpent = 0;
-    for (int i = 0; i < 30; i++) {
-      final d = now.subtract(Duration(days: i));
-      if (d.month == now.month && d.year == now.year) {
-        monthEarned += widget.incomeLog[dayKey(d)] ?? 0;
-        monthSpent += widget.expenseLog[dayKey(d)] ?? 0;
-      }
+    // 4. Workout Data
+    String workoutStatus = 'Not started';
+    String workoutName = 'No workout logged';
+    int workoutSetsCompleted = 0;
+    int workoutTotalSets = 0;
+    if (record.workoutSummary != null) {
+      final w = record.workoutSummary!;
+      workoutName = w.workoutName;
+      workoutSetsCompleted = w.setsCompleted;
+      workoutTotalSets = w.totalSets;
+      workoutStatus = w.setsCompleted == w.totalSets ? 'Completed' : 'In progress';
     }
-    int monthNet = monthEarned - monthSpent;
-    final monthName = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ][now.month - 1];
+
+    // 5. Water Data
+    final double waterVolume = (_selectedWaterGlasses * 260) / 1000;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -3585,6 +3713,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 1. HEADER
             Row(
               children: [
                 Expanded(
@@ -3592,850 +3721,638 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        // Use Syne
-                        '30 Day Monitor',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                          color: theme.text1,
+                        'MONITOR',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          letterSpacing: 3,
+                          fontWeight: FontWeight.w700,
+                          color: appColors.gold,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
-                        'Day-wise backup from Today screen',
+                        'Habits',
+                        style: GoogleFonts.syne(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: appColors.text1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_formatSelectedDate(_selectedDate)} · Daily Report',
                         style: GoogleFonts.dmSans(
-                          // Use DM Sans
-                          fontSize: 14,
-                          color: theme.text3,
+                          fontSize: 13,
+                          color: appColors.text3,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
-                IconButton.filledTonal(
+                // Print Button
+                IconButton(
                   onPressed: widget.onPrintPdf,
-                  icon: const Icon(Icons.print),
+                  icon: const Icon(Icons.print, size: 20),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(40, 40),
+                    backgroundColor: appColors.card,
+                    side: BorderSide(color: appColors.cardBorder, width: 0.5),
+                  ),
                   tooltip: 'Print PDF',
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.card, // Use cCard
-                border: Border.all(
-                  color: theme.isDark
-                      ? const Color(0x17FFFFFF)
-                      : Colors.grey.shade200,
-                  width: 0.5,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Today progress',
-                        style: TextStyle(
-                          fontSize: 16, // Use Syne
-                          fontWeight: FontWeight.w800,
-                          color: theme.text1,
-                        ),
-                      ),
-                      Text(
-                        '${today.percent}%',
-                        style: TextStyle(
-                          fontSize: 28, // Use Syne
-                          fontWeight: FontWeight.w800,
-                          color: kTeal,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: today.doneTotal / today.total,
-                      minHeight: 8,
-                      backgroundColor: const Color(0x10FFFFFF),
-                      valueColor: const AlwaysStoppedAnimation(
-                        cEmerald,
-                      ), // Use cEmerald
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _monitorStat(
-                        'Tasks',
-                        '${today.taskDone}/${kTodayTasks.length}', // Use cEmerald
-                        cEmerald,
-                      ),
-                      const SizedBox(width: 8),
-                      _monitorStat(
-                        'Prayers',
-                        '${today.prayerDone}/${kPrayerNames.length}',
-                        cGold, // Use cGold
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: theme.card, // Use cCard
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(color: theme.border, width: 0.5),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          '$streak',
-                          style: TextStyle(
-                            fontSize: 22, // Use Syne
-                            fontWeight: FontWeight.bold,
-                            color: kTeal,
-                          ),
-                        ),
-                        Text(
-                          'STREAK',
-                          style: TextStyle(fontSize: 13, color: theme.text4),
-                        ), // Use Syne
-                      ],
-                    ),
-                  ),
-                  Container(width: 1, height: 30, color: theme.border),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          '${avgPercent.round()}%',
-                          style: TextStyle(
-                            fontSize: 22, // Use Syne
-                            fontWeight: FontWeight.bold,
-                            color: kGold,
-                          ),
-                        ),
-                        Text(
-                          'AVG',
-                          style: TextStyle(fontSize: 13, color: theme.text4),
-                        ), // Use Syne
-                      ],
-                    ),
-                  ),
-                  Container(width: 1, height: 30, color: theme.border),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          '$missed',
-                          style: TextStyle(
-                            fontSize: 22, // Use Syne
-                            fontWeight: FontWeight.bold,
-                            color: kRed,
-                          ),
-                        ),
-                        Text(
-                          'MISSED',
-                          style: TextStyle(fontSize: 13, color: theme.text4),
-                        ), // Use Syne
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text(
-                  'Less',
-                  style: TextStyle(fontSize: 13, color: theme.text4),
-                ),
-                const SizedBox(width: 4), // Heatmap colors
-                for (final c
-                    in theme.isDark
-                        ? [
-                            const Color(0x33FFFFFF),
-                            const Color(0x55EF4444),
-                            const Color(0x88FB923C),
-                            const Color(0xAAF5C842),
-                            const Color(0xCC2EECC4),
-                          ]
-                        : [
-                            const Color(0xFFE0E0E0),
-                            const Color(0xFFFFCDD2),
-                            const Color(0xFFFF8A80),
-                            const Color(0xFFFBC02D),
-                            const Color(0xFF43A047), // Use cEmerald
-                          ])
-                  Container(
-                    width: 10,
-                    height: 10,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                const SizedBox(width: 8),
+                // Theme Toggle
+                GestureDetector(
+                  onTap: () {
+                    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+                    themeNotifier.toggle();
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: c,
-                      borderRadius: BorderRadius.circular(2),
+                      shape: BoxShape.circle,
+                      color: appColors.card,
+                      border: Border.all(color: appColors.cardBorder, width: 0.5),
                     ),
-                  ),
-                const SizedBox(width: 4),
-                Text(
-                  'More',
-                  style: TextStyle(fontSize: 13, color: theme.text4),
-                ),
-              ], // Use Syne
-            ),
-            const SizedBox(height: 6),
-            GridView.count(
-              crossAxisCount: 10,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              cacheExtent: 1000,
-              children: List.generate(30, (index) {
-                final date = DateTime.now().subtract(
-                  Duration(days: 29 - index),
-                );
-                final record = recordFor(history, date);
-                final percent = record.percent;
-                final isPast = date.isBefore(
-                  DateTime.now().copyWith(
-                    hour: 0,
-                    minute: 0,
-                    second: 0,
-                    microsecond: 0,
-                    millisecond: 0,
-                  ),
-                );
-                final isToday = dayKey(date) == dayKey(DateTime.now());
-                Color color;
-                if (theme.isDark) {
-                  if (percent >= 80) {
-                    color = cEmerald.withValues(alpha: 0.85); // Use cEmerald
-                  } else if (percent >= 60) {
-                    color = cGold.withValues(alpha: 0.75); // Use cGold
-                  } else if (percent >= 40) {
-                    color = cGold.withValues(alpha: 0.65); // Use cGold
-                  } else if (percent > 0) {
-                    color = cRose.withValues(alpha: 0.5); // Use cRose
-                  } else if (isPast) {
-                    color = cRose.withValues(alpha: 0.2); // Use cRose
-                  } else {
-                    color = cBg; // Use cBg
-                  }
-                } else {
-                  if (percent >= 80) {
-                    color = const Color(0xFF43A047);
-                  } else if (percent >= 60) {
-                    color = const Color(0xFFFBC02D);
-                  } else if (percent >= 40) {
-                    color = const Color(0xFFFF8A80);
-                  } else if (percent > 0) {
-                    color = const Color(0xFFFFCDD2);
-                  } else if (isPast) {
-                    color = const Color(0xFFE0E0E0);
-                  } else {
-                    color = const Color(0xFFF5F5F5);
-                  }
-                }
-                return Container(
-                  margin: const EdgeInsets.all(1),
-                  decoration: BoxDecoration(
-                    color: color,
-                    border: isToday
-                        ? Border.all(
-                            color: cText.withValues(alpha: 0.6), // Use cText
-                            width: 1.5,
-                          )
-                        : null,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                );
-              }),
-            ),
-            if (widget.lastPdfPath != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Last PDF: ${widget.lastPdfPath}',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: theme.text3,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${monthName.toUpperCase()} 30 DAY DATA',
-                  style: TextStyle(
-                    fontSize: 12, // Use Syne
-                    fontWeight: FontWeight.w800,
-                    color: theme.text4,
-                    letterSpacing: 2,
-                  ),
-                ),
-                Text(
-                  'Net Income: \u20B9$monthNet',
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: 13, // Use Syne
-                    fontWeight: FontWeight.w800,
-                    color: monthNet >= 0 ? kTeal : kRed,
-                    letterSpacing: 0.5,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Provider.of<ThemeNotifier>(context).isDark
+                          ? Icons.wb_sunny
+                          : Icons.nights_stay,
+                      size: 18,
+                      color: appColors.text1,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            ...List.generate(30, (index) {
-              final date = DateTime.now().subtract(Duration(days: index));
-              return DayHistoryCard(
-                theme: theme,
-                date: date,
-                record: recordFor(history, date),
-                income: widget.incomeLog[dayKey(date)] ?? 0,
-                expense: widget.expenseLog[dayKey(date)] ?? 0,
-                onSetIncome: widget.onSetIncome,
-                onSetExpense: widget.onSetExpense,
-                onResetDay: widget.onResetDay,
-              );
-            }),
+
+            // 2. RESET DAY BUTTON
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _confirmResetDay(context, appColors),
+                icon: Icon(Icons.refresh, size: 14, color: appColors.red),
+                label: Text(
+                  'Reset Day',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: appColors.red,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: appColors.red2,
+                  side: BorderSide(color: appColors.red, width: 0.5),
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 3. SCORE HERO CARD
             Container(
-              margin: const EdgeInsets.only(bottom: 14, top: 14),
-              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
               decoration: BoxDecoration(
-                color: theme.card, // Use cCard
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.border, width: 0.5),
+                color: appColors.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: appColors.cardBorder, width: 0.5),
+                boxShadow: appColors.shadow,
+                gradient: RadialGradient(
+                  center: Alignment.topRight,
+                  radius: 1.2,
+                  colors: [
+                    appColors.gold.withValues(alpha: 0.08),
+                    appColors.card,
+                  ],
+                ),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'EXTRA HABITS',
-                        style: TextStyle(
-                          fontSize: 11, // Use Syne
-                          color: theme.text4,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      Text(
-                        '${_islamicHabits.values.where((v) => v).length}/4 done',
-                        style: TextStyle(
-                          fontSize: 11, // Use Syne
-                          color: kGold,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    "TODAY'S SCORE",
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w700,
+                      color: appColors.text3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${record.percent}%',
+                    style: GoogleFonts.syne(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w800,
+                      color: appColors.emerald,
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  LinearProgressIndicator(
-                    value: _islamicHabits.values.where((v) => v).length / 4,
-                    backgroundColor: theme.border,
-                    valueColor: const AlwaysStoppedAnimation(
-                      cGold,
-                    ), // Use cGold
-                    minHeight: 3,
-                    borderRadius: BorderRadius.circular(99),
+                  Text(
+                    '${record.doneTotal} of ${record.total} completed',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: appColors.text2,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  ...[
-                    ["Quran 1 page", Icons.menu_book_outlined, kGold],
-                    ["Evening adhkar", Icons.favorite_outline, kTeal],
-                    [
-                      "No phone 1hr after Fajr",
-                      Icons.phone_disabled_outlined,
-                      kRed,
-                    ],
-                    ["Sleep before midnight", Icons.bedtime_outlined, kBlue],
-                  ].map((h) {
-                    final done = _islamicHabits[h[0]] ?? false;
-                    return GestureDetector(
-                      onTap: () => setState(() {
-                        final name = h[0] as String;
-                        final newVal = !(_islamicHabits[name] ?? false);
-                        _islamicHabits[name] = newVal;
-                        _saveHabit(name, newVal);
-                      }),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                  const SizedBox(height: 16),
+                  // Custom Progress Bar
+                  Stack(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        height: 6,
                         decoration: BoxDecoration(
-                          color:
-                              done // Use cCard
-                              ? (h[2] as Color).withValues(alpha: 0.1)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: done
-                                ? (h[2] as Color).withValues(alpha: 0.4)
-                                : theme.border,
-                            width: 0.5,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                color:
-                                    done // Use cCard
-                                    ? h[2] as Color
-                                    : Colors.transparent,
-                                border: Border.all(
-                                  color: done ? h[2] as Color : theme.text4,
-                                  width: 1.5,
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: done
-                                  ? const Icon(
-                                      Icons.check_circle,
-                                      size: 18,
-                                      color: Color(0xFF1D9E75),
-                                    )
-                                  : null,
-                            ),
-                            const SizedBox(width: 10),
-                            Icon(
-                              h[1] as IconData,
-                              size: 16,
-                              color: h[2] as Color,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              h[0] as String,
-                              style: TextStyle(
-                                fontSize: 13, // Use Syne
-                                fontWeight: FontWeight.w600,
-                                color: done ? theme.text3 : theme.text1,
-                                decoration: done
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                            ),
-                          ],
+                          color: appColors.track,
+                          borderRadius: BorderRadius.circular(3),
                         ),
                       ),
-                    );
-                  }),
+                      FractionallySizedBox(
+                        widthFactor: record.total == 0 ? 0.0 : (record.doneTotal / record.total).clamp(0.0, 1.0),
+                        child: Container(
+                          height: 6,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(3),
+                            gradient: LinearGradient(
+                              colors: [
+                                appColors.emerald,
+                                appColors.gold,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            _sunnahFastTrackerCard(theme),
+            const SizedBox(height: 16),
+
+            // 4. DAY STRIP
+            _buildDayStrip(appColors),
+            const SizedBox(height: 20),
+
+            // 5. PRAYERS MODULE
+            _buildSection(
+              title: 'Prayers',
+              rightText: "Prayers ${record.prayers.entries.where((e) => e.key != 'Tahajjud' && e.value == true).length}/6",
+              rightColor: appColors.emerald,
+              appColors: appColors,
+              child: Row(
+                children: [
+                  for (final prayer in ['Fajr', 'Dhuha', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'])
+                    _buildPrayerCard(prayer, record, appColors),
+                ],
+              ),
+            ),
+
+            // 6. TASKS MODULE
+            _buildSection(
+              title: 'Tasks',
+              rightText: 'Tasks ${record.taskDone}/${kTodayTasks.length}',
+              rightColor: appColors.emerald,
+              appColors: appColors,
+              child: kTodayTasks.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No tasks for today',
+                        style: GoogleFonts.dmSans(fontSize: 13, color: appColors.text3),
+                      ),
+                    )
+                  : Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(kTodayTasks.length, (i) {
+                        final task = kTodayTasks[i];
+                        final done = record.tasks[i] == true;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: done ? appColors.emerald.withValues(alpha: 0.08) : appColors.theme.isDark ? const Color(0x06FFFFFF) : appColors.theme.bg,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: done ? appColors.emerald.withValues(alpha: 0.4) : appColors.cardBorder,
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: done ? appColors.emerald : appColors.text3,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                task.title,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: done ? FontWeight.w600 : FontWeight.normal,
+                                  color: done ? appColors.text1 : appColors.text2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
+            ),
+
+            // 7. WORKOUT MODULE
+            _buildSection(
+              title: 'Workout',
+              rightText: workoutStatus,
+              rightColor: workoutStatus == 'Completed' ? appColors.emerald : appColors.gold,
+              appColors: appColors,
+              child: Row(
+                children: [
+                  // Progress Ring
+                  SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          value: workoutTotalSets == 0 ? 0.0 : (workoutSetsCompleted / workoutTotalSets).clamp(0.0, 1.0),
+                          strokeWidth: 4,
+                          backgroundColor: appColors.track,
+                          valueColor: AlwaysStoppedAnimation<Color>(theme.teal),
+                        ),
+                        Text(
+                          workoutTotalSets == 0 ? '0%' : '${(workoutSetsCompleted / workoutTotalSets * 100).round()}%',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: appColors.text1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Workout details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          workoutName,
+                          style: GoogleFonts.syne(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: appColors.text1,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$workoutSetsCompleted of $workoutTotalSets sets completed',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: appColors.text2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 8. INCOME MODULE
+            _buildSection(
+              title: 'Income',
+              rightText: 'Net: ${netIncome >= 0 ? '+' : ''}₹$netIncome',
+              rightColor: netIncome >= 0 ? appColors.emerald : appColors.red,
+              appColors: appColors,
+              child: Row(
+                children: [
+                  _buildMiniCard(
+                    label: 'Earned',
+                    value: '₹$earned',
+                    valueColor: appColors.emerald,
+                    appColors: appColors,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildMiniCard(
+                    label: 'Spent',
+                    value: '₹$spent',
+                    valueColor: appColors.red,
+                    appColors: appColors,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildMiniCard(
+                    label: 'Net',
+                    value: '${netIncome >= 0 ? '+' : ''}₹$netIncome',
+                    valueColor: appColors.gold,
+                    appColors: appColors,
+                  ),
+                ],
+              ),
+            ),
+
+            // 9. WATER MODULE
+            _buildSection(
+              title: 'Water',
+              rightText: '${waterVolume.toStringAsFixed(1)} / 2.6 L',
+              rightColor: theme.blue,
+              appColors: appColors,
+              child: Row(
+                children: [
+                  _buildMiniCard(
+                    label: 'Glasses',
+                    value: '$_selectedWaterGlasses/10',
+                    valueColor: theme.blue,
+                    appColors: appColors,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildMiniCard(
+                    label: 'Progress',
+                    value: '${(_selectedWaterGlasses / 10 * 100).round()}%',
+                    valueColor: appColors.text1,
+                    appColors: appColors,
+                  ),
+                ],
+              ),
+            ),
+
+            // 10. FASTING MODULE
+            _buildSection(
+              title: 'Fasting',
+              rightText: fastingHeaderStatus,
+              rightColor: fastingHeaderStatus == 'Logged' ? appColors.emerald : appColors.gold,
+              appColors: appColors,
+              child: Row(
+                children: [
+                  _buildMiniCard(
+                    label: 'Status',
+                    value: fastingCardStatus,
+                    valueColor: fastingCardStatus == 'Completed' ? appColors.emerald : appColors.gold,
+                    appColors: appColors,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildMiniCard(
+                    label: 'Streak',
+                    value: '$_fastingStreak days',
+                    valueColor: appColors.gold,
+                    appColors: appColors,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _sunnahFastTrackerCard(ThemeColors theme) {
-    return Container(
-      margin: const EdgeInsets.only(top: 8, bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFC8C2B8)),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Sunnah Fast Tracker',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
-                ),
+  Widget _buildSection({
+    required String title,
+    String? rightText,
+    Color? rightColor,
+    required Widget child,
+    required AppColors appColors,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title.toUpperCase(),
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                letterSpacing: 2,
+                fontWeight: FontWeight.w700,
+                color: appColors.text3,
               ),
+            ),
+            if (rightText != null)
               Text(
-                'Week 22',
-                style: TextStyle(
-                  fontSize: 10,
+                rightText,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF7A5C00),
+                  color: rightColor ?? appColors.text2,
                 ),
               ),
-            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: appColors.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: appColors.cardBorder, width: 0.5),
+            boxShadow: appColors.shadow,
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8E7),
-                    border: Border.all(
-                      color: const Color(0xFFC89A2E),
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: const Column(
-                    children: [
-                      Text(
-                        'MONDAY',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF7A5C00),
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Icon(
-                        Icons.nightlight_round,
-                        color: Color(0xFF7A5C00),
-                        size: 24,
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'FASTED',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF7A5C00),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F6F2),
-                    border: Border.all(
-                      color: const Color(0xFFC8C2B8),
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: const Column(
-                    children: [
-                      Text(
-                        'THURSDAY',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF4A4A4A),
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Icon(
-                        Icons.radio_button_unchecked,
-                        color: Color(0xFF4A4A4A),
-                        size: 24,
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'UPCOMING',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF4A4A4A),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'This month',
-                style: TextStyle(fontSize: 11, color: Color(0xFF4A4A4A)),
-              ),
-              Text(
-                '6 / 8 Sunnah days fasted',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF085041),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: const LinearProgressIndicator(
-              value: 6 / 8,
-              backgroundColor: Color(0xFFE8E3DA),
-              color: Color(0xFF085041),
-              minHeight: 5,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE1F5EE),
-              border: Border.all(color: const Color(0xFF85C4B5)),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Current streak',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF085041),
-                  ),
-                ),
-                Text(
-                  '12 weeks',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF085041),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _monthlyFastingHeatmap(),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E7),
-              border: Border.all(color: const Color(0xFFC89A2E)),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Text(
-              '"Deeds are presented to Allah on Monday and Thursday - I love for my deeds to be presented while I am fasting." - Prophet',
-              style: TextStyle(
-                fontSize: 10,
-                color: Color(0xFF7A5C00),
-                fontStyle: FontStyle.italic,
-                height: 1.6,
-              ),
-            ),
-          ),
-        ],
-      ),
+          child: child,
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 
-  Widget _monthlyFastingHeatmap() {
-    final now = DateTime.now();
-    final firstDay = DateTime(now.year, now.month);
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final leadingBlanks = firstDay.weekday - DateTime.monday;
-    final totalCells = leadingBlanks + daysInMonth;
-    final rowCount = (totalCells / 7).ceil();
-    final cellCount = rowCount * 7;
-
-    Color cellColor(DateTime? date) {
-      if (date == null) return Colors.transparent;
-      if (date.isAfter(DateTime(now.year, now.month, now.day))) {
-        return Colors.transparent;
-      }
-      final sunnahDay =
-          date.weekday == DateTime.monday || date.weekday == DateTime.thursday;
-      if (sunnahDay) return const Color(0xFFC89A2E);
-      final fasted = date.day % 3 != 0;
-      return fasted ? const Color(0xFF085041) : const Color(0xFFE8E3DA);
-    }
-
-    Widget legendDot(Color color, String label) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 9, color: Color(0xFF4A4A4A)),
-          ),
-        ],
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F6F2),
-        border: Border.all(color: const Color(0xFFC8C2B8)),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'MONTHLY FASTING',
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.4,
-              color: Color(0xFF4A4A4A),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              for (final day in [
-                'Mon',
-                'Tue',
-                'Wed',
-                'Thu',
-                'Fri',
-                'Sat',
-                'Sun',
-              ])
-                Expanded(
-                  child: Text(
-                    day,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF4A4A4A),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            itemCount: cellCount,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisSpacing: 5,
-              crossAxisSpacing: 5,
-            ),
-            itemBuilder: (context, index) {
-              final dayNumber = index - leadingBlanks + 1;
-              final hasDate = dayNumber >= 1 && dayNumber <= daysInMonth;
-              final date = hasDate
-                  ? DateTime(now.year, now.month, dayNumber)
-                  : null;
-              final isToday =
-                  date != null &&
-                  date.year == now.year &&
-                  date.month == now.month &&
-                  date.day == now.day;
-              final isFuture =
-                  date != null &&
-                  date.isAfter(DateTime(now.year, now.month, now.day));
-
-              return Opacity(
-                opacity: isFuture ? 0.3 : 1,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: cellColor(date),
-                    borderRadius: BorderRadius.circular(5),
-                    border: isToday
-                        ? Border.all(color: const Color(0xFFC89A2E), width: 2)
-                        : null,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 10,
-            runSpacing: 6,
-            children: [
-              legendDot(const Color(0xFF085041), 'Fasted'),
-              legendDot(const Color(0xFFC89A2E), 'Mon/Thu Sunnah'),
-              legendDot(const Color(0xFFE8E3DA), 'Skipped'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _monitorStat(String label, String value, Color color) {
-    final theme = widget.theme;
+  Widget _buildMiniCard({
+    required String label,
+    required String value,
+    required Color valueColor,
+    required AppColors appColors,
+  }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          // Use cCard
-          color: theme.card,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: theme.isDark
-                ? const Color(0x17FFFFFF)
-                : Colors.grey.shade200,
-            width: 0.5,
-          ),
+          color: appColors.theme.isDark ? const Color(0x06FFFFFF) : appColors.theme.bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: appColors.cardBorder, width: 0.5),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label.toUpperCase(),
-              style: TextStyle(
-                fontSize: 12, // Use Syne
-                color: theme.text4,
-                fontWeight: FontWeight.w800,
+              style: GoogleFonts.dmSans(
+                fontSize: 9,
                 letterSpacing: 1,
+                fontWeight: FontWeight.w600,
+                color: appColors.text3,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
               value,
-              style: TextStyle(
-                fontSize: 13, // Use Syne
-                color: color,
-                fontWeight: FontWeight.w800,
+              style: GoogleFonts.syne(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: valueColor,
               ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
     );
   }
-}
 
+  Widget _buildPrayerCard(String name, DayRecord record, AppColors appColors) {
+    final done = record.prayers[name] == true;
+    final missed = !done && _isPrayerPassed(name, _selectedDate);
+    
+    Color bgColor;
+    Color borderColor;
+    Color textColor;
+    Widget statusIcon;
+    
+    final times = {
+      'Fajr': '05:12',
+      'Dhuha': '06:22',
+      'Dhuhr': '12:14',
+      'Asr': '15:41',
+      'Maghrib': '18:42',
+      'Isha': '20:00',
+    };
+    final timeStr = times[name] ?? '00:00';
+    
+    if (done) {
+      bgColor = appColors.emerald2;
+      borderColor = appColors.emerald.withValues(alpha: 0.5);
+      textColor = appColors.emerald;
+      statusIcon = Icon(Icons.check_circle_outline, size: 14, color: appColors.emerald);
+    } else if (missed) {
+      bgColor = appColors.red2;
+      borderColor = appColors.red.withValues(alpha: 0.5);
+      textColor = appColors.red;
+      statusIcon = Icon(Icons.close_rounded, size: 14, color: appColors.red);
+    } else {
+      bgColor = appColors.theme.isDark ? const Color(0x06FFFFFF) : appColors.theme.bg;
+      borderColor = appColors.cardBorder;
+      textColor = appColors.text3;
+      statusIcon = Text(timeStr, style: GoogleFonts.dmSans(fontSize: 9, color: appColors.text3));
+    }
+    
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 0.5),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              name,
+              style: GoogleFonts.dmSans(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            statusIcon,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDayStrip(AppColors appColors) {
+    final today = DateTime.now();
+    final days = List.generate(7, (i) => DateTime(today.year, today.month, today.day).subtract(Duration(days: 6 - i)));
+
+    return SizedBox(
+      height: 90,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 7,
+        physics: const BouncingScrollPhysics(),
+        itemBuilder: (context, index) {
+          final date = days[index];
+          final isSelected = dayKey(date) == dayKey(_selectedDate);
+          final record = recordFor(widget.history, date);
+          final percent = record.percent;
+          
+          final shortDayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1];
+          final dayNumber = date.day.toString();
+          
+          final scoreColor = percent >= 50 ? appColors.emerald : appColors.red;
+          
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedDate = date;
+              });
+              _loadDayData(date);
+            },
+            child: Container(
+              width: 50,
+              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected ? appColors.card : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? appColors.gold : appColors.cardBorder,
+                  width: isSelected ? 1.5 : 0.5,
+                ),
+                boxShadow: isSelected ? appColors.shadow : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    shortDayName,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                      color: appColors.text3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dayNumber,
+                    style: GoogleFonts.syne(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected ? appColors.text1 : appColors.text2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$percent%',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: scoreColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 class FastingStatusChip extends StatelessWidget {
   final DateTime date;
   final ThemeColors theme;
