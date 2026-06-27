@@ -1,39 +1,63 @@
 import 'package:audioplayers/audioplayers.dart';
 
 class AudioService {
-  static Future<void> _play(String assetPath) async {
+  // Pre-initialize static player instances for instant playback without creation lag
+  static final AudioPlayer _launchPlayer = AudioPlayer();
+  static final AudioPlayer _habitPlayer = AudioPlayer();
+  static final AudioPlayer _melodyPlayer = AudioPlayer();
+  static final AudioPlayer _workoutPlayer = AudioPlayer();
+  static final AudioPlayer _incomePlayer = AudioPlayer();
+
+  static void init() {
     try {
-      final player = AudioPlayer();
-      await player.setVolume(0.25); // Subtle, low volume
-      await player.play(AssetSource(assetPath));
-      // Dispose the player once the sound is finished to avoid memory leaks
-      player.onPlayerComplete.listen((_) {
-        player.dispose();
-      });
+      // Warm up volumes beforehand
+      _launchPlayer.setVolume(0.25);
+      _habitPlayer.setVolume(0.25);
+      _melodyPlayer.setVolume(0.25);
+      _workoutPlayer.setVolume(0.25);
+      _incomePlayer.setVolume(0.25);
     } catch (_) {}
   }
 
   static Future<void> playLaunch() async {
-    await _play('sounds/chime.mp3');
+    try {
+      await _launchPlayer.stop();
+      await _launchPlayer.play(AssetSource('sounds/chime.mp3'));
+    } catch (_) {}
   }
 
   static Future<void> playHabitComplete() async {
-    await _play('sounds/pop.mp3');
+    try {
+      await _habitPlayer.stop();
+      await _habitPlayer.play(AssetSource('sounds/pop.mp3'));
+    } catch (_) {}
   }
 
   static Future<void> playAllHabitsDone() async {
-    await _play('sounds/melody.mp3');
+    try {
+      await _melodyPlayer.stop();
+      await _melodyPlayer.play(AssetSource('sounds/melody.mp3'));
+    } catch (_) {}
   }
 
   static Future<void> playWorkoutSetComplete() async {
-    await _play('sounds/beep.mp3');
+    try {
+      await _workoutPlayer.stop();
+      await _workoutPlayer.play(AssetSource('sounds/beep.mp3'));
+    } catch (_) {}
   }
 
   static Future<void> playRestTimerEnd() async {
-    await _play('sounds/chime.mp3');
+    try {
+      await _launchPlayer.stop();
+      await _launchPlayer.play(AssetSource('sounds/chime.mp3'));
+    } catch (_) {}
   }
 
   static Future<void> playIncomeLogged() async {
-    await _play('sounds/coin.mp3');
+    try {
+      await _incomePlayer.stop();
+      await _incomePlayer.play(AssetSource('sounds/coin.mp3'));
+    } catch (_) {}
   }
 }

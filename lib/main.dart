@@ -18,6 +18,7 @@ import 'package:success/services/audio_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  AudioService.init();
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),

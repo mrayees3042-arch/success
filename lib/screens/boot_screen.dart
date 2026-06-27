@@ -18,6 +18,8 @@ class BootScreen extends StatefulWidget {
 class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
   late AnimationController _rotationController;
   late AnimationController _shineController;
+  late AnimationController _ringController;
+  late AnimationController _orbitController;
   late AnimationController _sequenceController;
 
   // Animations driven by sequence controller
@@ -38,113 +40,122 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // 1. App Launch sound
+    // 1. App Launch sound (Triggered instantly since native player is pre-warmed)
     AudioService.playLaunch();
 
-    // 2. Infinite rotation for the star (20s per revolution)
+    // 2. Infinite rotation for the star (15s per revolution to match CSS)
     _rotationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 20),
+      duration: const Duration(seconds: 15),
     )..repeat();
 
-    // 3. Infinite shine sweep (3s ease-in-out alternate)
+    // 3. Infinite shine sweep (2.5s ease-in-out alternate to match CSS)
     _shineController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(milliseconds: 2500),
     )..repeat(reverse: true);
 
-    // 4. Main 8-second sequence controller
+    // 4. Infinite ring breathe (3s ease-in-out to match CSS)
+    _ringController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+
+    // 5. Infinite orbit rotation (8s linear spin to match CSS)
+    _orbitController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
+
+    // 6. Main 8-second sequence controller
     _sequenceController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 8),
     );
 
-    // Star Fly-in: from 0.2s to 1.0s (duration 0.8s)
-    // Custom cubic-bezier(.23,1,.32,1) curve matches Curves.easeOutQuart closely
+    // Star Fly-in: scale from 0.4 + rotate -120 deg (to match CSS)
     const starCurve = Cubic(0.23, 1.0, 0.32, 1.0);
-    _starScale = Tween<double>(begin: 0.3, end: 1.0).animate(
+    _starScale = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
         curve: const Interval(0.2 / 8.0, 1.0 / 8.0, curve: starCurve),
       ),
     );
-    _starRotate = Tween<double>(begin: -math.pi / 2, end: 0.0).animate(
+    _starRotate = Tween<double>(begin: -120 * math.pi / 180, end: 0.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
         curve: const Interval(0.2 / 8.0, 1.0 / 8.0, curve: starCurve),
       ),
     );
 
-    // Fade-up timings
-    // Arabic "مُتَّقِين" fade-up: 1.6s
+    // Fade-up timings (to match CSS delays)
     _arabicFadeUp = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 1.6 / 8.0, curve: Curves.easeOut),
+        curve: const Interval(0.0, 1.4 / 8.0, curve: Curves.easeOut),
       ),
     );
     _arabicSlideUp = Tween<double>(begin: 15.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 1.6 / 8.0, curve: Curves.easeOut),
+        curve: const Interval(0.0, 1.4 / 8.0, curve: Curves.easeOut),
       ),
     );
 
-    // "MUTTAQIN" fade-up: 1.8s
     _englishFadeUp = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 1.8 / 8.0, curve: Curves.easeOut),
+        curve: const Interval(0.0, 1.4 / 8.0, curve: Curves.easeOut),
       ),
     );
-    _englishSlideUp = Tween<double>(begin: 12.0, end: 0.0).animate(
+    _englishSlideUp = Tween<double>(begin: 15.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 1.8 / 8.0, curve: Curves.easeOut),
+        curve: const Interval(0.0, 1.4 / 8.0, curve: Curves.easeOut),
       ),
     );
 
-    // "Built for" + "RAYEES" fade-up: 2.2s
+    // "Built for" + "RAYEES" fade-up: 2.0s
     _builtForFadeUp = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 2.2 / 8.0, curve: Curves.easeOut),
+        curve: const Interval(0.0, 2.0 / 8.0, curve: Curves.easeOut),
       ),
     );
-    _builtForSlideUp = Tween<double>(begin: 10.0, end: 0.0).animate(
+    _builtForSlideUp = Tween<double>(begin: 8.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 2.2 / 8.0, curve: Curves.easeOut),
+        curve: const Interval(0.0, 2.0 / 8.0, curve: Curves.easeOut),
       ),
     );
 
-    // Tagline fade-up: 2.8s
+    // Tagline fade-up: 2.6s
     _taglineFadeUp = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 2.8 / 8.0, curve: Curves.easeOut),
+        curve: const Interval(0.0, 2.6 / 8.0, curve: Curves.easeOut),
       ),
     );
     _taglineSlideUp = Tween<double>(begin: 10.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 2.8 / 8.0, curve: Curves.easeOut),
+        curve: const Interval(0.0, 2.6 / 8.0, curve: Curves.easeOut),
       ),
     );
 
-    // Progress bar fade-in: 3.0s
+    // Progress bar fade-in: 2.8s
     _progressBarFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 3.0 / 8.0, curve: Curves.easeIn),
+        curve: const Interval(0.0, 2.8 / 8.0, curve: Curves.easeIn),
       ),
     );
 
-    // Progress bar fill: 0 -> 100% over 4.8s starting at 3.2s (ends at 8.0s)
+    // Progress bar fill: 0 -> 100% over 5s starting at 3.0s (ends at 8.0s)
     _progressBarFill = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(3.2 / 8.0, 8.0 / 8.0, curve: Curves.easeInOut),
+        curve: const Interval(3.0 / 8.0, 8.0 / 8.0, curve: Curves.easeInOut),
       ),
     );
 
@@ -171,6 +182,8 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
   void dispose() {
     _rotationController.dispose();
     _shineController.dispose();
+    _ringController.dispose();
+    _orbitController.dispose();
     _sequenceController.dispose();
     super.dispose();
   }
@@ -182,9 +195,10 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
     
     // Background color: #06060F dark or #F5F0E8 in light mode
     final bgColor = isDark ? const Color(0xFF06060F) : const Color(0xFFF5F0E8);
-    final goldColor = isDark ? const Color(0xFFE8B84B) : const Color(0xFFB8860B);
-    final text3Color = isDark ? const Color(0x8CFFFFFF) : const Color(0x80000000);
-    final text4Color = isDark ? const Color(0x4DFFFFFF) : const Color(0x4D000000);
+    final goldColor = isDark ? const Color(0xFFE8B84B) : const Color(0xFFA0720A);
+    final text3Color = isDark ? const Color(0x33FFFFFF) : const Color(0x26000000); // Built for label opacity
+    final text4Color = isDark ? const Color(0x80FFFFFF) : const Color(0x66000000); // Rayees name opacity
+    final tagColor = isDark ? const Color(0x38FFFFFF) : const Color(0x38000000);
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -196,45 +210,63 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Star with Fly-in and Rotation animations
-                  AnimatedBuilder(
-                    animation: Listenable.merge([
-                      _sequenceController,
-                      _rotationController,
-                      _shineController,
-                    ]),
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _starScale.value,
-                        child: Transform.rotate(
-                          angle: _starRotate.value + (_rotationController.value * 2 * math.pi),
-                          child: SizedBox(
-                            width: 160,
-                            height: 160,
-                            child: CustomPaint(
-                              painter: StarPainter(
-                                isDark: isDark,
-                                shineProgress: _shineController.value,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  
-                  // Sparkles overlay around the star
+                  // Perfect Ninja Star wrapper
                   SizedBox(
-                    width: 240,
-                    height: 160,
+                    width: 200,
+                    height: 200,
                     child: Stack(
+                      alignment: Alignment.center,
                       clipBehavior: Clip.none,
                       children: [
-                        // Staggered sparkles (delays: 2.0s, 2.4s, 2.8s, 3.2s)
-                        SparkleWidget(angle: -math.pi / 4, delay: const Duration(milliseconds: 2000)),
-                        SparkleWidget(angle: math.pi / 4, delay: const Duration(milliseconds: 2400)),
-                        SparkleWidget(angle: 3 * math.pi / 4, delay: const Duration(milliseconds: 2800)),
-                        SparkleWidget(angle: -3 * math.pi / 4, delay: const Duration(milliseconds: 3200)),
+                        // Star, Inner Blade, Rings, and Hub
+                        AnimatedBuilder(
+                          animation: Listenable.merge([
+                            _sequenceController,
+                            _rotationController,
+                            _shineController,
+                            _ringController,
+                          ]),
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _starScale.value,
+                              child: Transform.rotate(
+                                angle: _starRotate.value + (_rotationController.value * 2 * math.pi),
+                                child: SizedBox(
+                                  width: 140,
+                                  height: 140,
+                                  child: CustomPaint(
+                                    painter: StarPainter(
+                                      isDark: isDark,
+                                      shineProgress: _shineController.value,
+                                      ringProgress: _ringController.value,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // Orbiting Sparkles
+                        AnimatedBuilder(
+                          animation: _orbitController,
+                          builder: (context, child) {
+                            return Transform.rotate(
+                              angle: _orbitController.value * 2 * math.pi,
+                              child: const SizedBox(
+                                width: 200,
+                                height: 200,
+                                child: Stack(
+                                  children: [
+                                    OrbitSparkle(dx: 0, dy: -100, delay: Duration(milliseconds: 2000)),
+                                    OrbitSparkle(dx: 100, dy: 0, delay: Duration(milliseconds: 2500)),
+                                    OrbitSparkle(dx: 0, dy: 100, delay: Duration(milliseconds: 3000)),
+                                    OrbitSparkle(dx: -100, dy: 0, delay: Duration(milliseconds: 3500)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
@@ -252,7 +284,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                           child: Text(
                             "مُتَّقِين",
                             style: GoogleFonts.amiri(
-                              fontSize: 34,
+                              fontSize: 32,
                               fontWeight: FontWeight.bold,
                               color: goldColor,
                               letterSpacing: 2,
@@ -263,9 +295,9 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                     },
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
-                  // English Text: "MUTTAQIN"
+                  // English Text: "Muttaqin"
                   AnimatedBuilder(
                     animation: _sequenceController,
                     builder: (context, child) {
@@ -274,7 +306,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                         child: Transform.translate(
                           offset: Offset(0, _englishSlideUp.value),
                           child: Text(
-                            "MUTTAQIN",
+                            "Muttaqin",
                             style: GoogleFonts.syne(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -287,7 +319,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                     },
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
 
                   // Built For & RAYEES
                   AnimatedBuilder(
@@ -308,14 +340,14 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                                   letterSpacing: 3,
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 3),
                               Text(
                                 "RAYEES",
                                 style: GoogleFonts.syne(
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: text3Color,
-                                  letterSpacing: 5,
+                                  color: text4Color,
+                                  letterSpacing: 6,
                                 ),
                               ),
                             ],
@@ -325,7 +357,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                     },
                   ),
 
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 48),
 
                   // Progress Bar
                   AnimatedBuilder(
@@ -334,13 +366,13 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                       return Opacity(
                         opacity: _progressBarFade.value,
                         child: Container(
-                          width: 90,
-                          height: 2,
+                          width: 100,
+                          height: 3,
                           decoration: BoxDecoration(
                             color: isDark 
                                 ? Colors.white.withValues(alpha: 0.06) 
-                                : Colors.black.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(1),
+                                : Colors.black.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(2),
                           ),
                           alignment: Alignment.centerLeft,
                           child: FractionallySizedBox(
@@ -353,7 +385,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                                     isDark ? const Color(0xFF00C896) : const Color(0xFF0A7A5A),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(1),
+                                borderRadius: BorderRadius.circular(2),
                               ),
                             ),
                           ),
@@ -367,7 +399,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
 
             // Tagline at bottom
             Positioned(
-              bottom: 40,
+              bottom: 90,
               left: 0,
               right: 0,
               child: AnimatedBuilder(
@@ -383,7 +415,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                         style: GoogleFonts.dmSans(
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
-                          color: text4Color,
+                          color: tagColor,
                         ),
                       ),
                     ),
@@ -398,145 +430,163 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
   }
 }
 
-// 8-Point Star Painter
+// Custom Painter for perfect 8-point star and outer breathing rings
 class StarPainter extends CustomPainter {
-  StarPainter({required this.isDark, required this.shineProgress});
+  StarPainter({required this.isDark, required this.shineProgress, required this.ringProgress});
 
   final bool isDark;
   final double shineProgress;
+  final double ringProgress;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final outerR = size.width / 2; // Outer radius (80px)
-    final innerR = outerR * 0.42;       // Inner radius (valley depth)
-    final outerRInner = outerR * 0.6;   // Inner star outer radius
-    final innerRInner = outerRInner * 0.42;
+    final scale = size.width / 140.0; // Scale relative to 140px viewport
 
-    // Define main linear gradient for stainless steel
-    final Paint outerLightPaint = Paint();
-    final Paint outerDarkPaint = Paint();
-    
-    final Paint innerLightPaint = Paint();
-    final Paint innerDarkPaint = Paint();
+    final ringColor = isDark ? const Color(0xFFE8B84B) : const Color(0xFFA0720A);
 
-    // Dark / Light palettes for the steel gradient
-    if (isDark) {
-      outerLightPaint.shader = ui.Gradient.linear(
-        Offset(-outerR, -outerR),
-        Offset(outerR, outerR),
-        [const Color(0xFF5E5E6E), const Color(0xFF454552)],
-      );
-      outerDarkPaint.shader = ui.Gradient.linear(
-        Offset(-outerR, -outerR),
-        Offset(outerR, outerR),
-        [const Color(0xFF1E1E28), const Color(0xFF16161D)],
-      );
-      
-      innerLightPaint.shader = ui.Gradient.linear(
-        Offset(-outerR, -outerR),
-        Offset(outerR, outerR),
-        [const Color(0xFFE8B84B), const Color(0xFFB8860B)], // Inner star has gold tint
-      );
-      innerDarkPaint.shader = ui.Gradient.linear(
-        Offset(-outerR, -outerR),
-        Offset(outerR, outerR),
-        [const Color(0xFFB8860B), const Color(0xFF8A6D0A)],
-      );
-    } else {
-      // Day palette
-      outerLightPaint.shader = ui.Gradient.linear(
-        Offset(-outerR, -outerR),
-        Offset(outerR, outerR),
-        [const Color(0xFFEFEFFA), const Color(0xFFD3D3D8)],
-      );
-      outerDarkPaint.shader = ui.Gradient.linear(
-        Offset(-outerR, -outerR),
-        Offset(outerR, outerR),
-        [const Color(0xFFB8B8C8), const Color(0xFF9E9EAE)],
-      );
-      
-      innerLightPaint.shader = ui.Gradient.linear(
-        Offset(-outerR, -outerR),
-        Offset(outerR, outerR),
-        [const Color(0xFFB8860B), const Color(0xFFE8B84B)],
-      );
-      innerDarkPaint.shader = ui.Gradient.linear(
-        Offset(-outerR, -outerR),
-        Offset(outerR, outerR),
-        [const Color(0xFF8A6D0A), const Color(0xFF5A4905)],
-      );
-    }
+    // 1. Draw Ring 1 (inset -20px on 140px box, base radius = 70 + 20 = 90px)
+    final t1 = ringProgress;
+    final w1 = 0.5 - 0.5 * math.cos(t1 * 2 * math.pi);
+    final scale1 = 1.0 + 0.08 * w1;
+    final opacity1 = (1.0 - 0.4 * w1) * 0.08;
+    final paintRing1 = Paint()
+      ..color = ringColor.withValues(alpha: opacity1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0 * scale;
+    canvas.drawCircle(center, 90 * scale * scale1, paintRing1);
 
-    // Save layer to apply shine clipping
+    // 2. Draw Ring 2 (inset -10px, base radius = 70 + 10 = 80px)
+    final t2 = (ringProgress + 0.1667) % 1.0;
+    final w2 = 0.5 - 0.5 * math.cos(t2 * 2 * math.pi);
+    final scale2 = 1.0 + 0.08 * w2;
+    final opacity2 = (1.0 - 0.4 * w2) * 0.12;
+    final paintRing2 = Paint()
+      ..color = ringColor.withValues(alpha: opacity2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0 * scale;
+    canvas.drawCircle(center, 80 * scale * scale2, paintRing2);
+
+    // Save layer to clip Gloss Shine overlay
     canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
 
-    // 1. Draw Outer Star
-    for (int k = 0; k < 8; k++) {
-      final double theta = k * math.pi / 4;
-      final double phiPrev = theta - math.pi / 8;
-      final double phiNext = theta + math.pi / 8;
+    // Steel gradient linear (0,0) to (140, 140)
+    final outerBladePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = ui.Gradient.linear(
+        Offset.zero,
+        Offset(140 * scale, 140 * scale),
+        [
+          const Color(0xFF1A1A24),
+          const Color(0xFF3A3A4A),
+          const Color(0xFF5A5A6A),
+          const Color(0xFF3A3A4A),
+          const Color(0xFF1A1A24),
+        ],
+        [0.0, 0.3, 0.5, 0.7, 1.0],
+      );
 
-      final offsetOuter = Offset(center.dx + outerR * math.cos(theta), center.dy + outerR * math.sin(theta));
-      final offsetPrev = Offset(center.dx + innerR * math.cos(phiPrev), center.dy + innerR * math.sin(phiPrev));
-      final offsetNext = Offset(center.dx + innerR * math.cos(phiNext), center.dy + innerR * math.sin(phiNext));
+    // Edge gradient linear (0,0) to (0,140)
+    final outerEdgePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6 * scale
+      ..shader = ui.Gradient.linear(
+        Offset.zero,
+        Offset(0, 140 * scale),
+        [
+          Colors.white.withValues(alpha: 0.3),
+          Color(0xFFB4BEC8).withValues(alpha: 0.1),
+          Colors.white.withValues(alpha: 0.2),
+        ],
+        [0.0, 0.5, 1.0],
+      );
 
-      // Left half (light side)
-      final pathLeft = Path()
-        ..moveTo(center.dx, center.dy)
-        ..lineTo(offsetOuter.dx, offsetOuter.dy)
-        ..lineTo(offsetNext.dx, offsetNext.dy)
-        ..close();
-      canvas.drawPath(pathLeft, outerLightPaint);
+    // Steel2 gradient linear (140,0) to (0,140)
+    final innerBladePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = ui.Gradient.linear(
+        Offset(140 * scale, 0),
+        Offset(0, 140 * scale),
+        [
+          const Color(0xFF12121A),
+          const Color(0xFF2A2A38),
+          const Color(0xFF12121A),
+        ],
+        [0.0, 0.5, 1.0],
+      );
 
-      // Right half (dark side)
-      final pathRight = Path()
-        ..moveTo(center.dx, center.dy)
-        ..lineTo(offsetOuter.dx, offsetOuter.dy)
-        ..lineTo(offsetPrev.dx, offsetPrev.dy)
-        ..close();
-      canvas.drawPath(pathRight, outerDarkPaint);
-    }
+    final innerEdgePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.3 * scale
+      ..color = Colors.white.withValues(alpha: 0.08);
 
-    // 2. Draw Inner Star
-    for (int k = 0; k < 8; k++) {
-      final double theta = k * math.pi / 4 + math.pi / 8; // rotated for offset layering
-      final double phiPrev = theta - math.pi / 8;
-      final double phiNext = theta + math.pi / 8;
+    // Hub gradient linear (0,0) to (140,140)
+    final hubPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = ui.Gradient.linear(
+        Offset.zero,
+        Offset(140 * scale, 140 * scale),
+        [
+          const Color(0xFF2A2A38),
+          const Color(0xFF4A4A58),
+          const Color(0xFF2A2A38),
+        ],
+        [0.0, 0.5, 1.0],
+      );
 
-      final offsetOuter = Offset(center.dx + outerRInner * math.cos(theta), center.dy + outerRInner * math.sin(theta));
-      final offsetPrev = Offset(center.dx + innerRInner * math.cos(phiPrev), center.dy + innerRInner * math.sin(phiPrev));
-      final offsetNext = Offset(center.dx + innerRInner * math.cos(phiNext), center.dy + innerRInner * math.sin(phiNext));
+    final hubEdgePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5 * scale
+      ..color = Colors.white.withValues(alpha: 0.15);
 
-      final pathLeft = Path()
-        ..moveTo(center.dx, center.dy)
-        ..lineTo(offsetOuter.dx, offsetOuter.dy)
-        ..lineTo(offsetNext.dx, offsetNext.dy)
-        ..close();
-      canvas.drawPath(pathLeft, innerLightPaint);
+    // 3. Draw Outer Star
+    final outerPath = Path()
+      ..moveTo(70 * scale, 0)
+      ..lineTo(77 * scale, 53 * scale)
+      ..lineTo(140 * scale, 70 * scale)
+      ..lineTo(77 * scale, 87 * scale)
+      ..lineTo(70 * scale, 140 * scale)
+      ..lineTo(63 * scale, 87 * scale)
+      ..lineTo(0 * scale, 70 * scale)
+      ..lineTo(63 * scale, 53 * scale)
+      ..close();
+    canvas.drawPath(outerPath, outerBladePaint);
+    canvas.drawPath(outerPath, outerEdgePaint);
 
-      final pathRight = Path()
-        ..moveTo(center.dx, center.dy)
-        ..lineTo(offsetOuter.dx, offsetOuter.dy)
-        ..lineTo(offsetPrev.dx, offsetPrev.dy)
-        ..close();
-      canvas.drawPath(pathRight, innerDarkPaint);
-    }
+    // 4. Draw Inner Star
+    final innerPath = Path()
+      ..moveTo(70 * scale, 18 * scale)
+      ..lineTo(74 * scale, 58 * scale)
+      ..lineTo(122 * scale, 70 * scale)
+      ..lineTo(74 * scale, 82 * scale)
+      ..lineTo(70 * scale, 122 * scale)
+      ..lineTo(66 * scale, 82 * scale)
+      ..lineTo(18 * scale, 70 * scale)
+      ..lineTo(66 * scale, 58 * scale)
+      ..close();
+    canvas.drawPath(innerPath, innerBladePaint);
+    canvas.drawPath(innerPath, innerEdgePaint);
 
-    // 3. Draw Center Hub
-    final hubPaint = Paint();
-    final goldColor = isDark ? const Color(0xFFE8B84B) : const Color(0xFFB8860B);
-    final goldDark = isDark ? const Color(0xFF8A6D0A) : const Color(0xFF5A4905);
-    
-    hubPaint.shader = ui.Gradient.radial(
+    // 5. Draw Center Hub
+    canvas.drawCircle(center, 10 * scale, hubPaint);
+    canvas.drawCircle(center, 10 * scale, hubEdgePaint);
+
+    // 6. Draw Center Gem (circle cx=70, cy=70, r=6) with drop shadow glow
+    final gemColor = isDark ? const Color(0xFFE8B84B) : const Color(0xFFA0720A);
+    canvas.drawCircle(
       center,
-      15.0,
-      [goldColor, goldDark],
+      6 * scale,
+      Paint()
+        ..color = gemColor.withValues(alpha: 0.5)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * scale),
     );
-    canvas.drawCircle(center, 15.0, hubPaint);
-    canvas.drawCircle(center, 4.0, Paint()..color = isDark ? const Color(0xFF06060F) : const Color(0xFFF5F0E8));
+    canvas.drawCircle(
+      center,
+      6 * scale,
+      Paint()..color = gemColor,
+    );
 
-    // 4. Gloss Shine Overlay: Animated diagonal band using BlendMode.srcIn
+    // 7. Gloss Shine Overlay: Animated opacity linear sweep across the star
     final double sweepOffset = -100.0 + (shineProgress * 200.0);
     final shinePaint = Paint()
       ..shader = ui.Gradient.linear(
@@ -544,36 +594,50 @@ class StarPainter extends CustomPainter {
         Offset(center.dx + sweepOffset + 40, center.dy + sweepOffset + 40),
         [
           Colors.white.withValues(alpha: 0.0),
-          Colors.white.withValues(alpha: 0.4),
+          Colors.white.withValues(alpha: 0.15),
+          Colors.white.withValues(alpha: 0.25),
           Colors.white.withValues(alpha: 0.0),
         ],
-        [0.0, 0.5, 1.0],
+        [0.0, 0.45, 0.55, 1.0],
       )
-      ..blendMode = BlendMode.srcIn; // Only draw inside the star's shape
+      ..blendMode = BlendMode.srcIn; // Only draw inside the star's shapes
 
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), shinePaint);
+    final shinePath = Path()
+      ..moveTo(70 * scale, 2 * scale)
+      ..lineTo(76 * scale, 54 * scale)
+      ..lineTo(138 * scale, 70 * scale)
+      ..lineTo(76 * scale, 86 * scale)
+      ..lineTo(70 * scale, 138 * scale)
+      ..lineTo(64 * scale, 86 * scale)
+      ..lineTo(2 * scale, 70 * scale)
+      ..lineTo(64 * scale, 54 * scale)
+      ..close();
+    canvas.drawPath(shinePath, shinePaint);
 
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(covariant StarPainter oldDelegate) {
-    return oldDelegate.isDark != isDark || oldDelegate.shineProgress != shineProgress;
+    return oldDelegate.isDark != isDark ||
+        oldDelegate.shineProgress != shineProgress ||
+        oldDelegate.ringProgress != ringProgress;
   }
 }
 
-// Sparkle Widget (translates outward + scales 0 -> 1 -> 0)
-class SparkleWidget extends StatefulWidget {
-  const SparkleWidget({super.key, required this.angle, required this.delay});
+// Orbiting Sparkle Widget (matching CSS pulse & delay)
+class OrbitSparkle extends StatefulWidget {
+  const OrbitSparkle({super.key, required this.dx, required this.dy, required this.delay});
 
-  final double angle;
+  final double dx;
+  final double dy;
   final Duration delay;
 
   @override
-  State<SparkleWidget> createState() => _SparkleWidgetState();
+  State<OrbitSparkle> createState() => _OrbitSparkleState();
 }
 
-class _SparkleWidgetState extends State<SparkleWidget> with SingleTickerProviderStateMixin {
+class _OrbitSparkleState extends State<OrbitSparkle> with SingleTickerProviderStateMixin {
   AnimationController? _controller;
   Timer? _startTimer;
 
@@ -606,26 +670,41 @@ class _SparkleWidgetState extends State<SparkleWidget> with SingleTickerProvider
       animation: _controller!,
       builder: (context, child) {
         final progress = _controller!.value;
-        // Translate from r=45 (inner radius area) to r=115 (outer area)
-        final distance = 45.0 + (115.0 - 45.0) * progress;
-        final x = distance * math.cos(widget.angle);
-        final y = distance * math.sin(widget.angle);
-        final scale = math.sin(progress * math.pi); // 0 -> 1 -> 0
+        double scale = 0.0;
+        double opacity = 0.0;
+        
+        // Match @keyframes sparkPulse
+        if (progress < 0.3) {
+          final t = progress / 0.3;
+          scale = t;
+          opacity = t;
+        } else {
+          final t = (progress - 0.3) / 0.7;
+          scale = 1.0 - t;
+          opacity = 1.0 - t;
+        }
 
         return Positioned(
-          left: 120 + x - 1.5, // 120 is center of width (240 / 2)
-          top: 80 + y - 1.5,   // 80 is center of height (160 / 2)
-          child: Transform.scale(
-            scale: scale,
-            child: Container(
-              width: 3,
-              height: 3,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: Colors.white, blurRadius: 2, spreadRadius: 1),
-                ],
+          left: 100 + widget.dx - 2.0, // 100 is center of width (200 / 2)
+          top: 100 + widget.dy - 2.0,  // 100 is center of height (200 / 2)
+          child: Opacity(
+            opacity: opacity,
+            child: Transform.scale(
+              scale: scale,
+              child: Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      blurRadius: 4,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
