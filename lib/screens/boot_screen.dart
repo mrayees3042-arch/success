@@ -278,7 +278,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                             style: GoogleFonts.syne(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: goldColor.withOpacity(0.35),
+                              color: goldColor.withValues(alpha: 0.35),
                               letterSpacing: 10,
                             ),
                           ),
@@ -338,8 +338,8 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                           height: 2,
                           decoration: BoxDecoration(
                             color: isDark 
-                                ? Colors.white.withOpacity(0.06) 
-                                : Colors.black.withOpacity(0.06),
+                                ? Colors.white.withValues(alpha: 0.06) 
+                                : Colors.black.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(1),
                           ),
                           alignment: Alignment.centerLeft,
@@ -543,9 +543,9 @@ class StarPainter extends CustomPainter {
         Offset(center.dx + sweepOffset - 40, center.dy + sweepOffset - 40),
         Offset(center.dx + sweepOffset + 40, center.dy + sweepOffset + 40),
         [
-          Colors.white.withOpacity(0.0),
-          Colors.white.withOpacity(0.4),
-          Colors.white.withOpacity(0.0),
+          Colors.white.withValues(alpha: 0.0),
+          Colors.white.withValues(alpha: 0.4),
+          Colors.white.withValues(alpha: 0.0),
         ],
         [0.0, 0.5, 1.0],
       )

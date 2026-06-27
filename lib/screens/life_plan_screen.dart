@@ -378,7 +378,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
               child: Container(
                 height: 6,
                 width: double.infinity,
-                color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
+                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
                 alignment: Alignment.centerLeft,
                 child: FractionallySizedBox(
                   widthFactor: progressPercent,
@@ -468,8 +468,8 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
           ? LinearGradient(colors: [emeraldColor, goldColor])
           : LinearGradient(colors: [azureColor, purpleColor]);
 
-      final pillBg = isCompleted ? emeraldColor.withOpacity(0.12) : azureColor.withOpacity(0.12);
-      final pillBorder = isCompleted ? emeraldColor.withOpacity(0.3) : azureColor.withOpacity(0.3);
+      final pillBg = isCompleted ? emeraldColor.withValues(alpha: 0.12) : azureColor.withValues(alpha: 0.12);
+      final pillBorder = isCompleted ? emeraldColor.withValues(alpha: 0.3) : azureColor.withValues(alpha: 0.3);
       final pillText = isCompleted ? emeraldColor : azureColor;
       final pillLabel = isCompleted ? 'Done' : 'Ongoing';
 
@@ -541,7 +541,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       child: Container(
                         height: 4,
                         width: double.infinity,
-                        color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.06),
+                        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
                         alignment: Alignment.centerLeft,
                         child: FractionallySizedBox(
                           widthFactor: goal.progress,
@@ -590,9 +590,9 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                 height: 32,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: isCompleted ? emeraldColor.withOpacity(0.12) : cardBg,
+                                  color: isCompleted ? emeraldColor.withValues(alpha: 0.12) : cardBg,
                                   border: Border.all(
-                                    color: isCompleted ? emeraldColor.withOpacity(0.3) : cardBorder,
+                                    color: isCompleted ? emeraldColor.withValues(alpha: 0.3) : cardBorder,
                                     width: 1,
                                   ),
                                 ),
@@ -660,9 +660,9 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                 height: 32,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: redColor.withOpacity(0.12),
+                                  color: redColor.withValues(alpha: 0.12),
                                   border: Border.all(
-                                    color: redColor.withOpacity(0.2),
+                                    color: redColor.withValues(alpha: 0.2),
                                     width: 1,
                                   ),
                                 ),
