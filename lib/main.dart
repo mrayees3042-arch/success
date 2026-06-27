@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:math' show max; // Fix 1: Add dart:math show max, min
@@ -1018,7 +1018,13 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         body: IndexedStack(index: _tab, children: screens),
         bottomNavigationBar: _BottomNavBar(
           selectedIndex: _tab,
-          onTap: (i) => setState(() => _tab = i),
+          onTap: (i) {
+            if (_tab != i) {
+              HapticService.selection();
+              AudioService.playHabitComplete();
+              setState(() => _tab = i);
+            }
+          },
           theme: _theme,
         ),
       ),

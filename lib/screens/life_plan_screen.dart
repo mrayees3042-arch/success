@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_theme.dart';
+import '../services/haptic_service.dart';
+import '../services/audio_service.dart';
 
 class LifeGoal {
   String id;
@@ -111,6 +113,8 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
   }
 
   Future<void> _incrementProgress(LifeGoal goal) async {
+    HapticService.selection();
+    AudioService.playHabitComplete();
     setState(() {
       double p = goal.progress + 0.05;
       if (p > 1.0) p = 1.0;
@@ -275,6 +279,8 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         dateCtrl.clear();
                         Navigator.pop(sheetContext);
 
+                        HapticService.medium();
+                        AudioService.playLaunch();
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (mounted) {
                             setState(() {
@@ -580,8 +586,15 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                           children: [
                             GestureDetector(
                               onTap: () {
+                                final nowCompleted = !goal.isDone;
+                                HapticService.habitComplete(nowCompleted);
+                                if (nowCompleted) {
+                                  AudioService.playAllHabitsDone();
+                                } else {
+                                  AudioService.playHabitComplete();
+                                }
                                 setState(() {
-                                  goal.isDone = !goal.isDone;
+                                  goal.isDone = nowCompleted;
                                 });
                                 _saveGoals();
                               },
