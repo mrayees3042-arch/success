@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:math' show max; // Fix 1: Add dart:math show max, min
@@ -12,6 +12,9 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:success/providers/theme_provider.dart';
 import 'package:success/screens/life_plan_screen.dart';
+import 'package:success/screens/boot_screen.dart';
+import 'package:success/services/haptic_service.dart';
+import 'package:success/services/audio_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -279,7 +282,7 @@ class SuccessApp extends StatelessWidget {
       themeMode: themeNotifier.mode,
       theme: lightTheme,
       darkTheme: darkTheme,
-      home: const MainScreen(),
+      home: const BootScreen(),
     );
   }
 }
@@ -576,6 +579,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 
   void _addIncomeEntry(int amount) {
+    HapticService.light();
+    AudioService.playIncomeLogged();
     if (!mounted) return;
     setState(() {
       final key = dayKey(DateTime.now());
@@ -585,6 +590,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 
   void _addExpenseEntry(int amount) {
+    HapticService.light();
+    AudioService.playIncomeLogged();
     if (!mounted) return;
     setState(() {
       final key = dayKey(DateTime.now());
@@ -594,12 +601,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 
   void _setIncomeForDate(DateTime date, int amount) {
+    HapticService.light();
+    AudioService.playIncomeLogged();
     if (!mounted) return;
     setState(() => _incomeLog[dayKey(date)] = amount);
     _saveIncome();
   }
 
   void _setExpenseForDate(DateTime date, int amount) {
+    HapticService.light();
+    AudioService.playIncomeLogged();
     if (!mounted) return;
     setState(() => _expenseLog[dayKey(date)] = amount);
     _saveExpenses();
@@ -659,10 +670,22 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 
   void _toggleTask(int index) {
-    HapticFeedback.lightImpact();
     if (!mounted) return;
-    setState(() => _today.tasks[index] = !_today.tasks[index]);
+    final isChecked = !_today.tasks[index];
+    setState(() => _today.tasks[index] = isChecked);
     _saveHistory();
+
+    if (isChecked) {
+      final allCompleted = _today.tasks.every((t) => t == true);
+      HapticService.habitComplete(allCompleted);
+      if (allCompleted) {
+        AudioService.playAllHabitsDone();
+      } else {
+        AudioService.playHabitComplete();
+      }
+    } else {
+      HapticService.light();
+    }
   }
 
   void _editTask(int index, TodayTask task) {
@@ -787,7 +810,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 
   void _togglePrayer(String name) {
-    HapticFeedback.lightImpact();
+    HapticService.medium();
     if (!mounted) return;
     setState(() => _today.prayers[name] = !(_today.prayers[name] ?? false));
     _saveHistory();
@@ -3688,6 +3711,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                HapticService.heavy();
                 Navigator.pop(dialogContext);
                 widget.onResetDay(_selectedDate);
                 await _loadDayData(_selectedDate);
@@ -5919,6 +5943,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _startRestTimer() {
+    HapticService.medium();
     _restTimer?.cancel();
     _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -5940,7 +5965,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   void _completeRest() {
     _restTimer?.cancel();
-    HapticFeedback.lightImpact();
+    HapticService.restTimerEnd();
+    AudioService.playRestTimerEnd();
     _clearRest();
   }
 
@@ -6634,8 +6660,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Widget _buildRepCounterOverlay(ThemeColors theme) {
-    if (_activeExerciseState == null || _activeExerciseName == null)
+    if (_activeExerciseState == null || _activeExerciseName == null) {
       return const SizedBox.shrink();
+    }
 
     return Container(
       color: theme.bg,
@@ -6679,12 +6706,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   const SizedBox(height: 50),
                   GestureDetector(
                     onTap: () {
-                      HapticFeedback.lightImpact();
+                      if (!mounted) return;
                       setState(() {
                         if (_repsRemaining > 0) {
                           _repsRemaining--;
+                          if (_repsRemaining > 0) {
+                            HapticService.selection();
+                          }
                         }
                         if (_repsRemaining == 0) {
+                          HapticService.workoutRepZero();
+                          AudioService.playWorkoutSetComplete();
                           _showRepCounter = false;
                           final key = _activeExerciseState!.exerciseKey;
                           _exerciseStates[key]?.completed = true;
@@ -7268,7 +7300,10 @@ class _IncomeScreenState extends State<IncomeScreen> {
   Widget _filterChip(String label, AppColors colors) {
     final selected = _filter == label;
     return GestureDetector(
-      onTap: () => setState(() => _filter = label),
+      onTap: () {
+        HapticService.selection();
+        setState(() => _filter = label);
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
         decoration: BoxDecoration(
