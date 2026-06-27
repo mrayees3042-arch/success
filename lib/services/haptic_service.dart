@@ -21,7 +21,7 @@ class HapticService {
   static Future<void> habitComplete(bool allCompleted) async {
     if (allCompleted) {
       HapticFeedback.heavyImpact();
-      if (await Vibration.hasVibrator() ?? false) {
+      if (await Vibration.hasVibrator()) {
         Vibration.vibrate(pattern: [100, 50, 100, 50, 100]);
       }
     } else {
@@ -31,13 +31,13 @@ class HapticService {
 
   static Future<void> workoutRepZero() async {
     HapticFeedback.heavyImpact();
-    if (await Vibration.hasVibrator() ?? false) {
+    if (await Vibration.hasVibrator()) {
       Vibration.vibrate(pattern: [200, 100, 200]);
     }
   }
 
   static Future<void> restTimerEnd() async {
-    if (await Vibration.hasVibrator() ?? false) {
+    if (await Vibration.hasVibrator()) {
       Vibration.vibrate(pattern: [100, 50, 100, 50, 100, 50, 200]);
     }
   }
