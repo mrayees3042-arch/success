@@ -381,7 +381,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   WorkoutProgressSnapshot? _workoutProgress;
   int _waterGlasses = 0;
 
-  String _userName = 'Rayees Muttaqin';
+  String _userName = '';
   int _userGoalYear = 2027;
   int _userGoalMonth = 1;
   int _userGoalDay = 1;
@@ -903,14 +903,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   Future<void> _takeScreenshot() async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final boundary = _screenshotKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final boundary =
+          _screenshotKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) {
         messenger.showSnackBar(
           const SnackBar(content: Text('Screenshot boundary not found')),
         );
         return;
       }
-      
+
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
@@ -919,16 +921,16 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         );
         return;
       }
-      
+
       final pngBytes = byteData.buffer.asUint8List();
       final timeStamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'rayees_screenshot_$timeStamp.png';
-      
-      final path = await _channel.invokeMethod<String>('saveScreenshotToGallery', {
-        'fileName': fileName,
-        'bytes': pngBytes,
-      });
-      
+
+      final path = await _channel.invokeMethod<String>(
+        'saveScreenshotToGallery',
+        {'fileName': fileName, 'bytes': pngBytes},
+      );
+
       if (!mounted) {
         return;
       }
@@ -1133,7 +1135,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               );
             }),
           ),
-           bottomNavigationBar: _BottomNavBar(
+          bottomNavigationBar: _BottomNavBar(
             selectedIndex: _tab,
             onTap: (i) {
               if (_tab != i) {
@@ -1189,9 +1191,7 @@ class _BottomNavBarState extends State<_BottomNavBar>
           child: Container(
             height: 64,
             decoration: BoxDecoration(
-              color: theme.isDark
-                  ? const Color(0xCC080810)
-                  : navBg,
+              color: theme.isDark ? const Color(0xCC080810) : navBg,
               border: Border(
                 top: BorderSide(
                   color: theme.isDark
@@ -1201,55 +1201,55 @@ class _BottomNavBarState extends State<_BottomNavBar>
                 ),
               ),
             ),
-        child: Row(
-          children: List.generate(5, (i) {
-            final isSelected = widget.selectedIndex == i;
-            return Expanded(
-              child: InkWell(
-                splashColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                onTap: () {
-                  HapticService.tapFeedback();
-                  widget.onTap(i);
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedPadding(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutBack, // spring easing
-                      padding: EdgeInsets.only(bottom: isSelected ? 4 : 0),
-                      child: AnimatedScale(
-                        scale: isSelected ? 1.15 : 0.95,
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOutBack, // spring easing
-                        child: Icon(
-                          _icons[i],
-                          size: 22,
-                          color: isSelected ? bubbleColor : inactiveColor,
+            child: Row(
+              children: List.generate(5, (i) {
+                final isSelected = widget.selectedIndex == i;
+                return Expanded(
+                  child: InkWell(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    onTap: () {
+                      HapticService.tapFeedback();
+                      widget.onTap(i);
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedPadding(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOutBack, // spring easing
+                          padding: EdgeInsets.only(bottom: isSelected ? 4 : 0),
+                          child: AnimatedScale(
+                            scale: isSelected ? 1.15 : 0.95,
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOutBack, // spring easing
+                            child: Icon(
+                              _icons[i],
+                              size: 22,
+                              color: isSelected ? bubbleColor : inactiveColor,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _labels[i],
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            letterSpacing: 0.3,
+                            color: isSelected ? bubbleColor : inactiveColor,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _labels[i],
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        letterSpacing: 0.3,
-                        color: isSelected ? bubbleColor : inactiveColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ),
+                  ),
+                );
+              }),
+            ),
           ),
         ),
       ),
@@ -1506,11 +1506,14 @@ class _TodayScreenState extends State<TodayScreen>
   bool _suhoorAlarmSet = false;
   int get _ayahIndex {
     final now = DateTime.now();
-    final day = DateTime(now.year, now.month, now.day)
-        .difference(DateTime(now.year, 1, 1))
-        .inDays;
+    final day = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).difference(DateTime(now.year, 1, 1)).inDays;
     return day % _TodayScreenState.ayahs.length;
   }
+
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _prayersKey = GlobalKey();
   final GlobalKey _tasksKey = GlobalKey();
@@ -1624,7 +1627,11 @@ class _TodayScreenState extends State<TodayScreen>
     ];
     final nextDate = '${now.day} ${months[now.month - 1]} ${now.year}';
     final nextDay = days[now.weekday % 7];
-    final goalDate = DateTime(widget.userGoalYear, widget.userGoalMonth, widget.userGoalDay);
+    final goalDate = DateTime(
+      widget.userGoalYear,
+      widget.userGoalMonth,
+      widget.userGoalDay,
+    );
     final nextDaysLeft = goalDate.difference(now).inDays;
     final nextCountdownTick = now.second;
     if (nextDate != _date ||
@@ -1736,7 +1743,9 @@ class _TodayScreenState extends State<TodayScreen>
                   boxShadow: done
                       ? [
                           BoxShadow(
-                            color: const Color(0xFFFF007F).withValues(alpha: 0.4),
+                            color: const Color(
+                              0xFFFF007F,
+                            ).withValues(alpha: 0.4),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
@@ -1758,7 +1767,9 @@ class _TodayScreenState extends State<TodayScreen>
                     style: GoogleFonts.syne(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: done ? const Color(0xFFFF007F).withValues(alpha: 0.6) : widget.theme.text1,
+                      color: done
+                          ? const Color(0xFFFF007F).withValues(alpha: 0.6)
+                          : widget.theme.text1,
                       decoration: done ? TextDecoration.lineThrough : null,
                     ),
                   ),
@@ -2245,12 +2256,17 @@ class _TodayScreenState extends State<TodayScreen>
         return {'name': prayer, 'time': timeStr, 'in': inStr};
       }
     }
-    final completedCount = widget.record.prayers.entries.where((e) => e.key != 'Tahajjud' && e.value == true).length;
+    final completedCount = widget.record.prayers.entries
+        .where((e) => e.key != 'Tahajjud' && e.value == true)
+        .length;
     return {'name': 'All Done', 'time': '$completedCount/6 prayed', 'in': '✓'};
   }
 
   Widget _nextPrayerBanner() {
     final nextPrayer = _getNextPrayer();
+    if (nextPrayer['name'] == 'All Done') {
+      return const SizedBox.shrink();
+    }
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -2299,7 +2315,8 @@ class _TodayScreenState extends State<TodayScreen>
 
   Widget _buildHeader() {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final parts = widget.userName.trim().split(' ');
+    final displayUserName = widget.userName.trim().isNotEmpty ? widget.userName.trim() : 'User';
+    final parts = displayUserName.split(' ');
     final firstName = parts.isNotEmpty ? parts[0] : '';
     final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
     return Container(
@@ -2504,10 +2521,7 @@ class _TodayScreenState extends State<TodayScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      const Color(0x3000C896),
-                      const Color(0x0000C896),
-                    ],
+                    colors: [const Color(0x3000C896), const Color(0x0000C896)],
                   ),
                 ),
               ),
@@ -2521,10 +2535,7 @@ class _TodayScreenState extends State<TodayScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      const Color(0x20E8B84B),
-                      const Color(0x00E8B84B),
-                    ],
+                    colors: [const Color(0x20E8B84B), const Color(0x00E8B84B)],
                   ),
                 ),
               ),
@@ -2538,10 +2549,7 @@ class _TodayScreenState extends State<TodayScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      const Color(0x200D4F3C),
-                      const Color(0x000D4F3C),
-                    ],
+                    colors: [const Color(0x200D4F3C), const Color(0x000D4F3C)],
                   ),
                 ),
               ),
@@ -2555,10 +2563,7 @@ class _TodayScreenState extends State<TodayScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      const Color(0x15A78BFA),
-                      const Color(0x00A78BFA),
-                    ],
+                    colors: [const Color(0x15A78BFA), const Color(0x00A78BFA)],
                   ),
                 ),
               ),
@@ -2922,10 +2927,7 @@ class _TodayScreenState extends State<TodayScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(
-          "Daily Tasks",
-          onAdd: () => _showTaskSheet(),
-        ),
+        _buildSectionHeader("Daily Tasks", onAdd: () => _showTaskSheet()),
         if (_visibleTasks.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -3029,7 +3031,8 @@ class _GlassCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        border: border ??
+        border:
+            border ??
             Border.all(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.09)
@@ -3045,14 +3048,14 @@ class _GlassCard extends StatelessWidget {
                 ),
               ]
             : isDark
-                ? null
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
@@ -4327,14 +4330,18 @@ class _HabitsScreenState extends State<HabitsScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: done
-                                ? const Color(0xFFFF007F).withValues(alpha: 0.08)
+                                ? const Color(
+                                    0xFFFF007F,
+                                  ).withValues(alpha: 0.08)
                                 : appColors.theme.isDark
                                 ? const Color(0x06FFFFFF)
                                 : appColors.theme.bg,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: done
-                                  ? const Color(0xFFFF007F).withValues(alpha: 0.4)
+                                  ? const Color(
+                                      0xFFFF007F,
+                                    ).withValues(alpha: 0.4)
                                   : appColors.cardBorder,
                               width: 0.5,
                             ),
@@ -5540,7 +5547,7 @@ IconData prayerIcon(String p) {
     'Dhuha': Icons.wb_sunny,
     'Dhuhr': Icons.light_mode,
     'Asr': Icons.sunny,
-    'Maghrib': Icons.wb_twilight,
+    'Maghrib': Icons.wb_sunny,
     'Isha': Icons.mosque,
   };
   return map[p] ?? Icons.check_circle_outline;
@@ -6447,7 +6454,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   void _showEditNameDialog(BuildContext context, ThemeColors theme) {
     final nameController = TextEditingController(text: widget.userName);
-    DateTime tempDate = DateTime(widget.userGoalYear, widget.userGoalMonth, widget.userGoalDay);
+    DateTime tempDate = DateTime(
+      widget.userGoalYear,
+      widget.userGoalMonth,
+      widget.userGoalDay,
+    );
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -6457,8 +6468,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           builder: (dialogContext, setDialogState) {
             String formatDate(DateTime date) {
               const months = [
-                'January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'
+                'January',
+                'February',
+                'March',
+                'April',
+                'May',
+                'June',
+                'July',
+                'August',
+                'September',
+                'October',
+                'November',
+                'December',
               ];
               return '${months[date.month - 1]} ${date.day}, ${date.year}';
             }
@@ -6520,16 +6541,25 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: nameController,
-                      validator: (val) =>
-                          val == null || val.trim().isEmpty ? 'Please enter your name' : null,
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Please enter your name'
+                          : null,
                       style: TextStyle(color: theme.text1),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: theme.isDark ? const Color(0x0AFFFFFF) : const Color(0xFFF9F9F9),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        fillColor: theme.isDark
+                            ? const Color(0x0AFFFFFF)
+                            : const Color(0xFFF9F9F9),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: theme.border, width: 0.5),
+                          borderSide: BorderSide(
+                            color: theme.border,
+                            width: 0.5,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -6551,9 +6581,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       onTap: pickDialogDate,
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
-                          color: theme.isDark ? const Color(0x0AFFFFFF) : const Color(0xFFF9F9F9),
+                          color: theme.isDark
+                              ? const Color(0x0AFFFFFF)
+                              : const Color(0xFFF9F9F9),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: theme.border, width: 0.5),
                         ),
@@ -6562,7 +6597,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           children: [
                             Text(
                               formatDate(tempDate),
-                              style: TextStyle(color: theme.text1, fontSize: 14),
+                              style: TextStyle(
+                                color: theme.text1,
+                                fontSize: 14,
+                              ),
                             ),
                             Icon(
                               Icons.calendar_today,
@@ -6591,7 +6629,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   onPressed: () {
                     if (formKey.currentState?.validate() ?? false) {
                       final name = nameController.text.trim();
-                      widget.onNameChanged(name, tempDate.year, tempDate.month, tempDate.day);
+                      widget.onNameChanged(
+                        name,
+                        tempDate.year,
+                        tempDate.month,
+                        tempDate.day,
+                      );
                       Navigator.pop(dialogContext);
                       HapticService.tapFeedback();
                       SoundManager.playTapClick();
@@ -7381,7 +7424,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   String _getTargetMuscleLabel(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('push-up') || lower.contains('push up')) return 'CHEST & TRICEPS';
+    if (lower.contains('push-up') || lower.contains('push up'))
+      return 'CHEST & TRICEPS';
     if (lower.contains('squat')) return 'QUADS & GLUTES';
     if (lower.contains('lunge')) return 'QUADS & HAMSTRINGS';
     if (lower.contains('bridge')) return 'GLUTES & HAMSTRINGS';
@@ -8327,7 +8371,10 @@ class _IncomeScreenState extends State<IncomeScreen> {
                           decoration: BoxDecoration(
                             color: colors.card,
                             shape: BoxShape.circle,
-                            border: Border.all(color: colors.cardBorder, width: 0.5),
+                            border: Border.all(
+                              color: colors.cardBorder,
+                              width: 0.5,
+                            ),
                           ),
                           alignment: Alignment.center,
                           child: Icon(
@@ -8347,7 +8394,10 @@ class _IncomeScreenState extends State<IncomeScreen> {
                         decoration: BoxDecoration(
                           color: colors.card,
                           shape: BoxShape.circle,
-                          border: Border.all(color: colors.cardBorder, width: 0.5),
+                          border: Border.all(
+                            color: colors.cardBorder,
+                            width: 0.5,
+                          ),
                         ),
                         alignment: Alignment.center,
                         child: Text(
@@ -8589,9 +8639,9 @@ class _IncomeScreenState extends State<IncomeScreen> {
                             Text(
                               spent > 0 ? '−${_money(spent)}' : _money(0),
                               style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: spent > 0 ? colors.red : colors.text4,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: spent > 0 ? colors.red : colors.text4,
                               ),
                             ),
                           ],
@@ -9163,7 +9213,8 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
       }
       return 'MCH';
     }
-    if (name.contains('assisted') || desc.contains('assisted')) return 'ASSISTED';
+    if (name.contains('assisted') || desc.contains('assisted'))
+      return 'ASSISTED';
     return 'BW';
   }
 
@@ -9255,7 +9306,10 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                     ),
                   ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
                   child: Row(
                     children: [
                       Container(
