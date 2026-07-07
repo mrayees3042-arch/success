@@ -10,6 +10,24 @@ class AudioService {
 
   static void init() {
     try {
+      final context = AudioContext(
+        android: AudioContextAndroid(
+          audioFocus: AndroidAudioFocus.none,
+          usageType: AndroidUsageType.assistanceSonification,
+          contentType: AndroidContentType.sonification,
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.ambient,
+          options: [AVAudioSessionOptions.mixWithOthers],
+        ),
+      );
+
+      _launchPlayer.setAudioContext(context);
+      _habitPlayer.setAudioContext(context);
+      _melodyPlayer.setAudioContext(context);
+      _workoutPlayer.setAudioContext(context);
+      _incomePlayer.setAudioContext(context);
+
       // Warm up volumes beforehand
       _launchPlayer.setVolume(0.25);
       _habitPlayer.setVolume(0.25);
@@ -29,14 +47,14 @@ class AudioService {
   static Future<void> playHabitComplete() async {
     try {
       await _habitPlayer.stop();
-      await _habitPlayer.play(AssetSource('sounds/pop.mp3'));
+      await _habitPlayer.play(AssetSource('sounds/click_custom.mp3'));
     } catch (_) {}
   }
 
   static Future<void> playAllHabitsDone() async {
     try {
       await _melodyPlayer.stop();
-      await _melodyPlayer.play(AssetSource('sounds/melody.mp3'));
+      await _melodyPlayer.play(AssetSource('sounds/notification_custom.mp3'));
     } catch (_) {}
   }
 

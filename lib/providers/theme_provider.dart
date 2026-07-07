@@ -13,8 +13,8 @@ class ThemeNotifier extends ChangeNotifier {
   bool get isDark => _mode == ThemeMode.dark;
 
   Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isDarkMode = prefs.getBool(_prefsKey) ?? false;
+    final hour = DateTime.now().hour;
+    final isDarkMode = hour >= 18 || hour < 6; // Dark mode between 6 PM and 6 AM
     _mode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
   }

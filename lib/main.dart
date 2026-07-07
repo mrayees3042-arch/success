@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:math' show max; // Fix 1: Add dart:math show max, min
 import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
 
 import 'package:flutter/material.dart';
 import 'package:success/app_theme.dart';
@@ -15,10 +16,14 @@ import 'package:success/screens/life_plan_screen.dart';
 import 'package:success/screens/boot_screen.dart';
 import 'package:success/services/haptic_service.dart';
 import 'package:success/services/audio_service.dart';
+import 'package:success/services/sound_manager.dart';
+import 'package:success/widgets/stick_figure_painter.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   AudioService.init();
+  SoundManager.init();
+  HapticService.init();
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
@@ -66,22 +71,7 @@ class TodayTask {
   };
 }
 
-final kDefaultTodayTasks = [
-  TodayTask(Icons.menu_book, 'Quran Reading', '15-20 mins after Fajr'),
-  TodayTask(
-    Icons.precision_manufacturing,
-    'TIA Portal Study',
-    '7-9 AM - 2 hours',
-  ),
-  TodayTask(Icons.directions_walk, 'Morning Walk', '30 mins - after study'),
-  TodayTask(Icons.fitness_center, 'Workout', 'Push / Legs / Back / HIIT'),
-  TodayTask(Icons.water_drop, 'Drink 2.5L Water', 'Track throughout day'),
-  TodayTask(
-    Icons.phone_android,
-    'Productive Phone',
-    'Use phone only for useful work',
-  ),
-];
+final kDefaultTodayTasks = <TodayTask>[];
 
 List<TodayTask> kTodayTasks = List<TodayTask>.from(kDefaultTodayTasks);
 
@@ -391,11 +381,17 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   WorkoutProgressSnapshot? _workoutProgress;
   int _waterGlasses = 0;
 
+  String _userName = 'Rayees Muttaqin';
+  int _userGoalYear = 2027;
+  int _userGoalMonth = 1;
+  int _userGoalDay = 1;
+
   DayRecord get _today => _recordFor(DateTime.now());
 
   @override
   void initState() {
     super.initState();
+    _loadUserProfile();
     _loadAppData();
     _loadIncome();
     _loadExpenses();
@@ -413,6 +409,38 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         }
       }
     });
+  }
+
+  Future<void> _loadUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString('user_name');
+    final year = prefs.getInt('user_goal_year');
+    final month = prefs.getInt('user_goal_month');
+    final day = prefs.getInt('user_goal_day');
+    if (mounted) {
+      setState(() {
+        if (name != null) _userName = name;
+        if (year != null) _userGoalYear = year;
+        if (month != null) _userGoalMonth = month;
+        if (day != null) _userGoalDay = day;
+      });
+    }
+  }
+
+  Future<void> _updateProfile(String name, int year, int month, int day) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name);
+    await prefs.setInt('user_goal_year', year);
+    await prefs.setInt('user_goal_month', month);
+    await prefs.setInt('user_goal_day', day);
+    if (mounted) {
+      setState(() {
+        _userName = name;
+        _userGoalYear = year;
+        _userGoalMonth = month;
+        _userGoalDay = day;
+      });
+    }
   }
 
   @override
@@ -870,6 +898,61 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     );
   }
 
+  final GlobalKey _screenshotKey = GlobalKey();
+
+  Future<void> _takeScreenshot() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final boundary = _screenshotKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Screenshot boundary not found')),
+        );
+        return;
+      }
+      
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Failed to convert image to bytes')),
+        );
+        return;
+      }
+      
+      final pngBytes = byteData.buffer.asUint8List();
+      final timeStamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'rayees_screenshot_$timeStamp.png';
+      
+      final path = await _channel.invokeMethod<String>('saveScreenshotToGallery', {
+        'fileName': fileName,
+        'bytes': pngBytes,
+      });
+      
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Screenshot saved to: ${path ?? "Gallery"}'),
+          backgroundColor: _theme.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Screenshot save failed: $error'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   bool get widgetIsDark => _theme.isDark;
 
   Future<void> _printPdf(BuildContext context) async {
@@ -978,6 +1061,11 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           isDark: _theme.isDark,
           waterGlasses: _waterGlasses,
           onWaterChange: _setWaterGlasses,
+          onScreenshot: _takeScreenshot,
+          userName: _userName,
+          userGoalYear: _userGoalYear,
+          userGoalMonth: _userGoalMonth,
+          userGoalDay: _userGoalDay,
         ),
       ),
       SizedBox.expand(
@@ -991,6 +1079,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           onSetIncome: _setIncomeForDate,
           onSetExpense: _setExpenseForDate,
           onResetDay: _resetDayData,
+          onScreenshot: _takeScreenshot,
         ),
       ),
       SizedBox.expand(
@@ -998,6 +1087,12 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           theme: _theme,
           onWorkoutCompleted: _markWorkoutCompleted,
           onWorkoutProgressChanged: _updateWorkoutProgress,
+          onScreenshot: _takeScreenshot,
+          userName: _userName,
+          onNameChanged: _updateProfile,
+          userGoalYear: _userGoalYear,
+          userGoalMonth: _userGoalMonth,
+          userGoalDay: _userGoalDay,
         ),
       ),
       SizedBox.expand(
@@ -1007,26 +1102,47 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           expenseLog: _expenseLog,
           onAddEntry: _addIncomeEntry,
           onAddExpense: _addExpenseEntry,
+          onScreenshot: _takeScreenshot,
         ),
       ),
-      SizedBox.expand(child: LifePlanScreen(theme: _theme)),
+      SizedBox.expand(
+        child: LifePlanScreen(
+          theme: _theme,
+          onScreenshot: _takeScreenshot,
+          userGoalYear: _userGoalYear,
+        ),
+      ),
     ];
 
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: IndexedStack(index: _tab, children: screens),
-        bottomNavigationBar: _BottomNavBar(
-          selectedIndex: _tab,
-          onTap: (i) {
-            if (_tab != i) {
-              HapticService.selection();
-              AudioService.playHabitComplete();
-              setState(() => _tab = i);
-            }
-          },
-          theme: _theme,
+    return RepaintBoundary(
+      key: _screenshotKey,
+      child: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: List.generate(screens.length, (index) {
+              final isCurrent = index == _tab;
+              return AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: isCurrent ? 1.0 : 0.0,
+                child: IgnorePointer(
+                  ignoring: !isCurrent,
+                  child: screens[index],
+                ),
+              );
+            }),
+          ),
+           bottomNavigationBar: _BottomNavBar(
+            selectedIndex: _tab,
+            onTap: (i) {
+              if (_tab != i) {
+                HapticService.selection();
+                setState(() => _tab = i);
+              }
+            },
+            theme: _theme,
+          ),
         ),
       ),
     );
@@ -1049,8 +1165,6 @@ class _BottomNavBar extends StatefulWidget {
 
 class _BottomNavBarState extends State<_BottomNavBar>
     with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
   static const _icons = [
     Icons.home_outlined,
     Icons.check_circle_outline,
@@ -1062,49 +1176,31 @@ class _BottomNavBarState extends State<_BottomNavBar>
   static const _labels = ['Today', 'Habits', 'Workout', 'Income', 'Plan'];
 
   @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-  }
-
-  @override
-  void didUpdateWidget(_BottomNavBar old) {
-    super.didUpdateWidget(old);
-    if (old.selectedIndex != widget.selectedIndex) {
-      // This is _BottomNavBar, not _NotchNavBar
-      _ctrl.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final navBg = theme.isDark ? cBg : theme.navBg;
-    // The original code used kTeal for bubbleColor, but the new design uses cGold for active nav.
-    // However, the instruction for the new TodayScreen bottom nav is not to touch other screen files.
-    final bubbleColor = const Color(0xFF00BFA6);
+    final bubbleColor = theme.teal; // matches active theme color
     final inactiveColor = theme.isDark ? Colors.white38 : Colors.black38;
 
     return SafeArea(
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          color: navBg,
-          border: Border(
-            top: BorderSide(
-              color: theme.isDark ? Colors.white12 : Colors.black12,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: 64,
+            decoration: BoxDecoration(
+              color: theme.isDark
+                  ? const Color(0xCC080810)
+                  : navBg,
+              border: Border(
+                top: BorderSide(
+                  color: theme.isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black12,
+                  width: 0.5,
+                ),
+              ),
             ),
-          ),
-        ),
         child: Row(
           children: List.generate(5, (i) {
             final isSelected = widget.selectedIndex == i;
@@ -1112,25 +1208,38 @@ class _BottomNavBarState extends State<_BottomNavBar>
               child: InkWell(
                 splashColor: Colors.transparent,
                 highlightColor: Colors.transparent,
-                onTap: () => widget.onTap(i),
+                onTap: () {
+                  HapticService.tapFeedback();
+                  widget.onTap(i);
+                },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      _icons[i],
-                      size: 22,
-                      color: isSelected ? bubbleColor : inactiveColor,
+                    AnimatedPadding(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutBack, // spring easing
+                      padding: EdgeInsets.only(bottom: isSelected ? 4 : 0),
+                      child: AnimatedScale(
+                        scale: isSelected ? 1.15 : 0.95,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutBack, // spring easing
+                        child: Icon(
+                          _icons[i],
+                          size: 22,
+                          color: isSelected ? bubbleColor : inactiveColor,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       _labels[i],
                       maxLines: 1,
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: isSelected
-                            ? FontWeight.w800
-                            : FontWeight.w600,
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                         letterSpacing: 0.3,
                         color: isSelected ? bubbleColor : inactiveColor,
                       ),
@@ -1140,6 +1249,8 @@ class _BottomNavBarState extends State<_BottomNavBar>
               ),
             );
           }),
+        ),
+          ),
         ),
       ),
     );
@@ -1350,6 +1461,11 @@ class TodayScreen extends StatefulWidget {
     required this.orbController,
     required this.waterGlasses,
     required this.onWaterChange,
+    this.onScreenshot,
+    required this.userName,
+    required this.userGoalYear,
+    required this.userGoalMonth,
+    required this.userGoalDay,
   });
 
   final ThemeColors theme;
@@ -1366,6 +1482,11 @@ class TodayScreen extends StatefulWidget {
   final AnimationController orbController;
   final int waterGlasses;
   final ValueChanged<int> onWaterChange;
+  final VoidCallback? onScreenshot;
+  final String userName;
+  final int userGoalYear;
+  final int userGoalMonth;
+  final int userGoalDay;
 
   @override // Fix 1: Mixins
   State<TodayScreen> createState() => _TodayScreenState(); // Fix 1: Mixins
@@ -1383,7 +1504,13 @@ class _TodayScreenState extends State<TodayScreen>
   int _countdownTick = 0;
   String _fastStatus = 'fasting';
   bool _suhoorAlarmSet = false;
-  final int _ayahIndex = 0;
+  int get _ayahIndex {
+    final now = DateTime.now();
+    final day = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(now.year, 1, 1))
+        .inDays;
+    return day % _TodayScreenState.ayahs.length;
+  }
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _prayersKey = GlobalKey();
   final GlobalKey _tasksKey = GlobalKey();
@@ -1497,7 +1624,8 @@ class _TodayScreenState extends State<TodayScreen>
     ];
     final nextDate = '${now.day} ${months[now.month - 1]} ${now.year}';
     final nextDay = days[now.weekday % 7];
-    final nextDaysLeft = DateTime(2027, 1, 1).difference(now).inDays;
+    final goalDate = DateTime(widget.userGoalYear, widget.userGoalMonth, widget.userGoalDay);
+    final nextDaysLeft = goalDate.difference(now).inDays;
     final nextCountdownTick = now.second;
     if (nextDate != _date ||
         nextDay != _day ||
@@ -1600,11 +1728,20 @@ class _TodayScreenState extends State<TodayScreen>
                 width: 24,
                 height: 24,
                 decoration: BoxDecoration(
-                  color: done ? widget.theme.teal : Colors.transparent,
+                  color: done ? const Color(0xFFFF007F) : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: done
                       ? null
                       : Border.all(color: widget.theme.border, width: 1.5),
+                  boxShadow: done
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFFFF007F).withValues(alpha: 0.4),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
                 ),
                 child: done
                     ? Icon(Icons.check, color: widget.theme.bg, size: 16)
@@ -1621,7 +1758,7 @@ class _TodayScreenState extends State<TodayScreen>
                     style: GoogleFonts.syne(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: done ? widget.theme.text3 : widget.theme.text1,
+                      color: done ? const Color(0xFFFF007F).withValues(alpha: 0.6) : widget.theme.text1,
                       decoration: done ? TextDecoration.lineThrough : null,
                     ),
                   ),
@@ -1722,14 +1859,11 @@ class _TodayScreenState extends State<TodayScreen>
   Widget _waterTracker() {
     final double consumed = (widget.waterGlasses * 260) / 1000;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+    return _GlassCard(
+      theme: widget.theme,
+      glowColor: const Color(0xFF38BDF8),
+      radius: 16,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: widget.theme.card,
-        border: Border.all(color: widget.theme.border, width: 0.5),
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Column(
         children: [
           // Header row
@@ -1878,14 +2012,11 @@ class _TodayScreenState extends State<TodayScreen>
     final progress = _fastElapsedProgress();
     const gold = Color(0xFFE8B84B);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+    return _GlassCard(
+      theme: widget.theme,
+      glowColor: const Color(0xFFE8B84B),
+      radius: 16,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: widget.theme.card,
-        border: Border.all(color: widget.theme.border, width: 0.5),
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2114,7 +2245,8 @@ class _TodayScreenState extends State<TodayScreen>
         return {'name': prayer, 'time': timeStr, 'in': inStr};
       }
     }
-    return {'name': 'All Done', 'time': '--:--', 'in': '---'};
+    final completedCount = widget.record.prayers.entries.where((e) => e.key != 'Tahajjud' && e.value == true).length;
+    return {'name': 'All Done', 'time': '$completedCount/6 prayed', 'in': '✓'};
   }
 
   Widget _nextPrayerBanner() {
@@ -2167,9 +2299,12 @@ class _TodayScreenState extends State<TodayScreen>
 
   Widget _buildHeader() {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final parts = widget.userName.trim().split(' ');
+    final firstName = parts.isNotEmpty ? parts[0] : '';
+    final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 48, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
       child: SafeArea(
         bottom: false,
         child: Row(
@@ -2185,51 +2320,89 @@ class _TodayScreenState extends State<TodayScreen>
                     colors: [Color(0xFFE8B84B), Color(0xFFF5D78E)],
                   ).createShader(bounds),
                   child: Text(
-                    'Rayees',
+                    firstName,
                     style: GoogleFonts.syne(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
                   ),
                 ),
-                Text(
-                  'MUTTAQIN',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 6,
-                    color: const Color(0x80E8B84B),
+                if (lastName.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    lastName.toUpperCase(),
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 6,
+                      color: const Color(0x80E8B84B),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.onScreenshot != null) ...[
+                  GestureDetector(
+                    onTap: widget.onScreenshot,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0x40E8B84B),
+                          width: 1.0,
+                        ),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFFE8B84B).withValues(alpha: 0.1),
+                            Colors.white.withValues(alpha: 0.02),
+                          ],
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Color(0xFFE8B84B),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                GestureDetector(
+                  onTap: () => themeNotifier.toggle(),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0x40E8B84B),
+                        width: 1.0,
+                      ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFFE8B84B).withValues(alpha: 0.1),
+                          Colors.white.withValues(alpha: 0.02),
+                        ],
+                      ),
+                    ),
+                    child: Icon(
+                      themeNotifier.isDark ? Icons.nights_stay : Icons.wb_sunny,
+                      color: const Color(0xFFE8B84B),
+                      size: 18,
+                    ),
                   ),
                 ),
               ],
-            ),
-            GestureDetector(
-              onTap: () => themeNotifier.toggle(),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0x40E8B84B),
-                    width: 1.0,
-                  ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFFE8B84B).withValues(alpha: 0.1),
-                      Colors.white.withValues(alpha: 0.02),
-                    ],
-                  ),
-                ),
-                child: Icon(
-                  themeNotifier.isDark ? Icons.nights_stay : Icons.wb_sunny,
-                  color: const Color(0xFFE8B84B),
-                  size: 18,
-                ),
-              ),
             ),
           ],
         ),
@@ -2267,7 +2440,7 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                     ),
                     Text(
-                      'Days to 2027',
+                      'Days to ${widget.userGoalYear}',
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -2323,52 +2496,77 @@ class _TodayScreenState extends State<TodayScreen>
           // 1. Ambient fixed auroras (only in dark mode)
           if (widget.theme.isDark) ...[
             Positioned(
-              top: -40,
+              top: -60,
+              right: -80,
+              child: Container(
+                width: 350,
+                height: 350,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0x3000C896),
+                      const Color(0x0000C896),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 280,
+              left: -120,
+              child: Container(
+                width: 380,
+                height: 380,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0x20E8B84B),
+                      const Color(0x00E8B84B),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -80,
               right: -60,
               child: Container(
                 width: 320,
                 height: 320,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0x2000C896), // Emerald (#00c89620 opacity)
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0x200D4F3C),
+                      const Color(0x000D4F3C),
+                    ],
+                  ),
                 ),
               ),
             ),
             Positioned(
-              top: 244,
-              left: -100,
+              top: 500,
+              right: 40,
               child: Container(
-                width: 360,
-                height: 360,
-                decoration: const BoxDecoration(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Color(0x15E8B84B), // Gold (#e8b84b15)
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -60,
-              right: -80,
-              child: Container(
-                width: 380,
-                height: 380,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0x250D4F3C), // Deep teal (#0d4f3c25)
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0x15A78BFA),
+                      const Color(0x00A78BFA),
+                    ],
+                  ),
                 ),
               ),
             ),
             Positioned.fill(
               child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                filter: ui.ImageFilter.blur(sigmaX: 90, sigmaY: 90),
                 child: const SizedBox.shrink(),
-              ),
-            ),
-            // 2. Faint 8-pointed star pattern overlay
-            const Positioned.fill(
-              child: Opacity(
-                opacity: 0.03, // 3% opacity
-                child: CustomPaint(painter: StarPatternPainter()),
               ),
             ),
           ],
@@ -2516,14 +2714,26 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
-  Widget _buildSectionHeader(String label) => Padding(
-    padding: const EdgeInsets.all(16),
-    child: Text(
-      label,
-      style: TextStyle(
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.onSurface,
-      ),
+  Widget _buildSectionHeader(String label, {VoidCallback? onAdd}) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        if (onAdd != null)
+          IconButton(
+            constraints: const BoxConstraints(),
+            padding: EdgeInsets.zero,
+            icon: Icon(Icons.add, color: widget.theme.gold, size: 20),
+            onPressed: onAdd,
+          ),
+      ],
     ),
   );
 
@@ -2572,12 +2782,10 @@ class _TodayScreenState extends State<TodayScreen>
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _scrollTo(targetKey),
-        child: Container(
-          decoration: BoxDecoration(
-            color: widget.theme.card,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: widget.theme.border, width: 0.5),
-          ),
+        child: _GlassCard(
+          theme: widget.theme,
+          glowColor: fallbackColor,
+          radius: 18,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
           child: Column(
             children: [
@@ -2621,12 +2829,10 @@ class _TodayScreenState extends State<TodayScreen>
     double taskProgress,
     double waterProgress,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: widget.theme.card,
-        border: Border.all(color: widget.theme.border, width: 0.5),
-        borderRadius: BorderRadius.circular(14),
-      ),
+    return _GlassCard(
+      theme: widget.theme,
+      glowColor: const Color(0xFFE8B84B),
+      radius: 14,
       padding: const EdgeInsets.all(20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2640,6 +2846,7 @@ class _TodayScreenState extends State<TodayScreen>
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
                   color: widget.theme.text3,
+                  letterSpacing: 0.5,
                 ),
               ),
               const SizedBox(height: 6),
@@ -2715,7 +2922,18 @@ class _TodayScreenState extends State<TodayScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader("Daily Tasks"),
+        _buildSectionHeader(
+          "Daily Tasks",
+          onAdd: () => _showTaskSheet(),
+        ),
+        if (_visibleTasks.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text(
+              "No tasks for today. Tap '+' to add one.",
+              style: TextStyle(color: widget.theme.text3, fontSize: 13),
+            ),
+          ),
         ..._visibleTasks.map(
           (entry) => RepaintBoundary(child: _taskRow(entry)),
         ),
@@ -2759,50 +2977,94 @@ class _TodayScreenState extends State<TodayScreen>
       'And put your trust in Allah.',
       '33:3',
     ],
+    [
+      '\u0644\u064e\u0627 \u064a\u064f\u0633\u0652\u062a\u064e\u062c\u064e\u0627\u0628\u064f \u0625\u0650\u0644\u0651\u064e\u0627 \u0628\u0650\u0627\u0644\u0635\u0651\u064e\u0628\u0652\u0631\u0650',
+      'Allah does not burden a soul beyond that it can bear.',
+      '2:286',
+    ],
+    [
+      '\u0641\u064e\u0625\u0650\u0646\u0651\u064e \u0645\u064e\u0639\u064e \u0627\u0644\u0652\u0639\u064f\u0633\u0652\u0631\u0650 \u064a\u064f\u0633\u0652\u0631\u064b\u0627',
+      'So verily, with the hardship, there is relief.',
+      '94:5',
+    ],
+    [
+      '\u0648\u064e\u0648\u064e\u062c\u064e\u062f\u064e\u0643\u064e \u0636\u064e\u0627\u0644\u0651\u064b\u0627 \u0641\u064e\u0647\u064e\u0625\u064e\u0649',
+      'And He found you lost and guided [you].',
+      '93:7',
+    ],
+    [
+      '\u0648\u064e\u0631\u064e\u062d\u0652\u0645\u064e\u062a\u0650\u064a \u0648\u064e\u0633\u0650\u0639\u064e\u062a\u0652 \u0643\u064f\u0644\u0651\u064e \u0634\u064e\u064a\u0652\u0621\u064d',
+      'My mercy encompasses all things.',
+      '7:156',
+    ],
+    [
+      '\u0627\u062f\u0652\u0639\u064f\u0648\u0646\u0650\u064a \u0623\u064e\u0633\u0652\u062a\u064e\u062c\u0650\u0628\u0652 \u0644\u064f\u0633\u0652\u0643\u064f\u0645\u0652',
+      'Call upon Me; I will respond to you.',
+      '40:60',
+    ],
   ];
 }
 
 class _GlassCard extends StatelessWidget {
-  // Renamed from GlassCard to _GlassCard
   const _GlassCard({
-    // New _GlassCard helper
     required this.theme,
     required this.child,
     this.padding,
     this.border,
     this.radius = 18,
+    this.glowColor,
+    this.blurSigma = 18,
   });
-  // Fix 8: Class constructor
   final ThemeColors theme;
   final Widget child;
   final EdgeInsets? padding;
   final BoxBorder? border;
   final double radius;
+  final Color? glowColor;
+  final double blurSigma;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = theme.isDark;
     return Container(
       decoration: BoxDecoration(
-        // Fix 8: Class constructor
         borderRadius: BorderRadius.circular(radius),
-        border: border ?? Border.all(color: theme.border),
-        boxShadow: theme.isDark
-            ? null
-            : [
+        border: border ??
+            Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.09)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: 0.5,
+            ),
+        boxShadow: isDark && glowColor != null
+            ? [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
+                  color: glowColor!.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  spreadRadius: -4,
                 ),
-              ],
+              ]
+            : isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
       ),
       child: ClipRRect(
-        // Fix 8: Class constructor
         borderRadius: BorderRadius.circular(radius),
         child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Blur 10,10
+          filter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
           child: Container(
-            color: Theme.of(context).cardColor,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(radius),
+            ),
             padding: padding,
             child: child,
           ),
@@ -3289,14 +3551,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
             const SizedBox(height: 16),
 
             // Summary row
-            Container(
-              width: double.infinity,
+            _GlassCard(
+              theme: theme,
+              radius: 16,
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.card,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.border),
-              ),
               child: Text(
                 'Total Progress: $activeGoals/$totalGoals goals active - $avgProgress% this month',
                 textAlign: TextAlign.center,
@@ -3531,6 +3789,7 @@ class HabitsScreen extends StatefulWidget {
     required this.onSetIncome,
     required this.onSetExpense,
     required this.onResetDay,
+    this.onScreenshot,
   });
 
   final ThemeColors theme;
@@ -3542,6 +3801,7 @@ class HabitsScreen extends StatefulWidget {
   final void Function(DateTime, int) onSetIncome;
   final void Function(DateTime, int) onSetExpense;
   final void Function(DateTime) onResetDay;
+  final VoidCallback? onScreenshot;
 
   @override
   State<HabitsScreen> createState() => _HabitsScreenState();
@@ -3818,7 +4078,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         clipBehavior: Clip.none,
-        padding: const EdgeInsets.fromLTRB(14, 48, 14, 90),
+        padding: const EdgeInsets.fromLTRB(20, 30, 20, 90),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -3833,16 +4093,16 @@ class _HabitsScreenState extends State<HabitsScreen> {
                         'MONITOR',
                         style: GoogleFonts.dmSans(
                           fontSize: 10,
-                          letterSpacing: 3,
+                          letterSpacing: 3.0,
                           fontWeight: FontWeight.w700,
                           color: appColors.gold,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
                         'Habits',
                         style: GoogleFonts.syne(
-                          fontSize: 32,
+                          fontSize: 26,
                           fontWeight: FontWeight.w800,
                           color: appColors.text1,
                         ),
@@ -3870,6 +4130,19 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   ),
                   tooltip: 'Print PDF',
                 ),
+                if (widget.onScreenshot != null) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: widget.onScreenshot,
+                    icon: const Icon(Icons.camera_alt, size: 20),
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(40, 40),
+                      backgroundColor: appColors.card,
+                      side: BorderSide(color: appColors.cardBorder, width: 0.5),
+                    ),
+                    tooltip: 'Take Screenshot',
+                  ),
+                ],
                 const SizedBox(width: 8),
                 // Theme Toggle
                 GestureDetector(
@@ -3933,23 +4206,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
             const SizedBox(height: 16),
 
             // 3. SCORE HERO CARD
-            Container(
-              width: double.infinity,
+            _GlassCard(
+              theme: appColors.theme,
+              glowColor: appColors.gold,
+              radius: 20,
               padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-              decoration: BoxDecoration(
-                color: appColors.card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: appColors.cardBorder, width: 0.5),
-                boxShadow: appColors.shadow,
-                gradient: RadialGradient(
-                  center: Alignment.topRight,
-                  radius: 1.2,
-                  colors: [
-                    appColors.gold.withValues(alpha: 0.08),
-                    appColors.card,
-                  ],
-                ),
-              ),
               child: Column(
                 children: [
                   Text(
@@ -4066,14 +4327,14 @@ class _HabitsScreenState extends State<HabitsScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: done
-                                ? appColors.emerald.withValues(alpha: 0.08)
+                                ? const Color(0xFFFF007F).withValues(alpha: 0.08)
                                 : appColors.theme.isDark
                                 ? const Color(0x06FFFFFF)
                                 : appColors.theme.bg,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: done
-                                  ? appColors.emerald.withValues(alpha: 0.4)
+                                  ? const Color(0xFFFF007F).withValues(alpha: 0.4)
                                   : appColors.cardBorder,
                               width: 0.5,
                             ),
@@ -4086,7 +4347,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                                 height: 6,
                                 decoration: BoxDecoration(
                                   color: done
-                                      ? appColors.emerald
+                                      ? const Color(0xFFFF007F)
                                       : appColors.text3,
                                   shape: BoxShape.circle,
                                 ),
@@ -4100,7 +4361,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                                       ? FontWeight.w600
                                       : FontWeight.normal,
                                   color: done
-                                      ? appColors.text1
+                                      ? const Color(0xFFFF007F)
                                       : appColors.text2,
                                 ),
                               ),
@@ -4306,15 +4567,10 @@ class _HabitsScreenState extends State<HabitsScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
+        _GlassCard(
+          theme: appColors.theme,
+          radius: 16,
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: appColors.card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: appColors.cardBorder, width: 0.5),
-            boxShadow: appColors.shadow,
-          ),
           child: child,
         ),
         const SizedBox(height: 20),
@@ -4433,6 +4689,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 color: textColor,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
             statusIcon,
@@ -5496,11 +5754,23 @@ class WorkoutScreen extends StatefulWidget {
     required this.theme,
     required this.onWorkoutCompleted,
     required this.onWorkoutProgressChanged,
+    this.onScreenshot,
+    required this.userName,
+    required this.onNameChanged,
+    required this.userGoalYear,
+    required this.userGoalMonth,
+    required this.userGoalDay,
   });
 
   final ThemeColors theme;
   final ValueChanged<WorkoutSummary> onWorkoutCompleted;
   final ValueChanged<WorkoutProgressSnapshot> onWorkoutProgressChanged;
+  final VoidCallback? onScreenshot;
+  final String userName;
+  final void Function(String, int, int, int) onNameChanged;
+  final int userGoalYear;
+  final int userGoalMonth;
+  final int userGoalDay;
 
   @override
   State<WorkoutScreen> createState() => _WorkoutScreenState();
@@ -5549,6 +5819,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   final Map<String, WorkoutExerciseState> _exerciseStates = {};
   final Map<String, bool> _expandedCards = {};
   final ScrollController _scrollController = ScrollController();
+  final List<List<String>> _libraryExercises = const [
+    ['Lying Leg Curls', '3 x 12 reps', 'Hamstrings'],
+    ['Leg Extensions', '3 x 15 reps', 'Quads'],
+    ['Dumbbell Lunges', '3 x 10 reps', 'Legs & Glutes'],
+    ['Lat Pulldown', '3 x 10 reps', 'Back & Biceps'],
+    ['Cable Crossover', '3 x 12 reps', 'Chest & Shoulders'],
+    ['Dumbbell Shrugs', '3 x 15 reps', 'Shoulders & Neck'],
+  ];
   SharedPreferences? _prefs;
   String? _activeDayTitle;
   String? _activeWorkoutDateKey;
@@ -5708,6 +5986,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             ),
           );
         }
+      }
+      for (final exercise in _libraryExercises) {
+        final key = 'lib|${exercise[0]}';
+        _exerciseStates.putIfAbsent(
+          key,
+          () => WorkoutExerciseState.initial(
+            key,
+            parseSets(exercise[1]),
+            parseReps(exercise[1]),
+          ),
+        );
       }
 
       // Default to show split assigned to today's workout
@@ -6033,6 +6322,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
     if (completedToday) {
       widget.onWorkoutCompleted(summary);
+      SoundManager.playWorkoutComplete();
+      HapticService.workoutComplete();
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Great job! ${today.title} complete.')),
@@ -6057,6 +6348,277 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     }
   }
 
+  void _showSettingsSheet(BuildContext context, ThemeColors theme) {
+    HapticService.tapFeedback();
+    SoundManager.playTapClick();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Settings',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: theme.text1,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SwitchListTile(
+                    title: Text(
+                      'Sound Effects',
+                      style: TextStyle(color: theme.text1),
+                    ),
+                    subtitle: Text(
+                      'Enable workout sound effects',
+                      style: TextStyle(color: theme.text3),
+                    ),
+                    activeThumbColor: theme.teal,
+                    value: SoundManager.isEnabled,
+                    onChanged: (val) async {
+                      await SoundManager.setEnabled(val);
+                      setModalState(() {});
+                      HapticService.tapFeedback();
+                      if (val) SoundManager.playTapClick();
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text(
+                      'Haptic Feedback',
+                      style: TextStyle(color: theme.text1),
+                    ),
+                    subtitle: Text(
+                      'Enable physical feedback on taps',
+                      style: TextStyle(color: theme.text3),
+                    ),
+                    activeThumbColor: theme.teal,
+                    value: HapticService.isEnabled,
+                    onChanged: (val) async {
+                      await HapticService.setEnabled(val);
+                      setModalState(() {});
+                      if (val) HapticService.tapFeedback();
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Profile',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: theme.text1,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ListTile(
+                    title: Text(
+                      'Profile Settings',
+                      style: TextStyle(color: theme.text1),
+                    ),
+                    subtitle: Text(
+                      widget.userName,
+                      style: TextStyle(color: theme.text3),
+                    ),
+                    trailing: Icon(Icons.chevron_right, color: theme.text2),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showEditNameDialog(context, theme);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditNameDialog(BuildContext context, ThemeColors theme) {
+    final nameController = TextEditingController(text: widget.userName);
+    DateTime tempDate = DateTime(widget.userGoalYear, widget.userGoalMonth, widget.userGoalDay);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            String formatDate(DateTime date) {
+              const months = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+              ];
+              return '${months[date.month - 1]} ${date.day}, ${date.year}';
+            }
+
+            Future<void> pickDialogDate() async {
+              final DateTime? picked = await showDatePicker(
+                context: dialogContext,
+                initialDate: tempDate,
+                firstDate: DateTime(2025),
+                lastDate: DateTime(2100),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: const ColorScheme.dark(
+                        primary: Color(0xFF1D9E75),
+                        onPrimary: Colors.white,
+                        surface: Color(0xFF1C1C2E),
+                        onSurface: Colors.white,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (picked != null && picked != tempDate) {
+                setDialogState(() {
+                  tempDate = picked;
+                });
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: theme.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: theme.border, width: 0.5),
+              ),
+              title: Text(
+                'Edit Profile',
+                style: GoogleFonts.syne(
+                  fontWeight: FontWeight.w800,
+                  color: theme.text1,
+                ),
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your Name',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: theme.text2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: nameController,
+                      validator: (val) =>
+                          val == null || val.trim().isEmpty ? 'Please enter your name' : null,
+                      style: TextStyle(color: theme.text1),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: theme.isDark ? const Color(0x0AFFFFFF) : const Color(0xFFF9F9F9),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: theme.border, width: 0.5),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: theme.teal, width: 1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Goal Deadline Date',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: theme.text2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: pickDialogDate,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: theme.isDark ? const Color(0x0AFFFFFF) : const Color(0xFFF9F9F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: theme.border, width: 0.5),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              formatDate(tempDate),
+                              style: TextStyle(color: theme.text1, fontSize: 14),
+                            ),
+                            Icon(
+                              Icons.calendar_today,
+                              color: theme.gold,
+                              size: 16,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w600,
+                      color: theme.text3,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      final name = nameController.text.trim();
+                      widget.onNameChanged(name, tempDate.year, tempDate.month, tempDate.day);
+                      Navigator.pop(dialogContext);
+                      HapticService.tapFeedback();
+                      SoundManager.playTapClick();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.teal,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Save',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildWorkoutContent(BuildContext context) {
     final theme = widget.theme;
     final cardBorder = theme.border;
@@ -6064,208 +6626,216 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return SafeArea(
       child: Stack(
         children: [
-          Positioned.fill(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
-              clipBehavior: Clip.none,
-              padding: const EdgeInsets.fromLTRB(16, 30, 16, 140),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. HEADER
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'TRAINING',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 3.0,
-                                color: theme.gold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Workout',
-                              style: GoogleFonts.syne(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                color: theme.text1,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${_weekdayName(DateTime.now())} · ${_selectedSplit.title}',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                color: theme.text3,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          final themeNotifier = Provider.of<ThemeNotifier>(
-                            context,
-                            listen: false,
-                          );
-                          themeNotifier.toggle();
-                        },
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: theme.card,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: theme.border, width: 0.5),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            theme.isDark ? '☀️' : '🌙',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-
-                  // 2. STATS ROW
-                  _workoutStatsGrid(theme, theme.teal),
-
-                  // 4. SPLIT SELECTOR
-                  _splitSelector(theme),
-                  const SizedBox(height: 20),
-
-                  // 3. PROGRESS RING CARD
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 18,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.card,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: cardBorder, width: 0.5),
-                    ),
-                    child: Row(
+          // Main screen shifting and opacity fade during rep counting
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            left: _showRepCounter
+                ? -MediaQuery.of(context).size.width * 0.3
+                : 0,
+            right: _showRepCounter
+                ? MediaQuery.of(context).size.width * 0.3
+                : 0,
+            top: 0,
+            bottom: 0,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: _showRepCounter ? 0.5 : 1.0,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                clipBehavior: Clip.none,
+                padding: const EdgeInsets.fromLTRB(20, 30, 20, 140),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. HEADER
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(begin: 0.0, end: _setProgress),
-                          duration: const Duration(milliseconds: 800),
-                          curve: Curves.easeOut,
-                          builder: (context, value, child) {
-                            return Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 80,
-                                  height: 80,
-                                  child: CustomPaint(
-                                    painter: ProgressRingPainter(
-                                      progress: value,
-                                      trackColor: theme.isDark
-                                          ? theme.border
-                                          : theme.text4.withValues(alpha: 0.15),
-                                      progressColor: theme.teal,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  '${(value * 100).round()}%',
-                                  style: GoogleFonts.syne(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                    color: theme.text1,
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Today's session",
+                                'TRAINING WORKOUT',
                                 style: GoogleFonts.dmSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 3.0,
+                                  color: theme.text3,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _weekdayName(DateTime.now()),
+                                style: GoogleFonts.syne(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
                                   color: theme.text1,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '$_completedExercises/${_selectedSplit.exercises.length} exercises done',
+                                _selectedSplit.title,
                                 style: GoogleFonts.dmSans(
                                   fontSize: 13,
-                                  color: theme.text3,
+                                  color: theme.text2,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        // Dark/light toggle and Settings cog
+                        Row(
+                          children: [
+                            if (widget.onScreenshot != null) ...[
+                              GestureDetector(
+                                onTap: widget.onScreenshot,
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: theme.card,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: theme.border,
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    Icons.camera_alt,
+                                    color: theme.teal,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            GestureDetector(
+                              onTap: () {
+                                final themeNotifier =
+                                    Provider.of<ThemeNotifier>(
+                                      context,
+                                      listen: false,
+                                    );
+                                themeNotifier.toggle();
+                              },
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: theme.card,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: theme.border,
+                                    width: 0.5,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  theme.isDark ? '☀️' : '🌙',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => _showSettingsSheet(context, theme),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: theme.card,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: theme.border,
+                                    width: 0.5,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.settings,
+                                  color: theme.text1,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 18),
 
-                  // 5. EXERCISE LIST
-                  _exerciseLogSection(
-                    theme,
-                    _selectedSplit,
-                    theme.teal,
-                    cardBorder,
-                  ),
-                  const SizedBox(height: 24),
+                    // 2. STATS ROW
+                    _workoutStatsGrid(theme, theme.teal),
+                    const SizedBox(height: 18),
 
-                  // 9. START BUTTON
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.teal,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      onPressed:
-                          _completedExercises == _selectedSplit.exercises.length
-                          ? null
-                          : _startTodayWorkout,
-                      child: Text(
-                        _buttonLabel,
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                    // 4. SPLIT SELECTOR
+                    _splitSelector(theme),
+                    const SizedBox(height: 20),
+
+                    // 3. PROGRESS BAR SECTION
+                    _buildLinearProgress(theme),
+                    const SizedBox(height: 20),
+
+                    // 5. EXERCISE LIST (with animated cross-fade and slide on switch)
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (child, animation) {
+                        final offsetAnimation =
+                            Tween<Offset>(
+                              begin: const Offset(0.0, 0.08),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutCubic,
+                              ),
+                            );
+                        return SlideTransition(
+                          position: offsetAnimation,
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: KeyedSubtree(
+                        key: ValueKey(_selectedSplit.title),
+                        child: _exerciseLogSection(
+                          theme,
+                          _selectedSplit,
+                          theme.teal,
+                          cardBorder,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 140),
-                ],
+                    const SizedBox(height: 12),
+
+                    // 9. START BUTTON
+                    _buildStartButton(theme),
+                    const SizedBox(height: 140),
+                  ],
+                ),
               ),
             ),
           ),
 
-          // 6. REP COUNTER OVERLAY
-          if (_showRepCounter)
-            Positioned.fill(child: _buildRepCounterOverlay(theme)),
+          // 6. REP COUNTER OVERLAY (slides in from right with spring overshoot)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutBack,
+            left: _showRepCounter ? 0 : MediaQuery.of(context).size.width,
+            right: _showRepCounter ? 0 : -MediaQuery.of(context).size.width,
+            top: 0,
+            bottom: 0,
+            child: _buildRepCounterOverlay(theme),
+          ),
 
           // 8. REST TIMER OVERLAY
           if (_isResting) Positioned.fill(child: _buildRestTimerOverlay(theme)),
@@ -6457,47 +7027,210 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Widget _splitSelector(ThemeColors theme) {
-    return Container(
-      margin: const EdgeInsets.only(top: 20),
-      child: Row(
-        children: [
-          Expanded(child: _splitButton(theme, _plan[0])),
-          const SizedBox(width: 10),
-          Expanded(child: _splitButton(theme, _plan[1])),
-        ],
-      ),
+    final activeIndex = _selectedSplit.title == _plan[0].title ? 0 : 1;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tabWidth = (constraints.maxWidth - 4) / 2;
+        return Container(
+          margin: const EdgeInsets.only(top: 20),
+          height: 48,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: theme.card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.border, width: 0.5),
+          ),
+          child: Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack, // spring
+                left: activeIndex * tabWidth,
+                width: tabWidth,
+                height: 44,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.teal,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.teal.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        HapticService.tapFeedback();
+                        SoundManager.playTapClick();
+                        setState(() {
+                          _selectedSplit = _plan[0];
+                          _recalculateStats();
+                        });
+                      },
+                      child: Center(
+                        child: Text(
+                          _plan[0].title,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: activeIndex == 0
+                                ? Colors.white
+                                : theme.text3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        HapticService.tapFeedback();
+                        SoundManager.playTapClick();
+                        setState(() {
+                          _selectedSplit = _plan[1];
+                          _recalculateStats();
+                        });
+                      },
+                      child: Center(
+                        child: Text(
+                          _plan[1].title,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: activeIndex == 1
+                                ? Colors.white
+                                : theme.text3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _splitButton(ThemeColors theme, WorkoutDay split) {
-    final isSelected = _selectedSplit.title == split.title;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedSplit = split;
-          _recalculateStats();
-        });
-      },
-      child: Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: isSelected ? theme.teal.withValues(alpha: 0.1) : theme.card,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected
-                ? theme.teal.withValues(alpha: 0.2)
-                : theme.border,
-            width: 1,
-          ),
+  Widget _buildLinearProgress(ThemeColors theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Today's session",
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: theme.text1,
+              ),
+            ),
+            Text(
+              '${(_setProgress * 100).round()}% · $_completedExercises/${_selectedSplit.exercises.length} exercises',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                color: theme.text2,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-        alignment: Alignment.center,
-        child: Text(
-          split.title,
-          style: GoogleFonts.dmSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? theme.teal : theme.text3,
+        const SizedBox(height: 10),
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.0, end: _setProgress),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutBack, // spring physics
+          builder: (context, value, child) {
+            return Container(
+              height: 6,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: theme.isDark
+                    ? const Color(0x14FFFFFF)
+                    : const Color(0x0F000000),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Stack(
+                children: [
+                  FractionallySizedBox(
+                    widthFactor: value.clamp(0.0, 1.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(3),
+                        gradient: LinearGradient(
+                          colors: [
+                            theme.teal,
+                            theme.teal.withValues(alpha: 0.8),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.teal.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (value > 0)
+                    _GlowingPulse(progress: value, accentColor: theme.teal),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStartButton(ThemeColors theme) {
+    final isDisabled = _completedExercises == _selectedSplit.exercises.length;
+    return GestureDetector(
+      onTap: isDisabled ? null : _startTodayWorkout,
+      child: AnimatedOpacity(
+        opacity: isDisabled ? 0.5 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        child: Container(
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [
+                theme.teal,
+                const Color(0xFF25A35A), // Accent dark
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.teal.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            _buttonLabel,
+            style: GoogleFonts.dmSans(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
@@ -6513,130 +7246,56 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Section 1: MY ROUTINE
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Exercise log',
+              'MY ROUTINE',
               style: GoogleFonts.dmSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.0,
                 color: theme.text1,
               ),
             ),
-            GestureDetector(
-              onTap: _startTodayWorkout,
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.teal.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+              ),
               child: Text(
-                '+ Add',
-                style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                'ORIGINAL',
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
                   color: theme.teal,
                 ),
               ),
             ),
           ],
         ),
+        const SizedBox(height: 6),
+        Container(height: 1, color: theme.border),
         const SizedBox(height: 10),
-        for (final exercise in selectedSplit.exercises)
-          _exerciseLogRow(theme, exercise),
-      ],
-    );
-  }
-
-  Color _getMuscleGroupColor(ThemeColors theme, List<String> exercise) {
-    final name = exercise[0].toLowerCase();
-    final desc = (exercise.length > 2 ? exercise[2] : '').toLowerCase();
-
-    // Back, Biceps, Core -> gold
-    if (name.contains('row') ||
-        name.contains('plank') ||
-        name.contains('leg raise') ||
-        desc.contains('back') ||
-        desc.contains('biceps') ||
-        desc.contains('core') ||
-        desc.contains('abs')) {
-      return theme.gold;
-    }
-    // Chest, Triceps, Shoulders, Legs -> emerald
-    return theme.teal;
-  }
-
-  Widget _circleCheckbox(ThemeColors theme, bool done, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: done ? theme.teal.withValues(alpha: 0.15) : Colors.transparent,
-          border: Border.all(
-            color: done
-                ? theme.teal
-                : (theme.isDark
-                      ? theme.border
-                      : theme.text4.withValues(alpha: 0.3)),
-            width: 2,
-          ),
-        ),
-        child: done
-            ? Center(child: Icon(Icons.check, size: 20, color: theme.teal))
-            : null,
-      ),
-    );
-  }
-
-  Widget _exerciseLogRow(ThemeColors theme, List<String> exercise) {
-    final key = '${_selectedSplit.title}|${exercise[0]}';
-    final state = _exerciseStates[key];
-    final completed = state?.completed == true;
-    final sets = parseSets(exercise[1]);
-    final reps = state != null ? state.maxReps : parseReps(exercise[1]);
-    final muscle = exercise.length > 2 ? exercise[2] : '';
-    final barColor = _getMuscleGroupColor(theme, exercise);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: theme.border, width: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 36,
-            decoration: BoxDecoration(
-              color: barColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 12),
-          _circleCheckbox(theme, completed, () => _toggleExercise(key)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  exercise[0],
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: theme.text1,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '$sets sets × $reps reps · $muscle',
-                  style: GoogleFonts.dmSans(fontSize: 12, color: theme.text3),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
+        ...selectedSplit.exercises.map((exercise) {
+          final key = '${selectedSplit.title}|${exercise[0]}';
+          final state = _exerciseStates[key];
+          final completed = state?.completed == true;
+          final sets = parseSets(exercise[1]);
+          final reps = state != null ? state.maxReps : parseReps(exercise[1]);
+          final muscle = exercise.length > 2 ? exercise[2] : '';
+          return ExerciseLogRowWidget(
+            theme: theme,
+            exercise: exercise,
+            isLibrary: false,
+            completed: completed,
+            sets: sets,
+            reps: reps,
+            muscle: muscle,
+            onToggle: () => _toggleExercise(key),
+            onTapReps: () {
               if (state != null) {
                 setState(() {
                   _activeExerciseState = state;
@@ -6649,21 +7308,100 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 });
               }
             },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Text(
-                '$reps',
-                style: GoogleFonts.syne(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: completed ? theme.teal : theme.gold,
+          );
+        }),
+        const SizedBox(height: 24),
+        // Section 2: EXERCISE LIBRARY
+        Row(
+          children: [
+            Text(
+              'EXERCISE LIBRARY',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.0,
+                color: theme.text1,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0x26E67E22), // Orange glow
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'FROM FILE',
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFE67E22),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(height: 1, color: theme.border),
+        const SizedBox(height: 10),
+        ..._libraryExercises.map((exercise) {
+          final key = 'lib|${exercise[0]}';
+          final state = _exerciseStates[key];
+          final completed = state?.completed == true;
+          final sets = parseSets(exercise[1]);
+          final reps = state != null ? state.maxReps : parseReps(exercise[1]);
+          final muscle = exercise.length > 2 ? exercise[2] : '';
+          return ExerciseLogRowWidget(
+            theme: theme,
+            exercise: exercise,
+            isLibrary: true,
+            completed: completed,
+            sets: sets,
+            reps: reps,
+            muscle: muscle,
+            onToggle: () => _toggleExercise(key),
+            onTapReps: () {
+              if (state != null) {
+                setState(() {
+                  _activeExerciseState = state;
+                  _activeExerciseName = exercise[0];
+                  _repsRemaining = state.repsRemaining;
+                  if (_repsRemaining <= 0) {
+                    _repsRemaining = state.maxReps;
+                  }
+                  _showRepCounter = true;
+                });
+              }
+            },
+          );
+        }),
+      ],
     );
+  }
+
+  String _getTargetMuscleLabel(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('push-up') || lower.contains('push up')) return 'CHEST & TRICEPS';
+    if (lower.contains('squat')) return 'QUADS & GLUTES';
+    if (lower.contains('lunge')) return 'QUADS & HAMSTRINGS';
+    if (lower.contains('bridge')) return 'GLUTES & HAMSTRINGS';
+    if (lower.contains('raise')) {
+      if (lower.contains('calf')) return 'CALVES';
+      if (lower.contains('leg')) return 'ABS & CORE';
+      return 'SHOULDERS';
+    }
+    if (lower.contains('row')) return 'BACK & BICEPS';
+    if (lower.contains('circle')) return 'SHOULDER MOBILITY';
+    if (lower.contains('plank')) return 'CORE STABILITY';
+    if (lower.contains('pull')) return 'LATS & BACK';
+    if (lower.contains('curl')) return 'BICEPS';
+    if (lower.contains('press')) {
+      if (lower.contains('bench')) return 'CHEST';
+      return 'SHOULDERS';
+    }
+    if (lower.contains('fly')) return 'REAR DELTS';
+    if (lower.contains('shrug')) return 'TRAPS';
+    return 'TARGET MUSCLES';
   }
 
   Widget _buildRepCounterOverlay(ThemeColors theme) {
@@ -6671,64 +7409,216 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       return const SizedBox.shrink();
     }
 
+    final state = _activeExerciseState!;
+    final totalSets = state.totalSets;
+    final currentSet = state.currentSet;
+    final isSetDone = _repsRemaining == 0;
+    final isLastSet = currentSet == totalSets;
+
     return Container(
       color: theme.bg,
       child: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Positioned(
-              top: 20,
-              left: 16,
-              child: IconButton(
-                icon: Icon(Icons.arrow_back, color: theme.text1),
-                onPressed: () => setState(() => _showRepCounter = false),
-              ),
-            ),
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            // Top Navigation row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _activeExerciseName!,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: theme.text1,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  Text(
-                    '$_repsRemaining',
-                    style: GoogleFonts.syne(
-                      fontSize: 80,
-                      fontWeight: FontWeight.w800,
-                      color: theme.gold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Tap to count down',
-                    style: GoogleFonts.dmSans(fontSize: 14, color: theme.text2),
-                  ),
-                  const SizedBox(height: 50),
                   GestureDetector(
                     onTap: () {
-                      if (!mounted) return;
-                      setState(() {
-                        if (_repsRemaining > 0) {
-                          _repsRemaining--;
+                      HapticService.negative();
+                      SoundManager.playTapClick();
+                      setState(() => _showRepCounter = false);
+                    },
+                    child: Icon(Icons.arrow_back, color: theme.text1, size: 24),
+                  ),
+                  Text(
+                    'Set $currentSet of $totalSets',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: theme.teal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Scrollable Middle Content
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    children: [
+                      // Exercise Name
+                      Text(
+                        _activeExerciseName!,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: theme.text1,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Sets x Reps Target
+                      Text(
+                        '$totalSets sets × ${state.maxReps} reps',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          color: theme.text3,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Stick figure canvas
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: theme.card,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: theme.border, width: 1),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: StickFigureWidget(
+                            exerciseName: _activeExerciseName!,
+                            accentColor: theme.teal,
+                            size: 120,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Target Muscle Label below figure
+                      Text(
+                        _getTargetMuscleLabel(_activeExerciseName!),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          color: theme.text3,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Set Progress Dots
+                      SetProgressDots(
+                        totalSets: totalSets,
+                        currentSet: currentSet,
+                        isCompleted: state.completed,
+                        theme: theme,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Hero counter number (animated Odometer)
+                      OdometerCounter(
+                        value: _repsRemaining,
+                        style: GoogleFonts.syne(
+                          fontSize: 96,
+                          fontWeight: FontWeight.w900,
+                          color: isSetDone ? theme.text3 : theme.teal,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        isSetDone ? 'Set complete!' : 'Tap to count down',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: const Color(0xFF5A5A6A),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // TAP Button (morphing circular button)
+                      TapCounterButton(
+                        repsRemaining: _repsRemaining,
+                        theme: theme,
+                        onTap: () {
                           if (_repsRemaining > 0) {
-                            HapticService.selection();
+                            setState(() {
+                              _repsRemaining--;
+                              state.repsRemaining = _repsRemaining;
+                            });
+
+                            if (_repsRemaining == 0) {
+                              // Current set complete
+                              HapticService.workoutRepZero();
+
+                              if (isLastSet) {
+                                // Exercise complete
+                                SoundManager.playExerciseComplete();
+                                HapticService.exerciseComplete();
+                              } else {
+                                // Set complete
+                                SoundManager.playSetComplete();
+                              }
+                            }
                           }
-                        }
-                        if (_repsRemaining == 0) {
-                          HapticService.workoutRepZero();
-                          AudioService.playWorkoutSetComplete();
-                          _showRepCounter = false;
-                          final key = _activeExerciseState!.exerciseKey;
-                          _exerciseStates[key]?.completed = true;
-                          _exerciseStates[key]?.repsRemaining = 0;
-                          _recalculateStats();
+                        },
+                      ),
+                      const SizedBox(height: 100),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Fixed Footer: Skip | Next Set (if done) | Edit
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Skip Button (left, dark)
+                  TextButton(
+                    onPressed: () {
+                      HapticService.negative();
+                      SoundManager.playTapClick();
+                      setState(() => _showRepCounter = false);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: theme.card,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(color: theme.border, width: 0.5),
+                      ),
+                    ),
+                    child: Text(
+                      'Skip',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: theme.text2,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+
+                  // Next Set / Finish (center, only shows when set done)
+                  if (isSetDone)
+                    ElevatedButton(
+                      onPressed: () {
+                        HapticService.medium();
+                        SoundManager.playTapClick();
+
+                        if (isLastSet) {
+                          // Finalize exercise
+                          setState(() {
+                            state.completed = true;
+                            state.repsRemaining = 0;
+                            _showRepCounter = false;
+                            _recalculateStats();
+                          });
                           _savePreferences();
                           _saveWorkoutProgress(
                             _selectedSplit,
@@ -6737,69 +7627,71 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 _selectedSplit.exercises.length,
                           );
                           _maybeCompleteWorkout();
+                        } else {
+                          // Go to next set and start rest timer
+                          setState(() {
+                            state.currentSet = currentSet + 1;
+                            state.repsRemaining = state.maxReps;
+                            _repsRemaining = state.maxReps;
 
-                          // Start rest timer!
-                          _restSeconds = 90;
-                          _restExerciseKey = key;
-                          _isResting = true;
-                          _startRestTimer();
+                            // Start 90 seconds rest timer
+                            _restSeconds = 90;
+                            _restExerciseKey = state.exerciseKey;
+                            _isResting = true;
+                            _startRestTimer();
+                          });
+                          _savePreferences();
                         }
-                      });
-                    },
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: theme.gold, width: 3),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'TAP',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: theme.gold,
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.teal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
                         ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: Text(
+                        isLastSet ? 'Finish' : 'Next Set',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 80), // spacer
+                  // Edit Button (right, dark)
+                  TextButton(
+                    onPressed: () {
+                      HapticService.tapFeedback();
+                      SoundManager.playTapClick();
+                      _editRepsController.text = '${state.maxReps}';
+                      setState(() => _showEditRepsModal = true);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: theme.card,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(color: theme.border, width: 0.5),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 60),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          _editRepsController.text =
-                              '${_activeExerciseState!.maxReps}';
-                          setState(() {
-                            _showEditRepsModal = true;
-                          });
-                        },
-                        child: Text(
-                          '✎ Edit',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            color: theme.text2,
-                          ),
-                        ),
+                    child: Text(
+                      'Edit',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: theme.text2,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 40),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _showRepCounter = false;
-                          });
-                        },
-                        child: Text(
-                          'Skip',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            color: theme.text2,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -6828,7 +7720,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               decoration: BoxDecoration(
                 color: theme.card,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: theme.border, width: 0.5),
+                border: Border.all(color: theme.border, width: 1),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -6848,7 +7740,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       color: theme.text3,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       letterSpacing: 1.0,
                     ),
                   ),
@@ -6858,7 +7750,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     decoration: BoxDecoration(
                       color: theme.bg,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.border, width: 0.5),
+                      border: Border.all(color: theme.border, width: 1),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     alignment: Alignment.center,
@@ -6883,6 +7775,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     children: [
                       TextButton(
                         onPressed: () {
+                          HapticService.negative();
+                          SoundManager.playTapClick();
                           setState(() {
                             _showEditRepsModal = false;
                           });
@@ -6913,6 +7807,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             _editRepsController.text.trim(),
                           );
                           if (reps != null && reps > 0) {
+                            HapticService.medium();
+                            SoundManager.playTapClick();
                             setState(() {
                               _activeExerciseState!.maxReps = reps;
                               _activeExerciseState!.repsRemaining = reps;
@@ -6975,7 +7871,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             children: [
               Text(
                 'Rest between sets',
-                style: GoogleFonts.dmSans(fontSize: 14, color: theme.text2),
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: theme.text2,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 40),
               Stack(
@@ -7010,32 +7910,34 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     ? 'Next: Workout complete!'
                     : 'Next: $nextExerciseName',
                 style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: theme.text3,
+                  fontSize: 14,
+                  color: theme.text2,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 50),
               GestureDetector(
                 onTap: () {
+                  HapticService.negative();
+                  SoundManager.playTapClick();
                   _skipRest();
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+                    horizontal: 28,
+                    vertical: 14,
                   ),
                   decoration: BoxDecoration(
                     color: theme.card,
                     borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: theme.border, width: 0.5),
+                    border: Border.all(color: theme.border, width: 1),
                   ),
                   child: Text(
                     'Skip Rest',
                     style: GoogleFonts.dmSans(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: theme.text2,
+                      fontWeight: FontWeight.bold,
+                      color: theme.text1,
                     ),
                   ),
                 ),
@@ -7101,6 +8003,7 @@ class IncomeScreen extends StatefulWidget {
     required this.expenseLog,
     required this.onAddEntry,
     required this.onAddExpense,
+    this.onScreenshot,
   });
 
   final ThemeColors theme;
@@ -7108,6 +8011,7 @@ class IncomeScreen extends StatefulWidget {
   final Map<String, int> expenseLog;
   final ValueChanged<int> onAddEntry;
   final ValueChanged<int> onAddExpense;
+  final VoidCallback? onScreenshot;
 
   @override
   State<IncomeScreen> createState() => _IncomeScreenState();
@@ -7370,7 +8274,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
           parent: AlwaysScrollableScrollPhysics(),
         ),
         clipBehavior: Clip.none,
-        padding: const EdgeInsets.fromLTRB(16, 48, 16, 110),
+        padding: const EdgeInsets.fromLTRB(20, 30, 20, 110),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -7386,7 +8290,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
                         'FINANCE',
                         style: GoogleFonts.dmSans(
                           fontSize: 10,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           letterSpacing: 3.0,
                           color: colors.gold,
                         ),
@@ -7395,42 +8299,68 @@ class _IncomeScreenState extends State<IncomeScreen> {
                       Text(
                         'Income',
                         style: GoogleFonts.syne(
-                          fontSize: 32,
+                          fontSize: 26,
                           fontWeight: FontWeight.w800,
                           color: colors.text1,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
                         'Automation career to \u20B93L/month',
                         style: GoogleFonts.dmSans(
                           fontSize: 13,
                           color: colors.text2,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => themeNotifier.toggle(),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: colors.card,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colors.cardBorder, width: 0.5),
+                Row(
+                  children: [
+                    if (widget.onScreenshot != null) ...[
+                      GestureDetector(
+                        onTap: widget.onScreenshot,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.cardBorder, width: 0.5),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.camera_alt,
+                            color: colors.gold,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    GestureDetector(
+                      onTap: () => themeNotifier.toggle(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: colors.card,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: colors.cardBorder, width: 0.5),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          colors.theme.isDark ? '☀️' : '🌙',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
                     ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      colors.theme.isDark ? '☀️' : '🌙',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 2. SUMMARY CARD
             Container(
@@ -7440,7 +8370,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
                 border: Border.all(color: colors.cardBorder, width: 0.5),
                 boxShadow: colors.shadow,
               ),
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   Text(
@@ -7467,7 +8397,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
                       // Left Earned Card
                       Expanded(
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: colors.emerald2,
                             borderRadius: BorderRadius.circular(14),
@@ -7514,7 +8444,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
                       // Right Spent Card
                       Expanded(
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: colors.red2,
                             borderRadius: BorderRadius.circular(14),
@@ -7562,7 +8492,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 3. DAY-BY-DAY LIST
             Row(
@@ -7588,7 +8518,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             if (visibleDays.isEmpty)
               Container(
                 height: 100,
@@ -7610,11 +8540,8 @@ class _IncomeScreenState extends State<IncomeScreen> {
                   final spent = widget.expenseLog[dayKey(date)] ?? 0;
 
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: colors.card,
                       borderRadius: BorderRadius.circular(14),
@@ -7662,9 +8589,9 @@ class _IncomeScreenState extends State<IncomeScreen> {
                             Text(
                               spent > 0 ? '−${_money(spent)}' : _money(0),
                               style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: spent > 0 ? colors.red : colors.text4,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: spent > 0 ? colors.red : colors.text4,
                               ),
                             ),
                           ],
@@ -7674,7 +8601,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
                   );
                 },
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 4. INPUT SECTION
             Container(
@@ -7819,6 +8746,622 @@ class _IncomeScreenState extends State<IncomeScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GlowingPulse extends StatefulWidget {
+  final double progress;
+  final Color accentColor;
+
+  const _GlowingPulse({required this.progress, required this.accentColor});
+
+  @override
+  State<_GlowingPulse> createState() => _GlowingPulseState();
+}
+
+class _GlowingPulseState extends State<_GlowingPulse>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth * widget.progress;
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Positioned(
+              left: -50 + (_controller.value * (width + 50)),
+              width: 50,
+              height: 6,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      Colors.white.withValues(alpha: 0.6),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class OdometerCounter extends StatelessWidget {
+  final int value;
+  final TextStyle style;
+
+  const OdometerCounter({super.key, required this.value, required this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 150),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        final inAnimation =
+            Tween<Offset>(
+              begin: const Offset(0.0, 0.5),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutBack, // spring
+              ),
+            );
+        final outAnimation = Tween<Offset>(
+          begin: const Offset(0.0, -0.5),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeIn));
+
+        if (child.key == ValueKey(value)) {
+          return SlideTransition(
+            position: inAnimation,
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        } else {
+          return SlideTransition(
+            position: outAnimation,
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        }
+      },
+      child: TweenAnimationBuilder<double>(
+        key: ValueKey(value),
+        tween: Tween<double>(begin: 1.08, end: 1.0),
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutBack, // spring
+        builder: (context, scale, child) {
+          return Transform.scale(scale: scale, child: child);
+        },
+        child: Text('$value', key: ValueKey(value), style: style),
+      ),
+    );
+  }
+}
+
+class SetProgressDots extends StatefulWidget {
+  final int totalSets;
+  final int currentSet;
+  final bool isCompleted;
+  final ThemeColors theme;
+
+  const SetProgressDots({
+    super.key,
+    required this.totalSets,
+    required this.currentSet,
+    required this.isCompleted,
+    required this.theme,
+  });
+
+  @override
+  State<SetProgressDots> createState() => _SetProgressDotsState();
+}
+
+class _SetProgressDotsState extends State<SetProgressDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseScale;
+  late Animation<double> _pulseOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+
+    _pulseScale = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    _pulseOpacity = Tween<double>(begin: 0.3, end: 0.6).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(widget.totalSets, (index) {
+        final dotNum = index + 1;
+        final isFilled = widget.isCompleted || dotNum < widget.currentSet;
+        final isCurrent = !widget.isCompleted && dotNum == widget.currentSet;
+
+        if (isCurrent) {
+          return AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                width: 14 * _pulseScale.value,
+                height: 14 * _pulseScale.value,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.theme.teal.withValues(
+                    alpha: _pulseOpacity.value,
+                  ),
+                  border: Border.all(color: widget.theme.teal, width: 2),
+                ),
+              );
+            },
+          );
+        }
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isFilled ? widget.theme.teal : Colors.transparent,
+            border: Border.all(
+              color: isFilled ? widget.theme.teal : widget.theme.text3,
+              width: 2,
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class TapCounterButton extends StatefulWidget {
+  final int repsRemaining;
+  final ThemeColors theme;
+  final VoidCallback onTap;
+
+  const TapCounterButton({
+    super.key,
+    required this.repsRemaining,
+    required this.theme,
+    required this.onTap,
+  });
+
+  @override
+  State<TapCounterButton> createState() => _TapCounterButtonState();
+}
+
+class _TapCounterButtonState extends State<TapCounterButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressController;
+  late Animation<double> _scaleAnimation;
+  Offset? _tapPosition;
+  double _rippleOpacity = 0.0;
+  double _rippleRadius = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
+  }
+
+  void _triggerRipple(TapUpDetails details) {
+    setState(() {
+      _tapPosition = details.localPosition;
+      _rippleOpacity = 0.2;
+      _rippleRadius = 0.0;
+    });
+
+    const steps = 15;
+    const stepDuration = Duration(milliseconds: 15);
+    for (int i = 0; i <= steps; i++) {
+      Future.delayed(stepDuration * i, () {
+        if (!mounted) return;
+        setState(() {
+          _rippleRadius = (i / steps) * 60;
+          _rippleOpacity = 0.2 * (1 - (i / steps));
+        });
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDone = widget.repsRemaining == 0;
+    final theme = widget.theme;
+
+    final duration = const Duration(milliseconds: 300);
+    final curve = Curves.easeOutBack; // spring
+
+    final borderThemeColor = isDone ? theme.text3 : theme.teal;
+    final bgThemeColor = isDone
+        ? theme.card
+        : theme.teal.withValues(alpha: 0.1);
+
+    return GestureDetector(
+      onTapDown: (_) {
+        _pressController.forward();
+      },
+      onTapUp: (details) {
+        _pressController.reverse();
+        _triggerRipple(details);
+        widget.onTap();
+      },
+      onTapCancel: () {
+        _pressController.reverse();
+      },
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedContainer(
+          duration: duration,
+          curve: curve,
+          width: 116,
+          height: 116,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: bgThemeColor,
+            border: Border.all(color: borderThemeColor, width: 2.5),
+          ),
+          child: ClipOval(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedDefaultTextStyle(
+                  duration: duration,
+                  curve: curve,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDone ? theme.text3 : theme.teal,
+                  ),
+                  child: Text(isDone ? 'DONE' : 'TAP'),
+                ),
+                if (_tapPosition != null && _rippleOpacity > 0)
+                  Positioned(
+                    left: _tapPosition!.dx - _rippleRadius,
+                    top: _tapPosition!.dy - _rippleRadius,
+                    child: Container(
+                      width: _rippleRadius * 2,
+                      height: _rippleRadius * 2,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: _rippleOpacity),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ExerciseLogRowWidget extends StatefulWidget {
+  final ThemeColors theme;
+  final List<String> exercise;
+  final bool isLibrary;
+  final bool completed;
+  final int sets;
+  final int reps;
+  final String muscle;
+  final VoidCallback onToggle;
+  final VoidCallback onTapReps;
+
+  const ExerciseLogRowWidget({
+    super.key,
+    required this.theme,
+    required this.exercise,
+    required this.isLibrary,
+    required this.completed,
+    required this.sets,
+    required this.reps,
+    required this.muscle,
+    required this.onToggle,
+    required this.onTapReps,
+  });
+
+  @override
+  State<ExerciseLogRowWidget> createState() => _ExerciseLogRowWidgetState();
+}
+
+class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
+  }
+
+  String _getEquipmentTag() {
+    final name = widget.exercise[0].toLowerCase();
+    final desc = (widget.exercise.length > 2 ? widget.exercise[2] : '')
+        .toLowerCase();
+    if (name.contains('cable') || desc.contains('cable')) return 'CABLE';
+    if (name.contains('band') || desc.contains('band')) return 'BAND';
+    if (name.contains('machine') ||
+        name.contains('press') ||
+        desc.contains('machine') ||
+        desc.contains('press')) {
+      if (name.contains('bench') ||
+          name.contains('push-up') ||
+          name.contains('push up') ||
+          name.contains('pike')) {
+        return 'BW';
+      }
+      return 'MCH';
+    }
+    if (name.contains('assisted') || desc.contains('assisted')) return 'ASSISTED';
+    return 'BW';
+  }
+
+  Widget _buildEquipmentTag(String tag) {
+    Color bg;
+    Color text;
+    switch (tag) {
+      case 'BAND':
+        bg = const Color(0x269B59B6);
+        text = const Color(0xFFBB8FCE);
+        break;
+      case 'MCH':
+        bg = const Color(0x263498DB);
+        text = const Color(0xFF7FB3D8);
+        break;
+      case 'ASSISTED':
+        bg = const Color(0x26F1C40F);
+        text = const Color(0xFFD4C36A);
+        break;
+      case 'CABLE':
+        bg = const Color(0x26E74C3C);
+        text = const Color(0xFFE08880);
+        break;
+      case 'BW':
+      default:
+        bg = const Color(0x0FFFFFFF);
+        text = widget.theme.text3;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        tag,
+        style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: text),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    final tag = _getEquipmentTag();
+    final itemBg = widget.completed
+        ? theme.card.withValues(alpha: 0.5)
+        : theme.card;
+
+    return GestureDetector(
+      onTapDown: (_) => _pressController.forward(),
+      onTapUp: (_) {
+        _pressController.reverse();
+        HapticService.tapFeedback();
+        SoundManager.playTapClick();
+        widget.onTapReps();
+      },
+      onTapCancel: () => _pressController.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedOpacity(
+          opacity: widget.completed ? 0.5 : 1.0,
+          duration: const Duration(milliseconds: 300),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: itemBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: theme.border, width: 1),
+            ),
+            child: Stack(
+              children: [
+                if (widget.completed)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 3,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.teal,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(14),
+                          bottomLeft: Radius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: widget.isLibrary
+                              ? const Color(0x1FE67E22)
+                              : const Color(0x262ECC71),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(
+                          widget.isLibrary
+                              ? Icons.bookmark_added_outlined
+                              : Icons.fitness_center_outlined,
+                          color: widget.isLibrary
+                              ? const Color(0xFFE67E22)
+                              : theme.teal,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.exercise[0],
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: theme.text1,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 4,
+                              runSpacing: 2,
+                              children: [
+                                Text(
+                                  '${widget.sets} sets × ${widget.reps} reps · ${widget.muscle} ',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 10,
+                                    color: theme.text3,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                _buildEquipmentTag(tag),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${widget.reps}',
+                        style: GoogleFonts.syne(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: widget.completed
+                              ? theme.teal
+                              : (widget.isLibrary
+                                    ? const Color(0xFFE67E22)
+                                    : theme.gold),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () {
+                          HapticService.tapFeedback();
+                          SoundManager.playTapClick();
+                          widget.onToggle();
+                        },
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: widget.completed
+                                  ? theme.teal
+                                  : theme.text3,
+                              width: 2,
+                            ),
+                            color: widget.completed
+                                ? theme.teal
+                                : Colors.transparent,
+                          ),
+                          child: widget.completed
+                              ? const Center(
+                                  child: Icon(
+                                    Icons.check,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

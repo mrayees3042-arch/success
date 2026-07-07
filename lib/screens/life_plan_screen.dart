@@ -43,8 +43,15 @@ class LifeGoal {
 }
 
 class LifePlanScreen extends StatefulWidget {
-  const LifePlanScreen({super.key, required this.theme});
+  const LifePlanScreen({
+    super.key,
+    required this.theme,
+    this.onScreenshot,
+    required this.userGoalYear,
+  });
   final ThemeColors theme;
+  final VoidCallback? onScreenshot;
+  final int userGoalYear;
 
   @override
   State<LifePlanScreen> createState() => _LifePlanScreenState();
@@ -727,7 +734,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Set a new goal for 2026',
+                  'Set a new goal for ${widget.userGoalYear - 1}',
                   style: GoogleFonts.dmSans(
                     fontSize: 11,
                     color: text3,
@@ -747,35 +754,68 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
-          padding: const EdgeInsets.fromLTRB(16, 32, 16, 40),
+          padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '2026 Focus',
-                style: GoogleFonts.dmSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 3,
-                  color: goldColor,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Plan',
-                style: GoogleFonts.syne(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: text1,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '$daysRemaining days remaining',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: text2,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${widget.userGoalYear - 1} Focus',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 3.0,
+                            color: goldColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Plan',
+                          style: GoogleFonts.syne(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: text1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '$daysRemaining days remaining',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: text2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (widget.onScreenshot != null)
+                    GestureDetector(
+                      onTap: widget.onScreenshot,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: cardBorder, width: 0.5),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.camera_alt,
+                          color: goldColor,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 24),
               buildYearProgressCard(),

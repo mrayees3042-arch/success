@@ -61,6 +61,34 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+                "saveScreenshotToGallery" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val fileName = args?.get("fileName") as? String
+                    val bytes = args?.get("bytes") as? ByteArray
+                    if (fileName == null || bytes == null) {
+                        result.error("bad_args", "Missing fileName or bytes", null)
+                    } else {
+                        try {
+                            val values = ContentValues().apply {
+                                put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/SuccessScreenshots")
+                                put(MediaStore.Images.Media.IS_PENDING, 1)
+                            }
+                            val resolver = applicationContext.contentResolver
+                            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                                ?: throw IllegalStateException("Could not create image file")
+                            resolver.openOutputStream(uri)?.use { it.write(bytes) }
+                                ?: throw IllegalStateException("Could not open image output stream")
+                            values.clear()
+                            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                            resolver.update(uri, values, null, null)
+                            result.success("Pictures/SuccessScreenshots/$fileName")
+                        } catch (error: Exception) {
+                            result.error("save_failed", error.message, null)
+                        }
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
