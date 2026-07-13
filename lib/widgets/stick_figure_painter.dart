@@ -246,6 +246,41 @@ class _StickFigurePainter extends CustomPainter {
   // Coordinate system: x=0 center, y negative = up, y positive = down
   // Range roughly -40 to +40
 
+  static const _celebratePoses = [
+    _Pose(
+      head: Offset(0, -32),
+      neck: Offset(0, -22),
+      leftShoulder: Offset(-10, -20),
+      rightShoulder: Offset(10, -20),
+      leftElbow: Offset(-14, -14),
+      rightElbow: Offset(14, -14),
+      leftHand: Offset(-16, -20),
+      rightHand: Offset(16, -20),
+      hip: Offset(0, 1),
+      leftKnee: Offset(-8, 15),
+      rightKnee: Offset(8, 15),
+      leftFoot: Offset(-6, 28),
+      rightFoot: Offset(6, 28),
+      bodyYOffset: 2.0,
+    ),
+    _Pose(
+      head: Offset(0, -45),
+      neck: Offset(0, -35),
+      leftShoulder: Offset(-10, -33),
+      rightShoulder: Offset(10, -33),
+      leftElbow: Offset(-16, -45),
+      rightElbow: Offset(16, -45),
+      leftHand: Offset(-20, -55),
+      rightHand: Offset(20, -55),
+      hip: Offset(0, -12),
+      leftKnee: Offset(-6, 2),
+      rightKnee: Offset(6, 2),
+      leftFoot: Offset(-6, 16),
+      rightFoot: Offset(6, 16),
+      bodyYOffset: -10.0,
+    ),
+  ];
+
   static const _standing = _Pose(
     head: Offset(0, -35),
     neck: Offset(0, -25),
@@ -265,6 +300,11 @@ class _StickFigurePainter extends CustomPainter {
   List<_Pose> _getPoses() {
     final name = exerciseName.toLowerCase();
 
+    if (name.contains('celebrate')) return _celebratePoses;
+    if (name.contains('leg curl')) return _legCurlPoses;
+    if (name.contains('leg extension')) return _legExtensionPoses;
+    if (name.contains('pulldown') || name.contains('pull down')) return _latPulldownPoses;
+    if (name.contains('crossover')) return _cableCrossoverPoses;
     if (name.contains('squat') && name.contains('jump')) return _jumpSquatPoses;
     if (name.contains('squat')) return _squatPoses;
     if (name.contains('lunge')) return _lungePoses;
@@ -897,6 +937,142 @@ class _StickFigurePainter extends CustomPainter {
       rightKnee: Offset(14, 4),
       leftFoot: Offset(-4, 30),
       rightFoot: Offset(20, 8),
+    ),
+  ];
+
+  // ── LEG CURL (side view, lying face down) ──
+  static const _legCurlPoses = [
+    _Pose(
+      head: Offset(-30, 24),
+      neck: Offset(-22, 24),
+      leftShoulder: Offset(-18, 24),
+      rightShoulder: Offset(-18, 24),
+      leftElbow: Offset(-14, 28),
+      rightElbow: Offset(-14, 28),
+      leftHand: Offset(-10, 28),
+      rightHand: Offset(-10, 28),
+      hip: Offset(2, 24),
+      leftKnee: Offset(16, 24),
+      rightKnee: Offset(16, 24),
+      leftFoot: Offset(30, 24),
+      rightFoot: Offset(30, 24),
+    ),
+    _Pose(
+      head: Offset(-30, 24),
+      neck: Offset(-22, 24),
+      leftShoulder: Offset(-18, 24),
+      rightShoulder: Offset(-18, 24),
+      leftElbow: Offset(-14, 28),
+      rightElbow: Offset(-14, 28),
+      leftHand: Offset(-10, 28),
+      rightHand: Offset(-10, 28),
+      hip: Offset(2, 24),
+      leftKnee: Offset(14, 24),
+      rightKnee: Offset(14, 24),
+      leftFoot: Offset(10, 8),
+      rightFoot: Offset(10, 8),
+    ),
+  ];
+
+  // ── LEG EXTENSION (side view, sitting) ──
+  static const _legExtensionPoses = [
+    _Pose(
+      head: Offset(0, -25),
+      neck: Offset(0, -17),
+      leftShoulder: Offset(0, -13),
+      rightShoulder: Offset(0, -13),
+      leftElbow: Offset(-6, -4),
+      rightElbow: Offset(6, -4),
+      leftHand: Offset(-6, 12),
+      rightHand: Offset(6, 12),
+      hip: Offset(0, 10),
+      leftKnee: Offset(14, 10),
+      rightKnee: Offset(14, 10),
+      leftFoot: Offset(14, 26),
+      rightFoot: Offset(14, 26),
+    ),
+    _Pose(
+      head: Offset(0, -25),
+      neck: Offset(0, -17),
+      leftShoulder: Offset(0, -13),
+      rightShoulder: Offset(0, -13),
+      leftElbow: Offset(-6, -4),
+      rightElbow: Offset(6, -4),
+      leftHand: Offset(-6, 12),
+      rightHand: Offset(6, 12),
+      hip: Offset(0, 10),
+      leftKnee: Offset(14, 10),
+      rightKnee: Offset(14, 10),
+      leftFoot: Offset(28, 10),
+      rightFoot: Offset(28, 10),
+    ),
+  ];
+
+  // ── LAT PULLDOWN (front view, sitting) ──
+  static const _latPulldownPoses = [
+    _Pose(
+      head: Offset(0, -15),
+      neck: Offset(0, -7),
+      leftShoulder: Offset(-8, -4),
+      rightShoulder: Offset(8, -4),
+      leftElbow: Offset(-14, -18),
+      rightElbow: Offset(14, -18),
+      leftHand: Offset(-12, -30),
+      rightHand: Offset(12, -30),
+      hip: Offset(0, 16),
+      leftKnee: Offset(-6, 22),
+      rightKnee: Offset(6, 22),
+      leftFoot: Offset(-8, 30),
+      rightFoot: Offset(8, 30),
+    ),
+    _Pose(
+      head: Offset(0, -15),
+      neck: Offset(0, -7),
+      leftShoulder: Offset(-8, -4),
+      rightShoulder: Offset(8, -4),
+      leftElbow: Offset(-14, 2),
+      rightElbow: Offset(14, 2),
+      leftHand: Offset(-10, -6),
+      rightHand: Offset(10, -6),
+      hip: Offset(0, 16),
+      leftKnee: Offset(-6, 22),
+      rightKnee: Offset(6, 22),
+      leftFoot: Offset(-8, 30),
+      rightFoot: Offset(8, 30),
+    ),
+  ];
+
+  // ── CABLE CROSSOVER (front view, standing) ──
+  static const _cableCrossoverPoses = [
+    _Pose(
+      head: Offset(0, -35),
+      neck: Offset(0, -25),
+      leftShoulder: Offset(-10, -23),
+      rightShoulder: Offset(10, -23),
+      leftElbow: Offset(-22, -23),
+      rightElbow: Offset(22, -23),
+      leftHand: Offset(-32, -23),
+      rightHand: Offset(32, -23),
+      hip: Offset(0, -2),
+      leftKnee: Offset(-6, 14),
+      rightKnee: Offset(6, 14),
+      leftFoot: Offset(-8, 30),
+      rightFoot: Offset(8, 30),
+    ),
+    _Pose(
+      head: Offset(0, -35),
+      neck: Offset(0, -25),
+      leftShoulder: Offset(-10, -23),
+      rightShoulder: Offset(10, -23),
+      leftElbow: Offset(-10, -13),
+      rightElbow: Offset(10, -13),
+      leftHand: Offset(0, -10),
+      rightHand: Offset(0, -10),
+      hip: Offset(0, -2),
+      leftKnee: Offset(-6, 14),
+      rightKnee: Offset(6, 14),
+      leftFoot: Offset(-8, 30),
+      rightFoot: Offset(8, 30),
     ),
   ];
 

@@ -1,5 +1,6 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:math' show max; // Fix 1: Add dart:math show max, min
 import 'dart:ui' as ui;
@@ -11,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:adhan/adhan.dart';
 import 'package:success/providers/theme_provider.dart';
 import 'package:success/screens/life_plan_screen.dart';
 import 'package:success/screens/boot_screen.dart';
@@ -388,6 +390,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   DayRecord get _today => _recordFor(DateTime.now());
 
+  DateTime _lastDate = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -401,11 +405,19 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(seconds: 8),
     )..repeat(reverse: true);
-    _themeTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted && _darkOverride == null) {
-        final nextTheme = getTheme();
-        if (nextTheme.isDark != _theme.isDark) {
-          setState(() => _theme = nextTheme);
+    _themeTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
+      if (mounted) {
+        final now = DateTime.now();
+        if (now.day != _lastDate.day) {
+          _lastDate = now;
+          await updatePrayerTimesForLocation();
+          setState(() {});
+        }
+        if (_darkOverride == null) {
+          final nextTheme = getTheme();
+          if (nextTheme.isDark != _theme.isDark) {
+            setState(() => _theme = nextTheme);
+          }
         }
       }
     });
@@ -455,6 +467,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     if (!mounted) return;
     await _loadHistory();
     await _loadWorkoutProgress();
+    await updatePrayerTimesForLocation();
+    detectLocationByIp();
   }
 
   Future<void> _loadTaskDefinitions() async {
@@ -1068,6 +1082,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           userGoalYear: _userGoalYear,
           userGoalMonth: _userGoalMonth,
           userGoalDay: _userGoalDay,
+          onProfileChanged: _updateProfile,
         ),
       ),
       SizedBox.expand(
@@ -1466,7 +1481,10 @@ class TodayScreen extends StatefulWidget {
     required this.userGoalYear,
     required this.userGoalMonth,
     required this.userGoalDay,
+    this.onProfileChanged,
   });
+
+  final Function(String, int, int, int)? onProfileChanged;
 
   final ThemeColors theme;
   final DayRecord record;
@@ -1543,6 +1561,29 @@ class _TodayScreenState extends State<TodayScreen>
       (task) =>
           task.title.trim().toLowerCase() == 'workout' ||
           task.icon.codePoint == Icons.fitness_center.codePoint,
+    );
+  }
+
+  void _showPrayerSettingsSheet() {
+    HapticService.tapFeedback();
+    SoundManager.playTapClick();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _SettingsSheet(
+        theme: widget.theme,
+        userName: widget.userName,
+        userGoalYear: widget.userGoalYear,
+        userGoalMonth: widget.userGoalMonth,
+        userGoalDay: widget.userGoalDay,
+        onProfileChanged: widget.onProfileChanged,
+        onSaved: () {
+          if (mounted) {
+            setState(() {});
+          }
+        },
+      ),
     );
   }
 
@@ -2133,17 +2174,9 @@ class _TodayScreenState extends State<TodayScreen>
     final missed = !done && isPrayerPassed(prayer);
     final isNext = !done && !missed && _getNextPrayer()['name'] == prayer;
 
-    // Define the prayer timings mapping
-    final times = {
-      'Tahajjud': '03:00',
-      'Fajr': '05:12',
-      'Dhuha': '06:22',
-      'Dhuhr': '12:14',
-      'Asr': '15:41',
-      'Maghrib': '18:42',
-      'Isha': '20:00',
-    };
-    final timeStr = times[prayer] ?? '00:00';
+    final tod = _prayerTimes[prayer] ?? const TimeOfDay(hour: 0, minute: 0);
+    final timeStr =
+        '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
 
     Color borderColor;
     Color timeColor;
@@ -2315,7 +2348,9 @@ class _TodayScreenState extends State<TodayScreen>
 
   Widget _buildHeader() {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final displayUserName = widget.userName.trim().isNotEmpty ? widget.userName.trim() : 'User';
+    final displayUserName = widget.userName.trim().isNotEmpty
+        ? widget.userName.trim()
+        : 'Welcome';
     final parts = displayUserName.split(' ');
     final firstName = parts.isNotEmpty ? parts[0] : '';
     final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
@@ -2362,36 +2397,34 @@ class _TodayScreenState extends State<TodayScreen>
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (widget.onScreenshot != null) ...[
-                  GestureDetector(
-                    onTap: widget.onScreenshot,
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0x40E8B84B),
-                          width: 1.0,
-                        ),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            const Color(0xFFE8B84B).withValues(alpha: 0.1),
-                            Colors.white.withValues(alpha: 0.02),
-                          ],
-                        ),
+                GestureDetector(
+                  onTap: _showPrayerSettingsSheet,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0x40E8B84B),
+                        width: 1.0,
                       ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        color: Color(0xFFE8B84B),
-                        size: 18,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFFE8B84B).withValues(alpha: 0.1),
+                          Colors.white.withValues(alpha: 0.02),
+                        ],
                       ),
                     ),
+                    child: const Icon(
+                      Icons.settings_outlined,
+                      color: Color(0xFFE8B84B),
+                      size: 18,
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                ],
+                ),
+                const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => themeNotifier.toggle(),
                   child: Container(
@@ -2724,20 +2757,29 @@ class _TodayScreenState extends State<TodayScreen>
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 3.5,
+              height: 16,
+              decoration: BoxDecoration(
+                color: widget.theme.gold,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.syne(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: widget.theme.text1,
+              ),
+            ),
+          ],
         ),
-        if (onAdd != null)
-          IconButton(
-            constraints: const BoxConstraints(),
-            padding: EdgeInsets.zero,
-            icon: Icon(Icons.add, color: widget.theme.gold, size: 20),
-            onPressed: onAdd,
-          ),
+        if (onAdd != null) _HeaderAddButton(onTap: onAdd, theme: widget.theme),
       ],
     ),
   );
@@ -2931,9 +2973,36 @@ class _TodayScreenState extends State<TodayScreen>
         if (_visibleTasks.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Text(
-              "No tasks for today. Tap '+' to add one.",
-              style: TextStyle(color: widget.theme.text3, fontSize: 13),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              decoration: BoxDecoration(
+                color: widget.theme.isDark
+                    ? Colors.white.withValues(alpha: 0.02)
+                    : Colors.black.withValues(alpha: 0.015),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: widget.theme.border, width: 0.5),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.assignment_turned_in_outlined,
+                    color: widget.theme.gold.withValues(alpha: 0.6),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "No tasks for today. Tap '+' to add one.",
+                      style: GoogleFonts.dmSans(
+                        color: widget.theme.text3,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ..._visibleTasks.map(
@@ -4133,19 +4202,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   ),
                   tooltip: 'Print PDF',
                 ),
-                if (widget.onScreenshot != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: widget.onScreenshot,
-                    icon: const Icon(Icons.camera_alt, size: 20),
-                    style: IconButton.styleFrom(
-                      minimumSize: const Size(40, 40),
-                      backgroundColor: appColors.card,
-                      side: BorderSide(color: appColors.cardBorder, width: 0.5),
-                    ),
-                    tooltip: 'Take Screenshot',
-                  ),
-                ],
+
                 const SizedBox(width: 8),
                 // Theme Toggle
                 GestureDetector(
@@ -4640,15 +4697,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
     Color textColor;
     Widget statusIcon;
 
-    final times = {
-      'Fajr': '05:12',
-      'Dhuha': '06:22',
-      'Dhuhr': '12:14',
-      'Asr': '15:41',
-      'Maghrib': '18:42',
-      'Isha': '20:00',
-    };
-    final timeStr = times[name] ?? '00:00';
+    final tod = _prayerTimes[name] ?? const TimeOfDay(hour: 0, minute: 0);
+    final timeStr =
+        '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
 
     if (done) {
       bgColor = appColors.emerald2;
@@ -5489,15 +5540,150 @@ DayRecord recordFor(Map<String, DayRecord> history, DateTime date) {
   return history[dayKey(date)] ?? DayRecord.empty();
 }
 
-const _prayerTimes = {
-  'Tahajjud': TimeOfDay(hour: 3, minute: 0),
-  'Fajr': TimeOfDay(hour: 5, minute: 12),
-  'Dhuha': TimeOfDay(hour: 6, minute: 22),
-  'Dhuhr': TimeOfDay(hour: 12, minute: 14),
-  'Asr': TimeOfDay(hour: 15, minute: 41),
-  'Maghrib': TimeOfDay(hour: 18, minute: 42),
-  'Isha': TimeOfDay(hour: 20, minute: 0),
+Map<String, TimeOfDay> _prayerTimes = {
+  'Tahajjud': const TimeOfDay(hour: 3, minute: 0),
+  'Fajr': const TimeOfDay(hour: 5, minute: 12),
+  'Dhuha': const TimeOfDay(hour: 6, minute: 22),
+  'Dhuhr': const TimeOfDay(hour: 12, minute: 14),
+  'Asr': const TimeOfDay(hour: 15, minute: 41),
+  'Maghrib': const TimeOfDay(hour: 18, minute: 42),
+  'Isha': const TimeOfDay(hour: 20, minute: 0),
 };
+
+Map<String, TimeOfDay> calculateDailyPrayerTimes(
+  DateTime date,
+  double lat,
+  double lon, {
+  String method = 'MuslimWorldLeague',
+  String madhab = 'Shafi',
+}) {
+  final coordinates = Coordinates(lat, lon);
+  final dateComponents = DateComponents.from(date);
+
+  CalculationParameters params;
+  switch (method) {
+    case 'Karachi':
+      params = CalculationMethod.karachi.getParameters();
+      break;
+    case 'Mecca':
+      params = CalculationMethod.umm_al_qura.getParameters();
+      break;
+    case 'Egypt':
+      params = CalculationMethod.egyptian.getParameters();
+      break;
+    case 'Gulf':
+      params = CalculationMethod.dubai.getParameters();
+      break;
+    case 'NorthAmerica':
+      params = CalculationMethod.north_america.getParameters();
+      break;
+    case 'Singapore':
+      params = CalculationMethod.singapore.getParameters();
+      break;
+    case 'MuslimWorldLeague':
+    default:
+      params = CalculationMethod.muslim_world_league.getParameters();
+      break;
+  }
+
+  if (madhab == 'Hanafi') {
+    params.madhab = Madhab.hanafi;
+  } else {
+    params.madhab = Madhab.shafi;
+  }
+
+  final p = PrayerTimes(coordinates, dateComponents, params);
+
+  TimeOfDay toTimeOfDay(DateTime dt) {
+    final localDt = dt.toLocal();
+    return TimeOfDay(hour: localDt.hour, minute: localDt.minute);
+  }
+
+  final fajrTime = p.fajr;
+  final tahajjudTime = fajrTime.subtract(const Duration(hours: 2));
+  final dhuhaTime = p.sunrise.add(const Duration(minutes: 20));
+
+  return {
+    'Tahajjud': toTimeOfDay(tahajjudTime),
+    'Fajr': toTimeOfDay(fajrTime),
+    'Dhuha': toTimeOfDay(dhuhaTime),
+    'Dhuhr': toTimeOfDay(p.dhuhr),
+    'Asr': toTimeOfDay(p.asr),
+    'Maghrib': toTimeOfDay(p.maghrib),
+    'Isha': toTimeOfDay(p.isha),
+  };
+}
+
+Future<void> updatePrayerTimesForLocation() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final lat = prefs.getDouble('prayer_latitude') ?? 28.6139;
+    final lon = prefs.getDouble('prayer_longitude') ?? 77.2090;
+    final method = prefs.getString('prayer_calc_method') ?? 'Karachi';
+    final madhab = prefs.getString('prayer_madhab') ?? 'Hanafi';
+
+    final now = DateTime.now();
+    final newTimes = calculateDailyPrayerTimes(
+      now,
+      lat,
+      lon,
+      method: method,
+      madhab: madhab,
+    );
+
+    _prayerTimes.clear();
+    _prayerTimes.addAll(newTimes);
+  } catch (e) {
+    debugPrint('Failed to update prayer times: $e');
+  }
+}
+
+Future<void> detectLocationByIp() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('prayer_latitude')) return;
+
+    final client = HttpClient();
+    final request = await client.getUrl(Uri.parse('http://ip-api.com/json'));
+    final response = await request.close();
+    if (response.statusCode == 200) {
+      final responseBody = await response.transform(utf8.decoder).join();
+      final data = jsonDecode(responseBody) as Map<String, dynamic>;
+      if (data['status'] == 'success') {
+        final lat = data['lat'] as double?;
+        final lon = data['lon'] as double?;
+        final city = data['city'] as String?;
+        final country = data['country'] as String?;
+
+        if (lat != null && lon != null) {
+          await prefs.setDouble('prayer_latitude', lat);
+          await prefs.setDouble('prayer_longitude', lon);
+          await prefs.setString(
+            'prayer_location_name',
+            '${city ?? ""}, ${country ?? ""}',
+          );
+
+          String defaultMethod = 'MuslimWorldLeague';
+          String defaultMadhab = 'Shafi';
+          final timezone = data['timezone'] as String?;
+          if (timezone != null &&
+              (timezone.contains('Asia/Kolkata') ||
+                  timezone.contains('Asia/Karachi') ||
+                  timezone.contains('Asia/Dhaka'))) {
+            defaultMethod = 'Karachi';
+            defaultMadhab = 'Hanafi';
+          }
+          await prefs.setString('prayer_calc_method', defaultMethod);
+          await prefs.setString('prayer_madhab', defaultMadhab);
+
+          await updatePrayerTimesForLocation();
+        }
+      }
+    }
+  } catch (e) {
+    debugPrint('IP Location detection failed: $e');
+  }
+}
 
 int calcStreak(Map<String, DayRecord> history, int taskIndex) {
   var streak = 0;
@@ -5853,6 +6039,100 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   bool _showEditRepsModal = false;
   final TextEditingController _editRepsController = TextEditingController();
 
+  // State variables for Duolingo & Brilliant upgrades
+  bool _showExerciseCompleteOverlay = false;
+  bool _showWorkoutCompleteOverlay = false;
+  bool _isCelebrating = false;
+  DateTime? _workoutStartTime;
+  int _comboCount = 1;
+  DateTime? _lastTapTime;
+  Timer? _comboResetTimer;
+  final List<DateTime> _recentTapTimes = [];
+  int _tapCountForEstimate = 0;
+  String _timeEstimate = "~5 min left";
+  String _motivationalPhrase = "Keep pushing";
+
+  static const _phrases = [
+    "Keep pushing",
+    "You're doing great",
+    "Almost there",
+    "Stay focused",
+    "Strong mind, strong body",
+  ];
+
+  void _selectNewPhrase() {
+    final rand = math.Random();
+    _motivationalPhrase = _phrases[rand.nextInt(_phrases.length)];
+  }
+
+  int get _currentExerciseIndex {
+    if (_activeExerciseName == null) return 1;
+    final idx = _selectedSplit.exercises.indexWhere(
+      (e) => e[0] == _activeExerciseName,
+    );
+    return idx != -1 ? idx + 1 : 1;
+  }
+
+  int get totalRepsDone {
+    return _selectedSplit.exercises.fold<int>(0, (sum, exercise) {
+      final key = '${_selectedSplit.title}|${exercise[0]}';
+      final state = _exerciseStates[key];
+      if (state == null) return sum;
+      return sum + (state.completedSets * state.maxReps);
+    });
+  }
+
+  int get minutesSpent {
+    if (_workoutStartTime == null) return 12;
+    final diff = DateTime.now().difference(_workoutStartTime!).inMinutes;
+    return max(1, diff);
+  }
+
+  String _calculateTimeEstimate() {
+    if (_recentTapTimes.length < 2) return '~5 min left';
+    double totalMs = 0;
+    int count = 0;
+    for (int i = 1; i < _recentTapTimes.length; i++) {
+      totalMs += _recentTapTimes[i]
+          .difference(_recentTapTimes[i - 1])
+          .inMilliseconds;
+      count++;
+    }
+    double avgMsPerRep = totalMs / count;
+    if (avgMsPerRep > 3000) avgMsPerRep = 3000;
+
+    final state = _activeExerciseState;
+    if (state == null) return '~5 min left';
+
+    int remainingRepsInCurrentSet = _repsRemaining;
+    int remainingSetsInCurrentExercise = state.totalSets - state.currentSet;
+    int totalRepsInCurrentExercise =
+        remainingRepsInCurrentSet +
+        (remainingSetsInCurrentExercise * state.maxReps);
+
+    int totalRepsInOtherExercises = 0;
+    final currentIndex = _selectedSplit.exercises.indexWhere(
+      (e) => e[0] == _activeExerciseName,
+    );
+    if (currentIndex != -1) {
+      for (int i = currentIndex + 1; i < _selectedSplit.exercises.length; i++) {
+        final ex = _selectedSplit.exercises[i];
+        final key = '${_selectedSplit.title}|${ex[0]}';
+        final st = _exerciseStates[key];
+        if (st != null && !st.completed) {
+          totalRepsInOtherExercises += st.totalSets * st.maxReps;
+        }
+      }
+    }
+
+    int totalRemainingReps =
+        totalRepsInCurrentExercise + totalRepsInOtherExercises;
+    double totalEstimatedMs = avgMsPerRep * totalRemainingReps;
+    double totalMinutes = totalEstimatedMs / (1000 * 60);
+
+    return '~${max(1, totalMinutes.round())} min left';
+  }
+
   // Streak & Weight state
   bool _isEditingBodyWeight = false;
   int _bodyWeight = 68;
@@ -5921,7 +6201,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     });
   }
 
-  void _saveBodyWeight() {
+  void _saveBodyWeight() async {
     final next = int.tryParse(_bodyWeightController.text.trim());
     if (!mounted) return;
     setState(() {
@@ -5931,11 +6211,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       _bodyWeightController.text = '$_bodyWeight';
       _isEditingBodyWeight = false;
     });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('workout_body_weight', _bodyWeight);
   }
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final expanded = _decodeBoolMap(prefs.getString(_prefsExpandedKey));
+    final loadedWeight = prefs.getInt('workout_body_weight') ?? 68;
     var activeDayTitle = prefs.getString(_prefsWorkoutActiveDayKey);
     var activeWorkoutDateKey = prefs.getString(_prefsWorkoutActiveDateKey);
     var loadedStates = _decodeWorkoutState(
@@ -5977,6 +6260,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ..addAll(expanded);
       _activeDayTitle = activeDayTitle;
       _activeWorkoutDateKey = activeWorkoutDateKey;
+      _bodyWeight = loadedWeight;
+      _bodyWeightController.text = '$loadedWeight';
       _exerciseStates
         ..clear()
         ..addAll(loadedStates);
@@ -6212,6 +6497,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   void _startTodayWorkout() {
+    _workoutStartTime = DateTime.now();
     final today = _selectedSplit;
     if (!(_expandedCards[today.title] ?? false)) {
       _toggleCard(today.title);
@@ -6317,10 +6603,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
     final completionDateKey = _activeWorkoutDateKey ?? dayKey(DateTime.now());
     final completedToday = completionDateKey == dayKey(DateTime.now());
-    setState(() {
-      _activeDayTitle = null;
-      _activeWorkoutDateKey = null;
-    });
+
+    // We defer clearing activeDayTitle and activeWorkoutDateKey to continue button on overlay
     _savePreferences();
     _saveWorkoutProgress(
       today,
@@ -6332,9 +6616,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       SoundManager.playWorkoutComplete();
       HapticService.workoutComplete();
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Great job! ${today.title} complete.')),
-    );
+
+    setState(() {
+      _showWorkoutCompleteOverlay = true;
+    });
   }
 
   @override
@@ -6355,313 +6640,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     }
   }
 
-  void _showSettingsSheet(BuildContext context, ThemeColors theme) {
-    HapticService.tapFeedback();
-    SoundManager.playTapClick();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Settings',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: theme.text1,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SwitchListTile(
-                    title: Text(
-                      'Sound Effects',
-                      style: TextStyle(color: theme.text1),
-                    ),
-                    subtitle: Text(
-                      'Enable workout sound effects',
-                      style: TextStyle(color: theme.text3),
-                    ),
-                    activeThumbColor: theme.teal,
-                    value: SoundManager.isEnabled,
-                    onChanged: (val) async {
-                      await SoundManager.setEnabled(val);
-                      setModalState(() {});
-                      HapticService.tapFeedback();
-                      if (val) SoundManager.playTapClick();
-                    },
-                  ),
-                  SwitchListTile(
-                    title: Text(
-                      'Haptic Feedback',
-                      style: TextStyle(color: theme.text1),
-                    ),
-                    subtitle: Text(
-                      'Enable physical feedback on taps',
-                      style: TextStyle(color: theme.text3),
-                    ),
-                    activeThumbColor: theme.teal,
-                    value: HapticService.isEnabled,
-                    onChanged: (val) async {
-                      await HapticService.setEnabled(val);
-                      setModalState(() {});
-                      if (val) HapticService.tapFeedback();
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Profile',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: theme.text1,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ListTile(
-                    title: Text(
-                      'Profile Settings',
-                      style: TextStyle(color: theme.text1),
-                    ),
-                    subtitle: Text(
-                      widget.userName,
-                      style: TextStyle(color: theme.text3),
-                    ),
-                    trailing: Icon(Icons.chevron_right, color: theme.text2),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showEditNameDialog(context, theme);
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showEditNameDialog(BuildContext context, ThemeColors theme) {
-    final nameController = TextEditingController(text: widget.userName);
-    DateTime tempDate = DateTime(
-      widget.userGoalYear,
-      widget.userGoalMonth,
-      widget.userGoalDay,
-    );
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            String formatDate(DateTime date) {
-              const months = [
-                'January',
-                'February',
-                'March',
-                'April',
-                'May',
-                'June',
-                'July',
-                'August',
-                'September',
-                'October',
-                'November',
-                'December',
-              ];
-              return '${months[date.month - 1]} ${date.day}, ${date.year}';
-            }
-
-            Future<void> pickDialogDate() async {
-              final DateTime? picked = await showDatePicker(
-                context: dialogContext,
-                initialDate: tempDate,
-                firstDate: DateTime(2025),
-                lastDate: DateTime(2100),
-                builder: (context, child) {
-                  return Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: const ColorScheme.dark(
-                        primary: Color(0xFF1D9E75),
-                        onPrimary: Colors.white,
-                        surface: Color(0xFF1C1C2E),
-                        onSurface: Colors.white,
-                      ),
-                    ),
-                    child: child!,
-                  );
-                },
-              );
-              if (picked != null && picked != tempDate) {
-                setDialogState(() {
-                  tempDate = picked;
-                });
-              }
-            }
-
-            return AlertDialog(
-              backgroundColor: theme.card,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: theme.border, width: 0.5),
-              ),
-              title: Text(
-                'Edit Profile',
-                style: GoogleFonts.syne(
-                  fontWeight: FontWeight.w800,
-                  color: theme.text1,
-                ),
-              ),
-              content: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Your Name',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: theme.text2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: nameController,
-                      validator: (val) => val == null || val.trim().isEmpty
-                          ? 'Please enter your name'
-                          : null,
-                      style: TextStyle(color: theme.text1),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: theme.isDark
-                            ? const Color(0x0AFFFFFF)
-                            : const Color(0xFFF9F9F9),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(
-                            color: theme.border,
-                            width: 0.5,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: theme.teal, width: 1),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Goal Deadline Date',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: theme.text2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    GestureDetector(
-                      onTap: pickDialogDate,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.isDark
-                              ? const Color(0x0AFFFFFF)
-                              : const Color(0xFFF9F9F9),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: theme.border, width: 0.5),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              formatDate(tempDate),
-                              style: TextStyle(
-                                color: theme.text1,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Icon(
-                              Icons.calendar_today,
-                              color: theme.gold,
-                              size: 16,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(
-                    'Cancel',
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.w600,
-                      color: theme.text3,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (formKey.currentState?.validate() ?? false) {
-                      final name = nameController.text.trim();
-                      widget.onNameChanged(
-                        name,
-                        tempDate.year,
-                        tempDate.month,
-                        tempDate.day,
-                      );
-                      Navigator.pop(dialogContext);
-                      HapticService.tapFeedback();
-                      SoundManager.playTapClick();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.teal,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Text(
-                    'Save',
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   Widget _buildWorkoutContent(BuildContext context) {
     final theme = widget.theme;
     final cardBorder = theme.border;
@@ -6669,10 +6647,26 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return SafeArea(
       child: Stack(
         children: [
-          // Main screen shifting and opacity fade during rep counting
+          // Background Atmosphere Glow (soft emerald glow)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0.0, -0.4),
+                  radius: 0.8,
+                  colors: [
+                    const Color(0xFF00C896).withValues(alpha: 0.04),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Main screen shifting and opacity fade during rep counting (Brilliant Parallax style)
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
+            duration: Duration(milliseconds: _showRepCounter ? 450 : 350),
+            curve: _showRepCounter ? Curves.easeOutCubic : Curves.easeInCubic,
             left: _showRepCounter
                 ? -MediaQuery.of(context).size.width * 0.3
                 : 0,
@@ -6681,63 +6675,76 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 : 0,
             top: 0,
             bottom: 0,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 300),
-              opacity: _showRepCounter ? 0.5 : 1.0,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
-                clipBehavior: Clip.none,
-                padding: const EdgeInsets.fromLTRB(20, 30, 20, 140),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. HEADER
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'TRAINING WORKOUT',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 3.0,
-                                  color: theme.text3,
+            child: AnimatedScale(
+              scale: _showRepCounter ? 0.95 : 1.0,
+              duration: Duration(milliseconds: _showRepCounter ? 450 : 350),
+              curve: _showRepCounter ? Curves.easeOutCubic : Curves.easeInCubic,
+              child: AnimatedOpacity(
+                duration: Duration(milliseconds: _showRepCounter ? 450 : 350),
+                curve: _showRepCounter
+                    ? Curves.easeOutCubic
+                    : Curves.easeInCubic,
+                opacity: _showRepCounter ? 0.3 : 1.0,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  clipBehavior: Clip.none,
+                  padding: const EdgeInsets.fromLTRB(20, 30, 20, 140),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. HEADER
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'TRAINING WORKOUT',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 3.0,
+                                    color: theme.text3,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _weekdayName(DateTime.now()),
-                                style: GoogleFonts.syne(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: theme.text1,
+                                const SizedBox(height: 4),
+                                Text(
+                                  _weekdayName(DateTime.now()),
+                                  style: GoogleFonts.syne(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800,
+                                    color: theme.text1,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _selectedSplit.title,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  color: theme.text2,
-                                  fontWeight: FontWeight.w600,
+                                const SizedBox(height: 4),
+                                Text(
+                                  _selectedSplit.title,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    color: theme.text2,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                        // Dark/light toggle and Settings cog
-                        Row(
-                          children: [
-                            if (widget.onScreenshot != null) ...[
+                          // Dark/light toggle and Settings cog
+                          Row(
+                            children: [
                               GestureDetector(
-                                onTap: widget.onScreenshot,
+                                onTap: () {
+                                  final themeNotifier =
+                                      Provider.of<ThemeNotifier>(
+                                        context,
+                                        listen: false,
+                                      );
+                                  themeNotifier.toggle();
+                                },
                                 child: Container(
                                   width: 40,
                                   height: 40,
@@ -6750,134 +6757,93 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                     ),
                                   ),
                                   alignment: Alignment.center,
-                                  child: Icon(
-                                    Icons.camera_alt,
-                                    color: theme.teal,
-                                    size: 18,
+                                  child: Text(
+                                    theme.isDark ? '☀️' : '🌙',
+                                    style: const TextStyle(fontSize: 16),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
                             ],
-                            GestureDetector(
-                              onTap: () {
-                                final themeNotifier =
-                                    Provider.of<ThemeNotifier>(
-                                      context,
-                                      listen: false,
-                                    );
-                                themeNotifier.toggle();
-                              },
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: theme.card,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: theme.border,
-                                    width: 0.5,
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  theme.isDark ? '☀️' : '🌙',
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () => _showSettingsSheet(context, theme),
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: theme.card,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: theme.border,
-                                    width: 0.5,
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  Icons.settings,
-                                  color: theme.text1,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // 2. STATS ROW
-                    _workoutStatsGrid(theme, theme.teal),
-                    const SizedBox(height: 18),
-
-                    // 4. SPLIT SELECTOR
-                    _splitSelector(theme),
-                    const SizedBox(height: 20),
-
-                    // 3. PROGRESS BAR SECTION
-                    _buildLinearProgress(theme),
-                    const SizedBox(height: 20),
-
-                    // 5. EXERCISE LIST (with animated cross-fade and slide on switch)
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      transitionBuilder: (child, animation) {
-                        final offsetAnimation =
-                            Tween<Offset>(
-                              begin: const Offset(0.0, 0.08),
-                              end: Offset.zero,
-                            ).animate(
-                              CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              ),
-                            );
-                        return SlideTransition(
-                          position: offsetAnimation,
-                          child: FadeTransition(
-                            opacity: animation,
-                            child: child,
                           ),
-                        );
-                      },
-                      child: KeyedSubtree(
-                        key: ValueKey(_selectedSplit.title),
-                        child: _exerciseLogSection(
-                          theme,
-                          _selectedSplit,
-                          theme.teal,
-                          cardBorder,
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // 2. STATS ROW
+                      _workoutStatsGrid(theme, theme.teal),
+                      const SizedBox(height: 18),
+
+                      // 4. SPLIT SELECTOR
+                      _splitSelector(theme),
+                      const SizedBox(height: 20),
+
+                      // 3. PROGRESS BAR SECTION
+                      _buildLinearProgress(theme),
+                      const SizedBox(height: 20),
+
+                      // 5. EXERCISE LIST (with animated cross-fade and slide on switch)
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, animation) {
+                          return AnimatedBuilder(
+                            animation: animation,
+                            builder: (context, Widget? builderChild) {
+                              final val = animation.value;
+                              final double yOffset = (1.0 - val) * 10.0;
+                              return Opacity(
+                                opacity: val,
+                                child: Transform.translate(
+                                  offset: Offset(0.0, yOffset),
+                                  child: builderChild,
+                                ),
+                              );
+                            },
+                            child: child,
+                          );
+                        },
+                        child: KeyedSubtree(
+                          key: ValueKey(_selectedSplit.title),
+                          child: _exerciseLogSection(
+                            theme,
+                            _selectedSplit,
+                            theme.teal,
+                            cardBorder,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                    // 9. START BUTTON
-                    _buildStartButton(theme),
-                    const SizedBox(height: 140),
-                  ],
+                      // 9. START BUTTON
+                      _buildStartButton(theme),
+                      const SizedBox(height: 140),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
 
-          // 6. REP COUNTER OVERLAY (slides in from right with spring overshoot)
+          // 6. REP COUNTER OVERLAY (slides in from right with parallax scale)
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutBack,
+            duration: Duration(milliseconds: _showRepCounter ? 450 : 350),
+            curve: _showRepCounter ? Curves.easeOutCubic : Curves.easeInCubic,
             left: _showRepCounter ? 0 : MediaQuery.of(context).size.width,
             right: _showRepCounter ? 0 : -MediaQuery.of(context).size.width,
             top: 0,
             bottom: 0,
-            child: _buildRepCounterOverlay(theme),
+            child: AnimatedScale(
+              scale: _showRepCounter ? 1.0 : 0.98,
+              duration: Duration(milliseconds: _showRepCounter ? 450 : 350),
+              curve: _showRepCounter ? Curves.easeOutCubic : Curves.easeInCubic,
+              child: AnimatedOpacity(
+                opacity: _showRepCounter ? 1.0 : 0.0,
+                duration: Duration(milliseconds: _showRepCounter ? 450 : 350),
+                curve: _showRepCounter
+                    ? Curves.easeOutCubic
+                    : Curves.easeInCubic,
+                child: _buildRepCounterOverlay(theme),
+              ),
+            ),
           ),
 
           // 8. REST TIMER OVERLAY
@@ -6886,6 +6852,46 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           // 7. EDIT REPS MODAL
           if (_showEditRepsModal)
             Positioned.fill(child: _buildEditRepsModal(theme)),
+
+          // EXERCISE COMPLETE OVERLAY
+          if (_showExerciseCompleteOverlay)
+            Positioned.fill(
+              child: _ExerciseCompleteOverlay(
+                exerciseName: _activeExerciseName ?? '',
+                theme: theme,
+                onFinished: () {
+                  setState(() {
+                    _showExerciseCompleteOverlay = false;
+                    _showRepCounter = false;
+                  });
+                },
+              ),
+            ),
+
+          // WORKOUT COMPLETE OVERLAY
+          if (_showWorkoutCompleteOverlay)
+            Positioned.fill(
+              child: _WorkoutCompleteOverlay(
+                theme: theme,
+                exercisesCompleted: _selectedSplit.exercises.length,
+                totalReps: totalRepsDone,
+                minutesSpent: minutesSpent,
+                onContinue: () {
+                  setState(() {
+                    _showWorkoutCompleteOverlay = false;
+                    _activeDayTitle = null;
+                    _activeWorkoutDateKey = null;
+                    _recalculateStats();
+                  });
+                  _savePreferences();
+                },
+                onDismiss: () {
+                  setState(() {
+                    _showWorkoutCompleteOverlay = false;
+                  });
+                },
+              ),
+            ),
         ],
       ),
     );
@@ -6917,155 +6923,246 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
     return Row(
       children: [
+        // Streak Card (flex 2, visually dominant, hero)
         Expanded(
-          child: _statChip(
-            theme,
-            workoutPrimary,
-            label: 'Streak',
-            value: '${currentStreak}d',
-            icon: Icons.local_fire_department,
+          flex: 2,
+          child: _StatCardWidget(
+            theme: theme,
+            backgroundGradient: LinearGradient(
+              colors: [
+                const Color(0xFFE8B84B).withValues(alpha: 0.05),
+                Colors.transparent,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _StreakFireIcon(isActive: currentStreak > 0),
+                        const SizedBox(width: 6),
+                        _animatedValueText(
+                          '${currentStreak}d',
+                          currentStreak > 0
+                              ? const Color(0xFFFF6B35)
+                              : const Color(0xFF5A5A6A),
+                          24,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Streak',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: theme.text3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 4),
+        // Sessions Card (flex 1)
         Expanded(
-          child: _statChip(
-            theme,
-            workoutPrimary,
-            label: 'Sessions',
-            value: '$monthSessions',
-            icon: Icons.fitness_center,
+          flex: 1,
+          child: _StatCardWidget(
+            theme: theme,
+            backgroundGradient: LinearGradient(
+              colors: [
+                const Color(0xFF00C896).withValues(alpha: 0.05),
+                Colors.transparent,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.bolt,
+                          size: 16,
+                          color: Color(0xFF00C896),
+                        ),
+                        const SizedBox(width: 4),
+                        _animatedValueText('$monthSessions', theme.text1, 18),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Sessions',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: theme.text3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 4),
+        // Weight Card (flex 1, data only)
         Expanded(
-          child: _statChip(
-            theme,
-            workoutPrimary,
-            label: 'Weight',
-            value: '${_bodyWeight}kg',
-            icon: Icons.monitor_weight_outlined,
-            editableWeight: true,
+          flex: 1,
+          child: _StatCardWidget(
+            theme: theme,
+            onTap: _startBodyWeightEdit,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (_isEditingBodyWeight)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 42,
+                              child: TextField(
+                                controller: _bodyWeightController,
+                                focusNode: _bodyWeightFocusNode,
+                                keyboardType: TextInputType.number,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: theme.text1,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  border: InputBorder.none,
+                                ),
+                                onSubmitted: (_) => _saveBodyWeight(),
+                              ),
+                            ),
+                            Text(
+                              'kg',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: theme.text1,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: _animatedValueText(
+                          '${_bodyWeight}kg',
+                          theme.text1,
+                          18,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Weight',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: theme.text3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 4),
+        // Hours Card (flex 1)
         Expanded(
-          child: _statChip(
-            theme,
-            workoutPrimary,
-            label: 'Hours',
-            value: hoursThisWeek.toStringAsFixed(1),
-            icon: Icons.timer_outlined,
+          flex: 1,
+          child: _StatCardWidget(
+            theme: theme,
+            backgroundGradient: LinearGradient(
+              colors: [
+                Colors.white.withValues(alpha: 0.02),
+                Colors.transparent,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.access_time, size: 14, color: theme.text2),
+                        const SizedBox(width: 4),
+                        _animatedValueText(
+                          hoursThisWeek.toStringAsFixed(1),
+                          theme.text1,
+                          18,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Hours',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: theme.text3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _statChip(
-    ThemeColors theme,
-    Color color, {
-    required String label,
-    required String value,
-    required IconData icon,
-    bool editableWeight = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(height: 6),
-          if (editableWeight && _isEditingBodyWeight)
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 42,
-                      child: TextField(
-                        controller: _bodyWeightController,
-                        focusNode: _bodyWeightFocusNode,
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: theme.text1,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                          border: InputBorder.none,
-                        ),
-                        onSubmitted: (_) => _saveBodyWeight(),
-                      ),
-                    ),
-                    Text(
-                      'kg',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: theme.text1,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (editableWeight)
-            GestureDetector(
-              onTap: _startBodyWeightEdit,
-              child: SizedBox(
-                width: double.infinity,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: theme.text1,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: theme.text1,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color: theme.text3,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -7087,7 +7184,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             children: [
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutBack, // spring
+                curve: Curves.easeInOut, // smooth slide
                 left: activeIndex * tabWidth,
                 width: tabWidth,
                 height: 44,
@@ -7181,61 +7278,25 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 color: theme.text1,
               ),
             ),
-            Text(
-              '${(_setProgress * 100).round()}% · $_completedExercises/${_selectedSplit.exercises.length} exercises',
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                color: theme.text2,
-                fontWeight: FontWeight.w600,
-              ),
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.0, end: _setProgress),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                return Text(
+                  '${(value * 100).round()}% · $_completedExercises/${_selectedSplit.exercises.length} exercises',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: theme.text2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              },
             ),
           ],
         ),
         const SizedBox(height: 10),
-        TweenAnimationBuilder<double>(
-          tween: Tween<double>(begin: 0.0, end: _setProgress),
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeOutBack, // spring physics
-          builder: (context, value, child) {
-            return Container(
-              height: 6,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: theme.isDark
-                    ? const Color(0x14FFFFFF)
-                    : const Color(0x0F000000),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: Stack(
-                children: [
-                  FractionallySizedBox(
-                    widthFactor: value.clamp(0.0, 1.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(3),
-                        gradient: LinearGradient(
-                          colors: [
-                            theme.teal,
-                            theme.teal.withValues(alpha: 0.8),
-                          ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: theme.teal.withValues(alpha: 0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (value > 0)
-                    _GlowingPulse(progress: value, accentColor: theme.teal),
-                ],
-              ),
-            );
-          },
-        ),
+        _ShimmeringProgressBar(value: _setProgress, theme: theme),
       ],
     );
   }
@@ -7289,9 +7350,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section 1: MY ROUTINE
+        // Section 1: MY ROUTINE (with left green bar accent)
         Row(
           children: [
+            Container(
+              width: 3,
+              height: 16,
+              decoration: BoxDecoration(
+                color: const Color(0xFF00C896),
+                borderRadius: BorderRadius.circular(1.5),
+              ),
+            ),
+            const SizedBox(width: 8),
             Text(
               'MY ROUTINE',
               style: GoogleFonts.dmSans(
@@ -7322,41 +7392,57 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         const SizedBox(height: 6),
         Container(height: 1, color: theme.border),
         const SizedBox(height: 10),
-        ...selectedSplit.exercises.map((exercise) {
+        ...Iterable.generate(selectedSplit.exercises.length).map((index) {
+          final exercise = selectedSplit.exercises[index];
           final key = '${selectedSplit.title}|${exercise[0]}';
           final state = _exerciseStates[key];
           final completed = state?.completed == true;
           final sets = parseSets(exercise[1]);
           final reps = state != null ? state.maxReps : parseReps(exercise[1]);
           final muscle = exercise.length > 2 ? exercise[2] : '';
-          return ExerciseLogRowWidget(
-            theme: theme,
-            exercise: exercise,
-            isLibrary: false,
-            completed: completed,
-            sets: sets,
-            reps: reps,
-            muscle: muscle,
-            onToggle: () => _toggleExercise(key),
-            onTapReps: () {
-              if (state != null) {
-                setState(() {
-                  _activeExerciseState = state;
-                  _activeExerciseName = exercise[0];
-                  _repsRemaining = state.repsRemaining;
-                  if (_repsRemaining <= 0) {
-                    _repsRemaining = state.maxReps;
-                  }
-                  _showRepCounter = true;
-                });
-              }
-            },
+          return _ScrollRevealWidget(
+            index: index,
+            scrollController: _scrollController,
+            child: ExerciseLogRowWidget(
+              index: index,
+              theme: theme,
+              exercise: exercise,
+              isLibrary: false,
+              completed: completed,
+              sets: sets,
+              reps: reps,
+              muscle: muscle,
+              onToggle: () => _toggleExercise(key),
+              onTapReps: () {
+                if (state != null) {
+                  setState(() {
+                    _selectNewPhrase();
+                    _activeExerciseState = state;
+                    _activeExerciseName = exercise[0];
+                    _repsRemaining = state.repsRemaining;
+                    if (_repsRemaining <= 0) {
+                      _repsRemaining = state.maxReps;
+                    }
+                    _showRepCounter = true;
+                  });
+                }
+              },
+            ),
           );
         }),
         const SizedBox(height: 24),
-        // Section 2: EXERCISE LIBRARY
+        // Section 2: EXERCISE LIBRARY (with left green bar accent)
         Row(
           children: [
+            Container(
+              width: 3,
+              height: 16,
+              decoration: BoxDecoration(
+                color: const Color(0xFF00C896),
+                borderRadius: BorderRadius.circular(1.5),
+              ),
+            ),
+            const SizedBox(width: 8),
             Text(
               'EXERCISE LIBRARY',
               style: GoogleFonts.dmSans(
@@ -7387,35 +7473,42 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         const SizedBox(height: 6),
         Container(height: 1, color: theme.border),
         const SizedBox(height: 10),
-        ..._libraryExercises.map((exercise) {
+        ...Iterable.generate(_libraryExercises.length).map((index) {
+          final exercise = _libraryExercises[index];
           final key = 'lib|${exercise[0]}';
           final state = _exerciseStates[key];
           final completed = state?.completed == true;
           final sets = parseSets(exercise[1]);
           final reps = state != null ? state.maxReps : parseReps(exercise[1]);
           final muscle = exercise.length > 2 ? exercise[2] : '';
-          return ExerciseLogRowWidget(
-            theme: theme,
-            exercise: exercise,
-            isLibrary: true,
-            completed: completed,
-            sets: sets,
-            reps: reps,
-            muscle: muscle,
-            onToggle: () => _toggleExercise(key),
-            onTapReps: () {
-              if (state != null) {
-                setState(() {
-                  _activeExerciseState = state;
-                  _activeExerciseName = exercise[0];
-                  _repsRemaining = state.repsRemaining;
-                  if (_repsRemaining <= 0) {
-                    _repsRemaining = state.maxReps;
-                  }
-                  _showRepCounter = true;
-                });
-              }
-            },
+          return _ScrollRevealWidget(
+            index: index + selectedSplit.exercises.length,
+            scrollController: _scrollController,
+            child: ExerciseLogRowWidget(
+              index: index,
+              theme: theme,
+              exercise: exercise,
+              isLibrary: true,
+              completed: completed,
+              sets: sets,
+              reps: reps,
+              muscle: muscle,
+              onToggle: () => _toggleExercise(key),
+              onTapReps: () {
+                if (state != null) {
+                  setState(() {
+                    _selectNewPhrase();
+                    _activeExerciseState = state;
+                    _activeExerciseName = exercise[0];
+                    _repsRemaining = state.repsRemaining;
+                    if (_repsRemaining <= 0) {
+                      _repsRemaining = state.maxReps;
+                    }
+                    _showRepCounter = true;
+                  });
+                }
+              },
+            ),
           );
         }),
       ],
@@ -7520,6 +7613,26 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       ),
                       const SizedBox(height: 12),
 
+                      // Overall exercise progress & estimated time
+                      Text(
+                        'Exercise $_currentExerciseIndex of ${_selectedSplit.exercises.length}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: theme.text3,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _timeEstimate,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: theme.text3,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
                       // Stick figure canvas
                       Container(
                         width: 120,
@@ -7532,7 +7645,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: StickFigureWidget(
-                            exerciseName: _activeExerciseName!,
+                            exerciseName: _isCelebrating
+                                ? 'celebrate'
+                                : _activeExerciseName!,
                             accentColor: theme.teal,
                             size: 120,
                           ),
@@ -7560,16 +7675,20 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Hero counter number (animated Odometer)
-                      OdometerCounter(
+                      // Hero counter number (animated transition)
+                      _SetTransitionNumberWidget(
                         value: _repsRemaining,
+                        currentSet: currentSet,
                         style: GoogleFonts.syne(
                           fontSize: 96,
                           fontWeight: FontWeight.w900,
                           color: isSetDone ? theme.text3 : theme.teal,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 4),
+                      _ComboIndicator(combo: _comboCount),
+                      const SizedBox(height: 12),
+
                       Text(
                         isSetDone ? 'Set complete!' : 'Tap to count down',
                         style: GoogleFonts.dmSans(
@@ -7580,12 +7699,50 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // TAP Button (morphing circular button)
-                      TapCounterButton(
+                      // TAP Button with particles & progress ring
+                      _TapBurstButtonWrapper(
                         repsRemaining: _repsRemaining,
+                        totalReps: state.maxReps,
                         theme: theme,
                         onTap: () {
                           if (_repsRemaining > 0) {
+                            final now = DateTime.now();
+                            if (_lastTapTime != null) {
+                              final diff = now
+                                  .difference(_lastTapTime!)
+                                  .inMilliseconds;
+                              if (diff <= 800) {
+                                _comboCount++;
+                              } else {
+                                _comboCount = 1;
+                              }
+                            } else {
+                              _comboCount = 1;
+                            }
+                            _lastTapTime = now;
+
+                            _comboResetTimer?.cancel();
+                            _comboResetTimer = Timer(
+                              const Duration(milliseconds: 800),
+                              () {
+                                if (mounted) {
+                                  setState(() {
+                                    _comboCount = 1;
+                                  });
+                                }
+                              },
+                            );
+
+                            // Track tap times for time estimation
+                            _recentTapTimes.add(now);
+                            if (_recentTapTimes.length > 10) {
+                              _recentTapTimes.removeAt(0);
+                            }
+                            _tapCountForEstimate++;
+                            if (_tapCountForEstimate % 5 == 0) {
+                              _timeEstimate = _calculateTimeEstimate();
+                            }
+
                             setState(() {
                               _repsRemaining--;
                               state.repsRemaining = _repsRemaining;
@@ -7599,6 +7756,39 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 // Exercise complete
                                 SoundManager.playExerciseComplete();
                                 HapticService.exerciseComplete();
+
+                                setState(() {
+                                  _isCelebrating = true;
+                                });
+
+                                Future.delayed(
+                                  const Duration(milliseconds: 800),
+                                  () {
+                                    if (mounted) {
+                                      setState(() {
+                                        _isCelebrating = false;
+
+                                        // Finalize exercise
+                                        state.completed = true;
+                                        state.repsRemaining = 0;
+                                        _recalculateStats();
+                                      });
+                                      _savePreferences();
+                                      _saveWorkoutProgress(
+                                        _selectedSplit,
+                                        completed:
+                                            _dayCompletedExercises(
+                                              _selectedSplit,
+                                            ) ==
+                                            _selectedSplit.exercises.length,
+                                      );
+                                      setState(() {
+                                        _showExerciseCompleteOverlay = true;
+                                      });
+                                      _maybeCompleteWorkout();
+                                    }
+                                  },
+                                );
                               } else {
                                 // Set complete
                                 SoundManager.playSetComplete();
@@ -7606,6 +7796,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             }
                           }
                         },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Rotating motivational phrase with fade
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Text(
+                          _motivationalPhrase,
+                          key: ValueKey(_motivationalPhrase),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: const Color(0xFF5A5A6A),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 100),
                     ],
@@ -7660,7 +7865,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           setState(() {
                             state.completed = true;
                             state.repsRemaining = 0;
-                            _showRepCounter = false;
                             _recalculateStats();
                           });
                           _savePreferences();
@@ -7670,6 +7874,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 _dayCompletedExercises(_selectedSplit) ==
                                 _selectedSplit.exercises.length,
                           );
+                          setState(() {
+                            _showExerciseCompleteOverlay = true;
+                          });
                           _maybeCompleteWorkout();
                         } else {
                           // Go to next set and start rest timer
@@ -7700,7 +7907,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         elevation: 4,
                       ),
                       child: Text(
-                        isLastSet ? 'Finish' : 'Next Set',
+                        isLastSet ? 'Finish Exercise' : 'Next Set',
                         style: GoogleFonts.dmSans(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -8362,30 +8569,6 @@ class _IncomeScreenState extends State<IncomeScreen> {
                 ),
                 Row(
                   children: [
-                    if (widget.onScreenshot != null) ...[
-                      GestureDetector(
-                        onTap: widget.onScreenshot,
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: colors.card,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: colors.cardBorder,
-                              width: 0.5,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Icon(
-                            Icons.camera_alt,
-                            color: colors.gold,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
                     GestureDetector(
                       onTap: () => themeNotifier.toggle(),
                       child: Container(
@@ -8969,40 +9152,14 @@ class _SetProgressDotsState extends State<SetProgressDots>
         final isFilled = widget.isCompleted || dotNum < widget.currentSet;
         final isCurrent = !widget.isCompleted && dotNum == widget.currentSet;
 
-        if (isCurrent) {
-          return AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                width: 14 * _pulseScale.value,
-                height: 14 * _pulseScale.value,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.theme.teal.withValues(
-                    alpha: _pulseOpacity.value,
-                  ),
-                  border: Border.all(color: widget.theme.teal, width: 2),
-                ),
-              );
-            },
-          );
-        }
-
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isFilled ? widget.theme.teal : Colors.transparent,
-            border: Border.all(
-              color: isFilled ? widget.theme.teal : widget.theme.text3,
-              width: 2,
-            ),
-          ),
+        return _SetProgressDotItem(
+          index: index,
+          isFilled: isFilled,
+          isCurrent: isCurrent,
+          theme: widget.theme,
+          pulseController: _pulseController,
+          pulseScale: _pulseScale,
+          pulseOpacity: _pulseOpacity,
         );
       }),
     );
@@ -9145,6 +9302,7 @@ class _TapCounterButtonState extends State<TapCounterButton>
 }
 
 class ExerciseLogRowWidget extends StatefulWidget {
+  final int index;
   final ThemeColors theme;
   final List<String> exercise;
   final bool isLibrary;
@@ -9157,6 +9315,7 @@ class ExerciseLogRowWidget extends StatefulWidget {
 
   const ExerciseLogRowWidget({
     super.key,
+    required this.index,
     required this.theme,
     required this.exercise,
     required this.isLibrary,
@@ -9175,17 +9334,13 @@ class ExerciseLogRowWidget extends StatefulWidget {
 class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _pressController;
-  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
     _pressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
+      duration: const Duration(milliseconds: 120),
     );
   }
 
@@ -9221,26 +9376,27 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
   Widget _buildEquipmentTag(String tag) {
     Color bg;
     Color text;
+    final isDark = widget.theme.isDark;
     switch (tag) {
       case 'BAND':
         bg = const Color(0x269B59B6);
-        text = const Color(0xFFBB8FCE);
+        text = isDark ? const Color(0xFFBB8FCE) : const Color(0xFF8E44AD);
         break;
       case 'MCH':
         bg = const Color(0x263498DB);
-        text = const Color(0xFF7FB3D8);
+        text = isDark ? const Color(0xFF7FB3D8) : const Color(0xFF2980B9);
         break;
       case 'ASSISTED':
         bg = const Color(0x26F1C40F);
-        text = const Color(0xFFD4C36A);
+        text = isDark ? const Color(0xFFD4C36A) : const Color(0xFFD35400);
         break;
       case 'CABLE':
         bg = const Color(0x26E74C3C);
-        text = const Color(0xFFE08880);
+        text = isDark ? const Color(0xFFE08880) : const Color(0xFFC0392B);
         break;
       case 'BW':
       default:
-        bg = const Color(0x0FFFFFFF);
+        bg = isDark ? const Color(0x0FFFFFFF) : const Color(0x14000000);
         text = widget.theme.text3;
         break;
     }
@@ -9258,13 +9414,96 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
     );
   }
 
+  String get primaryMuscle {
+    if (widget.muscle.isNotEmpty) {
+      return widget.muscle.toUpperCase();
+    }
+    final name = widget.exercise[0].toLowerCase();
+    if (name.contains('push-up') ||
+        name.contains('push up') ||
+        name.contains('bench'))
+      return 'CHEST';
+    if (name.contains('squat') || name.contains('lunge')) return 'QUADS';
+    if (name.contains('bridge')) return 'GLUTES';
+    if (name.contains('row') ||
+        name.contains('pull-up') ||
+        name.contains('pull up'))
+      return 'LATS';
+    if (name.contains('press')) return 'SHOULDERS';
+    if (name.contains('leg raise') || name.contains('plank')) return 'CORE';
+    if (name.contains('curl')) return 'BICEPS';
+    return 'FULL BODY';
+  }
+
+  Widget _buildMuscleTag(String muscle) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0x1400C896), // rgba(0,200,150,0.08)
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        muscle,
+        style: const TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+          color: Color(0xB300C896), // #00C896 at 70% opacity
+        ),
+      ),
+    );
+  }
+
+  int get difficulty {
+    final desc = widget.exercise[1].toLowerCase();
+    if (desc.contains('second')) return 3; // Hard
+    final parsedReps = widget.reps;
+    if (parsedReps <= 10) return 3; // Hard
+    if (parsedReps <= 15) return 2; // Medium
+    return 1; // Easy
+  }
+
+  Widget _buildDifficultyDots(int diff) {
+    final activeColor = diff == 3
+        ? const Color(0xFFEF4444)
+        : diff == 2
+        ? const Color(0xFFE8B84B)
+        : const Color(0xFF00C896);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        final isActive = i < diff;
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isActive ? activeColor : const Color(0xFF5A5A6A),
+          ),
+        );
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final tag = _getEquipmentTag();
-    final itemBg = widget.completed
-        ? theme.card.withValues(alpha: 0.5)
-        : theme.card;
+
+    // Alternating card backgrounds
+    final isEven = widget.index % 2 == 0;
+    final baseBg = theme.isDark
+        ? (isEven
+              ? Colors.white.withValues(alpha: 0.03)
+              : Colors.white.withValues(alpha: 0.06))
+        : (isEven
+              ? Colors.white.withValues(alpha: 0.82)
+              : Colors.white.withValues(alpha: 0.92));
+
+    final borderCol = theme.isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
 
     return GestureDetector(
       onTapDown: (_) => _pressController.forward(),
@@ -9275,147 +9514,2664 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
         widget.onTapReps();
       },
       onTapCancel: () => _pressController.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: AnimatedOpacity(
-          opacity: widget.completed ? 0.5 : 1.0,
-          duration: const Duration(milliseconds: 300),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: itemBg,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: theme.border, width: 1),
-            ),
-            child: Stack(
-              children: [
-                if (widget.completed)
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 3,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: theme.teal,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(14),
-                          bottomLeft: Radius.circular(14),
+      child: AnimatedBuilder(
+        animation: _pressController,
+        builder: (context, child) {
+          final pressVal = _pressController.value;
+          final scale = 1.0 - (0.02 * pressVal);
+          final blur = 32.0 - (16.0 * pressVal);
+          final shadowOp = theme.isDark
+              ? (0.3 + (0.1 * pressVal))
+              : (0.06 + (0.02 * pressVal));
+          final offY = 8.0 - (6.0 * pressVal);
+
+          return Transform.scale(
+            scale: scale,
+            child: AnimatedOpacity(
+              opacity: widget.completed ? 0.5 : 1.0,
+              duration: const Duration(milliseconds: 300),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: baseBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: borderCol, width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: shadowOp),
+                      blurRadius: blur,
+                      offset: Offset(0.0, offY),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    if (widget.completed)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 3,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: theme.teal,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(14),
+                              bottomLeft: Radius.circular(14),
+                            ),
+                          ),
                         ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: widget.isLibrary
+                                  ? const Color(0x1FE67E22)
+                                  : const Color(0x262ECC71),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Icon(
+                              widget.isLibrary
+                                  ? Icons.bookmark_added_outlined
+                                  : Icons.fitness_center_outlined,
+                              color: widget.isLibrary
+                                  ? const Color(0xFFE67E22)
+                                  : theme.teal,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.exercise[0],
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.text1,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 4,
+                                  runSpacing: 2,
+                                  children: [
+                                    Text(
+                                      '${widget.sets} sets × ${widget.reps} reps · ',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 10,
+                                        color: theme.text3,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    _buildEquipmentTag(tag),
+                                    const SizedBox(width: 2),
+                                    _buildMuscleTag(primaryMuscle),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${widget.reps}',
+                                style: GoogleFonts.syne(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: widget.completed
+                                      ? theme.teal
+                                      : (theme.isDark
+                                            ? (widget.isLibrary
+                                                  ? const Color(0xFFE67E22)
+                                                  : theme.gold)
+                                            : const Color(0xFFD35400)),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              _buildDifficultyDots(difficulty),
+                            ],
+                          ),
+                          const SizedBox(width: 12),
+                          _CompletionCheckWidget(
+                            completed: widget.completed,
+                            onTap: () {
+                              HapticService.tapFeedback();
+                              SoundManager.playTapClick();
+                              widget.onToggle();
+                            },
+                            theme: theme,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── GAMMA GAMIFICATION WIDGETS & HELPERS ──
+
+Widget _animatedValueText(String text, Color color, double fontSize) {
+  return AnimatedSwitcher(
+    duration: const Duration(milliseconds: 300),
+    transitionBuilder: (child, animation) {
+      final inAnimation = Tween<Offset>(
+        begin: const Offset(0.0, 0.4),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+
+      return SlideTransition(
+        position: inAnimation,
+        child: FadeTransition(opacity: animation, child: child),
+      );
+    },
+    child: Text(
+      text,
+      key: ValueKey(text),
+      style: GoogleFonts.syne(
+        fontSize: fontSize,
+        color: color,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
+}
+
+class _StreakFireIcon extends StatefulWidget {
+  final bool isActive;
+
+  const _StreakFireIcon({required this.isActive});
+
+  @override
+  State<_StreakFireIcon> createState() => _StreakFireIconState();
+}
+
+class _StreakFireIconState extends State<_StreakFireIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    _scaleAnimation = TweenSequence([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.15),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.15, end: 1.0),
+        weight: 50,
+      ),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    if (widget.isActive) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _StreakFireIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _controller.repeat();
+    } else if (!widget.isActive && oldWidget.isActive) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: widget.isActive ? _scaleAnimation.value : 1.0,
+          child: Icon(
+            Icons.local_fire_department,
+            size: 20,
+            color: widget.isActive
+                ? const Color(0xFFFF6B35)
+                : const Color(0xFF5A5A6A),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatCardWidget extends StatefulWidget {
+  final Widget child;
+  final Gradient? backgroundGradient;
+  final ThemeColors theme;
+  final VoidCallback? onTap;
+
+  const _StatCardWidget({
+    required this.child,
+    required this.theme,
+    this.backgroundGradient,
+    this.onTap,
+  });
+
+  @override
+  State<_StatCardWidget> createState() => _StatCardWidgetState();
+}
+
+class _StatCardWidgetState extends State<_StatCardWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = TweenSequence([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.97),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.97, end: 1.02),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.02, end: 1.0),
+        weight: 30,
+      ),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.isDark
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.black.withValues(alpha: 0.02),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.border, width: 0.5),
+          gradient: widget.backgroundGradient,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap != null
+                ? () {
+                    _controller.forward(from: 0.0);
+                    HapticService.tapFeedback();
+                    SoundManager.playTapClick();
+                    widget.onTap!();
+                  }
+                : () {
+                    _controller.forward(from: 0.0);
+                    HapticService.tapFeedback();
+                    SoundManager.playTapClick();
+                  },
+            borderRadius: BorderRadius.circular(12),
+            splashColor: const Color(0xFF00C896).withValues(alpha: 0.2),
+            highlightColor: const Color(0xFF00C896).withValues(alpha: 0.1),
+            child: widget.child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScrollRevealWidget extends StatefulWidget {
+  final Widget child;
+  final int index;
+  final ScrollController scrollController;
+
+  const _ScrollRevealWidget({
+    required this.child,
+    required this.index,
+    required this.scrollController,
+  });
+
+  @override
+  State<_ScrollRevealWidget> createState() => _ScrollRevealWidgetState();
+}
+
+class _ScrollRevealWidgetState extends State<_ScrollRevealWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<double> _yOffset;
+  bool _hasAnimated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _opacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _yOffset = Tween<double>(
+      begin: 15.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    widget.scrollController.addListener(_checkVisibility);
+
+    // Staggered entry for initial items
+    Future.delayed(Duration(milliseconds: widget.index * 60), () {
+      if (mounted && !_hasAnimated) {
+        _triggerAnimation();
+      }
+    });
+  }
+
+  void _checkVisibility() {
+    if (_hasAnimated || !mounted) return;
+    final RenderObject? renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox) return;
+
+    final size = renderObject.size;
+    final position = renderObject.localToGlobal(Offset.zero);
+    final screenHeight = MediaQuery.of(context).size.height;
+    if (position.dy < screenHeight - 20 && position.dy + size.height > 0) {
+      _triggerAnimation();
+    }
+  }
+
+  void _triggerAnimation() {
+    if (_hasAnimated) return;
+    _hasAnimated = true;
+    _controller.forward();
+    widget.scrollController.removeListener(_checkVisibility);
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_checkVisibility);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacity.value,
+          child: Transform.translate(
+            offset: Offset(0.0, _yOffset.value),
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+class _ShimmeringProgressBar extends StatefulWidget {
+  final double value;
+  final ThemeColors theme;
+
+  const _ShimmeringProgressBar({required this.value, required this.theme});
+
+  @override
+  State<_ShimmeringProgressBar> createState() => _ShimmeringProgressBarState();
+}
+
+class _ShimmeringProgressBarState extends State<_ShimmeringProgressBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shimmerController;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: widget.value),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Container(
+          height: 10,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.isDark
+                ? const Color(0x14FFFFFF)
+                : const Color(0x0F000000),
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Stack(
+            children: [
+              if (value > 0)
+                FractionallySizedBox(
+                  widthFactor: value.clamp(0.0, 1.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(5),
+                    child: Stack(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                theme.teal,
+                                theme.teal.withValues(alpha: 0.8),
+                              ],
+                            ),
+                          ),
+                        ),
+                        AnimatedBuilder(
+                          animation: _shimmerController,
+                          builder: (context, child) {
+                            return Positioned.fill(
+                              child: FractionallySizedBox(
+                                widthFactor: 0.5,
+                                alignment: Alignment(
+                                  -1.5 + (_shimmerController.value * 3.0),
+                                  0.0,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.0),
+                                        Colors.white.withValues(alpha: 0.25),
+                                        Colors.white.withValues(alpha: 0.0),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TapBurstButtonWrapper extends StatefulWidget {
+  final int repsRemaining;
+  final int totalReps;
+  final ThemeColors theme;
+  final VoidCallback onTap;
+
+  const _TapBurstButtonWrapper({
+    required this.repsRemaining,
+    required this.totalReps,
+    required this.theme,
+    required this.onTap,
+  });
+
+  @override
+  State<_TapBurstButtonWrapper> createState() => _TapBurstButtonWrapperState();
+}
+
+class _TapBurstButtonWrapperState extends State<_TapBurstButtonWrapper>
+    with TickerProviderStateMixin {
+  final List<_TapParticle> _particles = [];
+  final math.Random _random = math.Random();
+  late AnimationController _progressController;
+
+  @override
+  void initState() {
+    super.initState();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+  }
+
+  @override
+  void dispose() {
+    _progressController.dispose();
+    super.dispose();
+  }
+
+  void _triggerBurst() {
+    final count = 6 + _random.nextInt(3);
+    for (int i = 0; i < count; i++) {
+      final angle = _random.nextDouble() * 2 * math.pi;
+      final dist = 30.0 + _random.nextDouble() * 30.0;
+      final size = 4.0 + _random.nextDouble() * 4.0;
+      final duration = const Duration(milliseconds: 400);
+      final opacity = 0.2 + _random.nextDouble() * 0.6;
+
+      final controller = AnimationController(vsync: this, duration: duration);
+      final p = _TapParticle(
+        angle: angle,
+        maxDist: dist,
+        size: size,
+        opacity: opacity,
+        controller: controller,
+      );
+
+      setState(() {
+        _particles.add(p);
+      });
+
+      controller.forward().then((_) {
+        setState(() {
+          _particles.remove(p);
+        });
+        controller.dispose();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    final double progress = widget.totalReps > 0
+        ? widget.repsRemaining / widget.totalReps
+        : 0.0;
+
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        if (_particles.isNotEmpty)
+          ..._particles.map((p) {
+            return AnimatedBuilder(
+              animation: p.controller,
+              builder: (context, child) {
+                final val = p.controller.value;
+                final distance = val * p.maxDist;
+                final currentOpacity = (1.0 - val) * p.opacity;
+                final dx = math.cos(p.angle) * distance;
+                final dy = math.sin(p.angle) * distance;
+
+                return Transform.translate(
+                  offset: Offset(dx, dy),
+                  child: Opacity(
+                    opacity: currentOpacity.clamp(0.0, 1.0),
+                    child: Container(
+                      width: p.size,
+                      height: p.size,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF00C896),
                       ),
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 14,
+                );
+              },
+            );
+          }),
+
+        SizedBox(
+          width: 146,
+          height: 146,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 1.0, end: progress),
+            duration: const Duration(milliseconds: 200),
+            builder: (context, value, child) {
+              return CustomPaint(
+                painter: _CircularProgressRingPainter(
+                  progress: value,
+                  color: const Color(0xFF00C896),
+                  trackColor: theme.isDark
+                      ? const Color(0x1AFFFFFF)
+                      : const Color(0x0A000000),
+                ),
+              );
+            },
+          ),
+        ),
+
+        TapCounterButton(
+          repsRemaining: widget.repsRemaining,
+          theme: theme,
+          onTap: () {
+            if (widget.repsRemaining > 0) {
+              _triggerBurst();
+            }
+            widget.onTap();
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _TapParticle {
+  final double angle;
+  final double maxDist;
+  final double size;
+  final double opacity;
+  final AnimationController controller;
+
+  _TapParticle({
+    required this.angle,
+    required this.maxDist,
+    required this.size,
+    required this.opacity,
+    required this.controller,
+  });
+}
+
+class _CircularProgressRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final Color trackColor;
+
+  _CircularProgressRingPainter({
+    required this.progress,
+    required this.color,
+    required this.trackColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeW = 3.0;
+    final radius = (size.width - strokeW) / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW;
+
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, trackPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress,
+      false,
+      fillPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CircularProgressRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.trackColor != trackColor;
+  }
+}
+
+class _ComboIndicator extends StatefulWidget {
+  final int combo;
+
+  const _ComboIndicator({required this.combo});
+
+  @override
+  State<_ComboIndicator> createState() => _ComboIndicatorState();
+}
+
+class _ComboIndicatorState extends State<_ComboIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = TweenSequence([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.3), weight: 50),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.3, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+  }
+
+  @override
+  void didUpdateWidget(covariant _ComboIndicator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.combo != oldWidget.combo && widget.combo > 1) {
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.combo <= 1) {
+      return const SizedBox(height: 20);
+    }
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Text(
+        'x${widget.combo} COMBO',
+        style: GoogleFonts.syne(
+          fontSize: 16,
+          color: const Color(0xFFE8B84B),
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _SetProgressDotItem extends StatefulWidget {
+  final int index;
+  final bool isFilled;
+  final bool isCurrent;
+  final ThemeColors theme;
+  final AnimationController pulseController;
+  final Animation<double> pulseScale;
+  final Animation<double> pulseOpacity;
+
+  const _SetProgressDotItem({
+    required this.index,
+    required this.isFilled,
+    required this.isCurrent,
+    required this.theme,
+    required this.pulseController,
+    required this.pulseScale,
+    required this.pulseOpacity,
+  });
+
+  @override
+  State<_SetProgressDotItem> createState() => _SetProgressDotItemState();
+}
+
+class _SetProgressDotItemState extends State<_SetProgressDotItem>
+    with TickerProviderStateMixin {
+  late AnimationController _starController;
+  final List<_StarParticle> _stars = [];
+  final math.Random _random = math.Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _starController =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 600),
+          )
+          ..addListener(() {
+            setState(() {
+              final t = _starController.value;
+              for (int i = 0; i < _stars.length; i++) {
+                final s = _stars[i];
+                final y = -t * s.maxY;
+                final x = t * s.driftX;
+                final op = 1.0 - t;
+                _stars[i] = _StarParticle(
+                  x: x,
+                  y: y,
+                  opacity: op,
+                  maxY: s.maxY,
+                  driftX: s.driftX,
+                );
+              }
+            });
+          })
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              setState(() {
+                _stars.clear();
+              });
+            }
+          });
+  }
+
+  @override
+  void didUpdateWidget(covariant _SetProgressDotItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isFilled && !oldWidget.isFilled) {
+      _triggerStarBurst();
+    }
+  }
+
+  void _triggerStarBurst() {
+    _stars.clear();
+    for (int i = 0; i < 3; i++) {
+      final maxY = 40.0 + _random.nextDouble() * 40.0;
+      final driftX = -15.0 + _random.nextDouble() * 30.0;
+      _stars.add(
+        _StarParticle(x: 0, y: 0, opacity: 1.0, maxY: maxY, driftX: driftX),
+      );
+    }
+    _starController.forward(from: 0.0);
+  }
+
+  @override
+  void dispose() {
+    _starController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        if (_stars.isNotEmpty)
+          ..._stars.map((s) {
+            return Positioned(
+              left: s.x,
+              top: s.y - 12.0,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: s.opacity,
+                  child: const Text(
+                    '★',
+                    style: TextStyle(fontSize: 12, color: Color(0xFFE8B84B)),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: widget.isLibrary
-                              ? const Color(0x1FE67E22)
-                              : const Color(0x262ECC71),
-                          borderRadius: BorderRadius.circular(11),
-                        ),
-                        child: Icon(
-                          widget.isLibrary
-                              ? Icons.bookmark_added_outlined
-                              : Icons.fitness_center_outlined,
-                          color: widget.isLibrary
-                              ? const Color(0xFFE67E22)
-                              : theme.teal,
-                          size: 20,
-                        ),
+                ),
+              ),
+            );
+          }),
+
+        widget.isCurrent
+            ? AnimatedBuilder(
+                animation: widget.pulseController,
+                builder: (context, child) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    width: 14 * widget.pulseScale.value,
+                    height: 14 * widget.pulseScale.value,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: widget.theme.teal.withValues(
+                        alpha: widget.pulseOpacity.value,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.exercise[0],
-                              style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: theme.text1,
+                      border: Border.all(color: widget.theme.teal, width: 2),
+                    ),
+                  );
+                },
+              )
+            : AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.isFilled
+                      ? widget.theme.teal
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: widget.isFilled
+                        ? widget.theme.teal
+                        : widget.theme.text3,
+                    width: 2,
+                  ),
+                ),
+              ),
+      ],
+    );
+  }
+}
+
+class _StarParticle {
+  final double x;
+  final double y;
+  final double opacity;
+  final double maxY;
+  final double driftX;
+
+  _StarParticle({
+    required this.x,
+    required this.y,
+    required this.opacity,
+    required this.maxY,
+    required this.driftX,
+  });
+}
+
+class _SetTransitionNumberWidget extends StatefulWidget {
+  final int value;
+  final int currentSet;
+  final TextStyle style;
+
+  const _SetTransitionNumberWidget({
+    required this.value,
+    required this.currentSet,
+    required this.style,
+  });
+
+  @override
+  State<_SetTransitionNumberWidget> createState() =>
+      _SetTransitionNumberWidgetState();
+}
+
+class _SetTransitionNumberWidgetState extends State<_SetTransitionNumberWidget>
+    with TickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<Offset> _offset;
+  late int _displayValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayValue = widget.value;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(_controller);
+    _offset = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.0, -0.5),
+    ).animate(_controller);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SetTransitionNumberWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentSet != oldWidget.currentSet) {
+      _offset = Tween<Offset>(
+        begin: Offset.zero,
+        end: const Offset(0.0, -0.5),
+      ).animate(_controller);
+      _opacity = Tween<double>(begin: 1.0, end: 0.0).animate(_controller);
+      _controller.forward(from: 0.0).then((_) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              _displayValue = widget.value;
+            });
+            _offset = Tween<Offset>(
+              begin: const Offset(0.0, 0.5),
+              end: Offset.zero,
+            ).animate(_controller);
+            _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+            _controller.forward(from: 0.0);
+          }
+        });
+      });
+    } else {
+      if (widget.value != _displayValue && !_controller.isAnimating) {
+        setState(() {
+          _displayValue = widget.value;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacity.value,
+          child: Transform.translate(
+            offset: _offset.value * 40.0,
+            child: Text('$_displayValue', style: widget.style),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ExerciseCompleteOverlay extends StatefulWidget {
+  final String exerciseName;
+  final VoidCallback onFinished;
+  final ThemeColors theme;
+
+  const _ExerciseCompleteOverlay({
+    required this.exerciseName,
+    required this.onFinished,
+    required this.theme,
+  });
+
+  @override
+  State<_ExerciseCompleteOverlay> createState() =>
+      _ExerciseCompleteOverlayState();
+}
+
+class _ExerciseCompleteOverlayState extends State<_ExerciseCompleteOverlay>
+    with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  late AnimationController _checkController;
+  late Animation<double> _checkAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _checkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _checkAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _checkController, curve: Curves.easeInOut),
+    );
+
+    _fadeController.forward().then((_) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _checkController.forward();
+        }
+      });
+
+      Future.delayed(const Duration(milliseconds: 2300), () {
+        if (mounted) {
+          _fadeController.reverse().then((_) {
+            widget.onFinished();
+          });
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _checkController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.7),
+        alignment: Alignment.center,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 40),
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: widget.theme.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: widget.theme.border, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: AnimatedBuilder(
+                  animation: _checkAnimation,
+                  builder: (context, child) {
+                    return CustomPaint(
+                      painter: _SelfDrawingCheckPainter(
+                        progress: _checkAnimation.value,
+                        color: const Color(0xFF00C896),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                widget.exerciseName,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: widget.theme.text1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'COMPLETED',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                  color: Color(0xFF00C896),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SelfDrawingCheckPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _SelfDrawingCheckPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    path.moveTo(size.width * 0.25, size.height * 0.5);
+    path.lineTo(size.width * 0.45, size.height * 0.7);
+    path.lineTo(size.width * 0.75, size.height * 0.35);
+
+    final metrics = path.computeMetrics().toList();
+    if (metrics.isEmpty) return;
+
+    final drawPath = Path();
+    double totalLength = metrics.fold(0.0, (sum, m) => sum + m.length);
+    double targetLength = totalLength * progress;
+
+    double currentLength = 0.0;
+    for (var metric in metrics) {
+      if (currentLength + metric.length <= targetLength) {
+        drawPath.addPath(metric.extractPath(0.0, metric.length), Offset.zero);
+        currentLength += metric.length;
+      } else {
+        double remaining = targetLength - currentLength;
+        drawPath.addPath(metric.extractPath(0.0, remaining), Offset.zero);
+        break;
+      }
+    }
+
+    canvas.drawPath(drawPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SelfDrawingCheckPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class _WorkoutCompleteOverlay extends StatefulWidget {
+  final ThemeColors theme;
+  final int exercisesCompleted;
+  final int totalReps;
+  final int minutesSpent;
+  final VoidCallback onContinue;
+  final VoidCallback onDismiss;
+
+  const _WorkoutCompleteOverlay({
+    required this.theme,
+    required this.exercisesCompleted,
+    required this.totalReps,
+    required this.minutesSpent,
+    required this.onContinue,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_WorkoutCompleteOverlay> createState() =>
+      _WorkoutCompleteOverlayState();
+}
+
+class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
+    with TickerProviderStateMixin {
+  late AnimationController _confettiController;
+  late AnimationController _checkmarkController;
+  final List<_ConfettiParticle> _particles = [];
+  bool _initializedConfetti = false;
+
+  bool _showTitle = false;
+  bool _showStat1 = false;
+  bool _showStat2 = false;
+  bool _showStat3 = false;
+  bool _showButton = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _confettiController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..addListener(() {
+            setState(() {
+              for (var p in _particles) {
+                p.update();
+              }
+            });
+          });
+
+    _checkmarkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _checkmarkController.forward();
+      }
+    });
+    Future.delayed(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _showTitle = true);
+    });
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) setState(() => _showStat1 = true);
+    });
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) setState(() => _showStat2 = true);
+    });
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) setState(() => _showStat3 = true);
+    });
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _showButton = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    _checkmarkController.dispose();
+    super.dispose();
+  }
+
+  void _initConfetti(double width) {
+    if (_initializedConfetti) return;
+    _initializedConfetti = true;
+    for (int i = 0; i < 25; i++) {
+      _particles.add(_ConfettiParticle(width));
+    }
+    _confettiController.repeat();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _initConfetti(constraints.maxWidth);
+        return GestureDetector(
+          onTap: widget.onDismiss,
+          child: Container(
+            color: Colors.black.withValues(alpha: 0.85),
+            alignment: Alignment.center,
+            child: Stack(
+              children: [
+                CustomPaint(
+                  size: Size(constraints.maxWidth, constraints.maxHeight),
+                  painter: _ConfettiPainter(particles: _particles),
+                ),
+
+                Center(
+                  child: GestureDetector(
+                    onTap: () {},
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: theme.card,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: theme.border, width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 40,
+                            offset: const Offset(0, 15),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 100,
+                            height: 100,
+                            child: AnimatedBuilder(
+                              animation: _checkmarkController,
+                              builder: (context, child) {
+                                return CustomPaint(
+                                  painter: _SelfDrawingCheckPainter(
+                                    progress: _checkmarkController.value,
+                                    color: const Color(0xFF00C896),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          AnimatedOpacity(
+                            opacity: _showTitle ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 300),
+                            child: Text(
+                              'WORKOUT COMPLETE!',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.syne(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Wrap(
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 4,
-                              runSpacing: 2,
-                              children: [
-                                Text(
-                                  '${widget.sets} sets × ${widget.reps} reps · ${widget.muscle} ',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 10,
-                                    color: theme.text3,
-                                    fontWeight: FontWeight.w500,
+                          ),
+                          const SizedBox(height: 28),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: AnimatedOpacity(
+                                  opacity: _showStat1 ? 1.0 : 0.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  child: _buildSummaryStatCard(
+                                    '${widget.exercisesCompleted}',
+                                    'exercises',
+                                    theme,
                                   ),
                                 ),
-                                _buildEquipmentTag(tag),
-                              ],
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: AnimatedOpacity(
+                                  opacity: _showStat2 ? 1.0 : 0.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  child: _buildSummaryStatCard(
+                                    '${widget.totalReps}',
+                                    'reps',
+                                    theme,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: AnimatedOpacity(
+                                  opacity: _showStat3 ? 1.0 : 0.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  child: _buildSummaryStatCard(
+                                    '${widget.minutesSpent} min',
+                                    'time spent',
+                                    theme,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 32),
+
+                          AnimatedOpacity(
+                            opacity: _showButton ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 300),
+                            child: ElevatedButton(
+                              onPressed: widget.onContinue,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00C896),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 2,
+                              ),
+                              child: Text(
+                                'Continue',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSummaryStatCard(String value, String label, ThemeColors theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: theme.isDark ? const Color(0x0CFFFFFF) : const Color(0x0A000000),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.border, width: 0.5),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.syne(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF00C896),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 10,
+              color: theme.text3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConfettiParticle {
+  late double x;
+  late double y;
+  late double speed;
+  late double angle;
+  late double rotationSpeed;
+  late Color color;
+  late double opacity;
+  late bool isCircle;
+  late double size;
+
+  _ConfettiParticle(double screenWidth) {
+    final random = math.Random();
+    x = random.nextDouble() * screenWidth;
+    y = -random.nextDouble() * 200.0 - 20.0;
+    speed = 2.0 + random.nextDouble() * 3.0;
+    angle = random.nextDouble() * 2 * math.pi;
+    rotationSpeed = -2.0 + random.nextDouble() * 4.0;
+    size = 6.0 + random.nextDouble() * 8.0;
+    isCircle = random.nextBool();
+    opacity = 0.6 + random.nextDouble() * 0.4;
+
+    final colors = [
+      const Color(0xFFE8B84B),
+      const Color(0xFF00C896),
+      Colors.white,
+    ];
+    color = colors[random.nextInt(colors.length)];
+  }
+
+  void update() {
+    y += speed;
+    x += math.sin(y / 30) * 0.5;
+    angle += rotationSpeed * 0.02;
+  }
+}
+
+class _ConfettiPainter extends CustomPainter {
+  final List<_ConfettiParticle> particles;
+
+  _ConfettiPainter({required this.particles});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (var p in particles) {
+      final paint = Paint()
+        ..color = p.color.withValues(alpha: p.opacity)
+        ..style = PaintingStyle.fill;
+
+      canvas.save();
+      canvas.translate(p.x, p.y);
+      canvas.rotate(p.angle);
+
+      if (p.isCircle) {
+        canvas.drawCircle(Offset.zero, p.size / 2, paint);
+      } else {
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: p.size,
+            height: p.size / 2,
+          ),
+          paint,
+        );
+      }
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) => true;
+}
+
+class _CompletionCheckWidget extends StatefulWidget {
+  final bool completed;
+  final VoidCallback onTap;
+  final ThemeColors theme;
+
+  const _CompletionCheckWidget({
+    required this.completed,
+    required this.onTap,
+    required this.theme,
+  });
+
+  @override
+  State<_CompletionCheckWidget> createState() => _CompletionCheckWidgetState();
+}
+
+class _CompletionCheckWidgetState extends State<_CompletionCheckWidget>
+    with TickerProviderStateMixin {
+  late AnimationController _checkController;
+  late Animation<double> _checkScale;
+
+  late AnimationController _rippleController;
+  late Animation<double> _rippleScale;
+  late Animation<double> _rippleOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _checkScale =
+        TweenSequence([
+          TweenSequenceItem(
+            tween: Tween<double>(begin: 0.0, end: 1.2),
+            weight: 70,
+          ),
+          TweenSequenceItem(
+            tween: Tween<double>(begin: 1.2, end: 1.0),
+            weight: 30,
+          ),
+        ]).animate(
+          CurvedAnimation(parent: _checkController, curve: Curves.easeOutBack),
+        );
+
+    _rippleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _rippleScale = Tween<double>(begin: 1.0, end: 3.5).animate(
+      CurvedAnimation(parent: _rippleController, curve: Curves.easeOut),
+    );
+    _rippleOpacity = Tween<double>(begin: 0.8, end: 0.0).animate(
+      CurvedAnimation(parent: _rippleController, curve: Curves.easeOut),
+    );
+
+    if (widget.completed) {
+      _checkController.value = 1.0;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompletionCheckWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.completed && !oldWidget.completed) {
+      _checkController.forward(from: 0.0);
+      _rippleController.forward(from: 0.0);
+    } else if (!widget.completed && oldWidget.completed) {
+      _checkController.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _checkController.dispose();
+    _rippleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          AnimatedBuilder(
+            animation: _rippleController,
+            builder: (context, child) {
+              if (_rippleController.value == 0 ||
+                  _rippleController.value == 1) {
+                return const SizedBox.shrink();
+              }
+              return Container(
+                width: 20 * _rippleScale.value,
+                height: 20 * _rippleScale.value,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.theme.teal.withValues(
+                    alpha: _rippleOpacity.value,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: widget.completed
+                    ? widget.theme.teal
+                    : widget.theme.text3,
+                width: 2,
+              ),
+              color: Colors.transparent,
+            ),
+          ),
+
+          ScaleTransition(
+            scale: _checkScale,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.theme.teal,
+              ),
+              child: const Center(
+                child: Icon(Icons.check, size: 12, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderAddButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final ThemeColors theme;
+
+  const _HeaderAddButton({required this.onTap, required this.theme});
+
+  @override
+  State<_HeaderAddButton> createState() => _HeaderAddButtonState();
+}
+
+class _HeaderAddButtonState extends State<_HeaderAddButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = TweenSequence([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.9), weight: 50),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.9, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: GestureDetector(
+        onTap: () {
+          _controller.forward(from: 0.0);
+          HapticService.tapFeedback();
+          SoundManager.playTapClick();
+          widget.onTap();
+        },
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: widget.theme.gold.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: widget.theme.gold.withValues(alpha: 0.35),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: widget.theme.gold.withValues(alpha: 0.08),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Icon(Icons.add, color: widget.theme.gold, size: 18),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsSheet extends StatefulWidget {
+  final ThemeColors theme;
+  final String userName;
+  final int userGoalYear;
+  final int userGoalMonth;
+  final int userGoalDay;
+  final Function(String, int, int, int)? onProfileChanged;
+  final VoidCallback onSaved;
+
+  const _SettingsSheet({
+    required this.theme,
+    required this.userName,
+    required this.userGoalYear,
+    required this.userGoalMonth,
+    required this.userGoalDay,
+    this.onProfileChanged,
+    required this.onSaved,
+  });
+
+  @override
+  State<_SettingsSheet> createState() => _SettingsSheetState();
+}
+
+class _SettingsSheetState extends State<_SettingsSheet> {
+  final _latController = TextEditingController();
+  final _lonController = TextEditingController();
+  String _locationName = '';
+  String _selectedMethod = 'MuslimWorldLeague';
+  String _selectedMadhab = 'Shafi';
+  bool _detecting = false;
+
+  final Map<String, List<double>> _cityPresets = {
+    'Delhi, India': [28.6139, 77.2090],
+    'Mumbai, India': [19.0760, 72.8777],
+    'Kolkata, India': [22.5726, 88.3639],
+    'Chennai, India': [13.0827, 80.2707],
+    'Hyderabad, India': [17.3850, 78.4867],
+    'Karachi, Pakistan': [24.8607, 67.0011],
+    'Dhaka, Bangladesh': [23.8103, 90.4125],
+    'Mecca, Saudi Arabia': [21.3891, 39.8579],
+    'Medina, Saudi Arabia': [24.4672, 39.6111],
+    'Cairo, Egypt': [30.0444, 31.2357],
+    'London, UK': [51.5074, -0.1278],
+    'New York, US': [40.7128, -74.0060],
+    'Jakarta, Indonesia': [-6.2088, 106.8456],
+    'Kuala Lumpur, Malaysia': [3.1390, 101.6869],
+    'Singapore': [1.3521, 103.8198],
+    'Istanbul, Turkey': [41.0082, 28.9784],
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentSettings();
+  }
+
+  Future<void> _loadCurrentSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _latController.text = (prefs.getDouble('prayer_latitude') ?? 28.6139)
+          .toString();
+      _lonController.text = (prefs.getDouble('prayer_longitude') ?? 77.2090)
+          .toString();
+      _locationName = prefs.getString('prayer_location_name') ?? 'Delhi, India';
+      _selectedMethod = prefs.getString('prayer_calc_method') ?? 'Karachi';
+      _selectedMadhab = prefs.getString('prayer_madhab') ?? 'Hanafi';
+    });
+  }
+
+  Future<void> _detectLocation() async {
+    setState(() => _detecting = true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('prayer_latitude');
+    await detectLocationByIp();
+    await _loadCurrentSettings();
+    setState(() => _detecting = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Detected location: $_locationName'),
+          backgroundColor: widget.theme.teal,
+        ),
+      );
+    }
+  }
+
+  void _showEditNameDialog(BuildContext context, ThemeColors theme) {
+    final nameController = TextEditingController(text: widget.userName);
+    DateTime tempDate = DateTime(
+      widget.userGoalYear,
+      widget.userGoalMonth,
+      widget.userGoalDay,
+    );
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            String formatDate(DateTime date) {
+              const months = [
+                'January',
+                'February',
+                'March',
+                'April',
+                'May',
+                'June',
+                'July',
+                'August',
+                'September',
+                'October',
+                'November',
+                'December',
+              ];
+              return '${months[date.month - 1]} ${date.day}, ${date.year}';
+            }
+
+            Future<void> pickDialogDate() async {
+              final DateTime? picked = await showDatePicker(
+                context: dialogContext,
+                initialDate: tempDate,
+                firstDate: DateTime(2025),
+                lastDate: DateTime(2100),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: const ColorScheme.dark(
+                        primary: Color(0xFF1D9E75),
+                        onPrimary: Colors.white,
+                        surface: Color(0xFF1C1C2E),
+                        onSurface: Colors.white,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (picked != null && picked != tempDate) {
+                setDialogState(() {
+                  tempDate = picked;
+                });
+              }
+            }
+
+            return AlertDialog(
+              backgroundColor: theme.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: theme.border, width: 0.5),
+              ),
+              title: Text(
+                'Edit Profile',
+                style: GoogleFonts.syne(
+                  fontWeight: FontWeight.w800,
+                  color: theme.text1,
+                ),
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your Name',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: theme.text2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: nameController,
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Please enter your name'
+                          : null,
+                      style: TextStyle(color: theme.text1),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: theme.isDark
+                            ? const Color(0x0AFFFFFF)
+                            : const Color(0xFFF9F9F9),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: theme.border,
+                            width: 0.5,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: theme.teal, width: 1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Goal Deadline Date',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: theme.text2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: pickDialogDate,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.isDark
+                              ? const Color(0x0AFFFFFF)
+                              : const Color(0xFFF9F9F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: theme.border, width: 0.5),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              formatDate(tempDate),
+                              style: TextStyle(
+                                color: theme.text1,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Icon(
+                              Icons.calendar_today,
+                              color: theme.gold,
+                              size: 16,
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${widget.reps}',
-                        style: GoogleFonts.syne(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: widget.completed
-                              ? theme.teal
-                              : (widget.isLibrary
-                                    ? const Color(0xFFE67E22)
-                                    : theme.gold),
-                        ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w600,
+                      color: theme.text3,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      final name = nameController.text.trim();
+                      if (widget.onProfileChanged != null) {
+                        widget.onProfileChanged!(
+                          name,
+                          tempDate.year,
+                          tempDate.month,
+                          tempDate.day,
+                        );
+                      }
+                      Navigator.pop(dialogContext);
+                      HapticService.tapFeedback();
+                      SoundManager.playTapClick();
+                      widget.onSaved();
+                      setState(() {});
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.teal,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Save',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _saveSettings() async {
+    final lat = double.tryParse(_latController.text);
+    final lon = double.tryParse(_lonController.text);
+    if (lat == null || lon == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter valid coordinates'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('prayer_latitude', lat);
+    await prefs.setDouble('prayer_longitude', lon);
+    await prefs.setString('prayer_location_name', _locationName);
+    await prefs.setString('prayer_calc_method', _selectedMethod);
+    await prefs.setString('prayer_madhab', _selectedMadhab);
+
+    await updatePrayerTimesForLocation();
+    widget.onSaved();
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    return Container(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      decoration: BoxDecoration(
+        color: theme.bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'SETTINGS',
+                  style: GoogleFonts.syne(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: theme.text1,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Icon(Icons.close, color: theme.text3, size: 20),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            Text(
+              'APP SETTINGS',
+              style: GoogleFonts.syne(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: theme.gold,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: theme.isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.015),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.border, width: 0.5),
+              ),
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    title: Text(
+                      'Sound Effects',
+                      style: TextStyle(
+                        color: theme.text1,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () {
-                          HapticService.tapFeedback();
-                          SoundManager.playTapClick();
-                          widget.onToggle();
-                        },
-                        child: Container(
+                    ),
+                    subtitle: Text(
+                      'Enable workout sound effects',
+                      style: TextStyle(color: theme.text3, fontSize: 11),
+                    ),
+                    activeThumbColor: theme.teal,
+                    value: SoundManager.isEnabled,
+                    onChanged: (val) async {
+                      await SoundManager.setEnabled(val);
+                      setState(() {});
+                      HapticService.tapFeedback();
+                      if (val) SoundManager.playTapClick();
+                    },
+                  ),
+                  Divider(color: theme.border, height: 0.5, thickness: 0.5),
+                  SwitchListTile(
+                    title: Text(
+                      'Haptic Feedback',
+                      style: TextStyle(
+                        color: theme.text1,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Enable physical feedback on taps',
+                      style: TextStyle(color: theme.text3, fontSize: 11),
+                    ),
+                    activeThumbColor: theme.teal,
+                    value: HapticService.isEnabled,
+                    onChanged: (val) async {
+                      await HapticService.setEnabled(val);
+                      setState(() {});
+                      if (val) HapticService.tapFeedback();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Text(
+              'PROFILE SETTINGS',
+              style: GoogleFonts.syne(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: theme.gold,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: theme.isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.015),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.border, width: 0.5),
+              ),
+              child: ListTile(
+                title: Text(
+                  'Profile Settings',
+                  style: TextStyle(
+                    color: theme.text1,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  widget.userName.isNotEmpty
+                      ? widget.userName
+                      : 'Set your name & goal',
+                  style: TextStyle(color: theme.text3, fontSize: 11),
+                ),
+                trailing: Icon(Icons.chevron_right, color: theme.text2),
+                onTap: () => _showEditNameDialog(context, theme),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Text(
+              'PRAYER TIMINGS SETTINGS',
+              style: GoogleFonts.syne(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: theme.gold,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.015),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.border, width: 0.5),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on, color: theme.gold, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current Location:',
+                          style: TextStyle(
+                            color: theme.text3,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _locationName.isNotEmpty
+                              ? _locationName
+                              : 'Detecting...',
+                          style: TextStyle(
+                            color: theme.text1,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _detecting
+                      ? SizedBox(
                           width: 20,
                           height: 20,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: widget.completed
-                                  ? theme.teal
-                                  : theme.text3,
-                              width: 2,
-                            ),
-                            color: widget.completed
-                                ? theme.teal
-                                : Colors.transparent,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.gold,
                           ),
-                          child: widget.completed
-                              ? const Center(
-                                  child: Icon(
-                                    Icons.check,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : null,
+                        )
+                      : TextButton.icon(
+                          onPressed: _detectLocation,
+                          icon: Icon(
+                            Icons.my_location,
+                            size: 14,
+                            color: theme.teal,
+                          ),
+                          label: Text(
+                            'Auto Detect',
+                            style: TextStyle(
+                              color: theme.teal,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Text(
+              'Select City Preset',
+              style: TextStyle(
+                color: theme.text2,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: theme.isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.015),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.border, width: 0.5),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _cityPresets.keys.contains(_locationName)
+                      ? _locationName
+                      : null,
+                  hint: Text(
+                    'Choose a preset city...',
+                    style: TextStyle(color: theme.text3, fontSize: 13),
+                  ),
+                  dropdownColor: theme.bg,
+                  style: TextStyle(color: theme.text1, fontSize: 13),
+                  items: _cityPresets.keys.map((city) {
+                    return DropdownMenuItem(value: city, child: Text(city));
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _locationName = val;
+                        _latController.text = _cityPresets[val]![0].toString();
+                        _lonController.text = _cityPresets[val]![1].toString();
+                      });
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Latitude',
+                        style: TextStyle(
+                          color: theme.text3,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _latController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: TextStyle(color: theme.text1, fontSize: 13),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: theme.isDark
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : Colors.black.withValues(alpha: 0.015),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.border,
+                              width: 0.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.gold,
+                              width: 1.0,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                        onChanged: (val) {
+                          setState(() {
+                            _locationName =
+                                'Custom (${double.tryParse(_latController.text)?.toStringAsFixed(2)}, ${double.tryParse(_lonController.text)?.toStringAsFixed(2)})';
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Longitude',
+                        style: TextStyle(
+                          color: theme.text3,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: _lonController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: TextStyle(color: theme.text1, fontSize: 13),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: theme.isDark
+                              ? Colors.white.withValues(alpha: 0.03)
+                              : Colors.black.withValues(alpha: 0.015),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.border,
+                              width: 0.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: theme.gold,
+                              width: 1.0,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                        onChanged: (val) {
+                          setState(() {
+                            _locationName =
+                                'Custom (${double.tryParse(_latController.text)?.toStringAsFixed(2)}, ${double.tryParse(_lonController.text)?.toStringAsFixed(2)})';
+                          });
+                        },
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+
+            Text(
+              'Calculation Method',
+              style: TextStyle(
+                color: theme.text2,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: theme.isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.015),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.border, width: 0.5),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _selectedMethod,
+                  dropdownColor: theme.bg,
+                  style: TextStyle(color: theme.text1, fontSize: 13),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Karachi',
+                      child: Text('University of Islamic Sciences, Karachi'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Mecca',
+                      child: Text('Umm al-Qura University, Makkah'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'MuslimWorldLeague',
+                      child: Text('Muslim World League (MWL)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Egypt',
+                      child: Text('Egyptian General Authority of Survey'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Gulf',
+                      child: Text('Gulf Region (Dubai)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'NorthAmerica',
+                      child: Text('ISNA (North America)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Singapore',
+                      child: Text('MUIS (Singapore)'),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedMethod = val);
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Text(
+              'Asr Calculation Madhab',
+              style: TextStyle(
+                color: theme.text2,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: theme.isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.015),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.border, width: 0.5),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _selectedMadhab,
+                  dropdownColor: theme.bg,
+                  style: TextStyle(color: theme.text1, fontSize: 13),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Shafi',
+                      child: Text('Standard (Shafi\'i, Maliki, Hanbali)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Hanafi',
+                      child: Text('Hanafi (Later Asr)'),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedMadhab = val);
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _saveSettings,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.teal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: Text(
+                      'Save Settings',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

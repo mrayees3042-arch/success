@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="splash_bg">#06060F</color>
+    <color name="icon_background">#00C896</color>
+    <color name="ic_launcher_mountain_color">#FFFFFF</color>
+    <color name="ic_launcher_dot_color">#C9A84C</color>
 </resources>

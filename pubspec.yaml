@@ -41,6 +41,7 @@ dependencies:
   hive_flutter: ^1.1.0
   vibration: ^3.0.0
   audioplayers: ^5.2.1
+  adhan: ^2.0.0+1
 
 dev_dependencies:
   flutter_test:
