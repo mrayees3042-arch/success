@@ -6,6 +6,30 @@ import '../app_theme.dart';
 import '../services/haptic_service.dart';
 import '../services/audio_service.dart';
 
+class SubTask {
+  String id;
+  String title;
+  bool isDone;
+
+  SubTask({
+    required this.id,
+    required this.title,
+    this.isDone = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'isDone': isDone,
+  };
+
+  factory SubTask.fromJson(Map<String, dynamic> json) => SubTask(
+    id: json['id'] as String,
+    title: json['title'] as String,
+    isDone: json['isDone'] as bool? ?? false,
+  );
+}
+
 class LifeGoal {
   String id;
   String title;
@@ -13,6 +37,7 @@ class LifeGoal {
   double progress;
   Color color;
   bool isDone;
+  List<SubTask> subTasks;
 
   LifeGoal({
     required this.id,
@@ -21,7 +46,8 @@ class LifeGoal {
     required this.progress,
     required this.color,
     this.isDone = false,
-  });
+    List<SubTask>? subTasks,
+  }) : subTasks = subTasks ?? [];
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -30,6 +56,7 @@ class LifeGoal {
     'progress': progress,
     'color': color.toARGB32(),
     'isDone': isDone,
+    'subTasks': subTasks.map((t) => t.toJson()).toList(),
   };
 
   factory LifeGoal.fromJson(Map<String, dynamic> json) => LifeGoal(
@@ -39,6 +66,9 @@ class LifeGoal {
     progress: (json['progress'] as num).toDouble(),
     color: Color(json['color'] as int),
     isDone: json['isDone'] as bool? ?? false,
+    subTasks: (json['subTasks'] as List?)
+        ?.map((t) => SubTask.fromJson(t as Map<String, dynamic>))
+        .toList() ?? [],
   );
 }
 
@@ -60,6 +90,73 @@ class LifePlanScreen extends StatefulWidget {
 class _LifePlanScreenState extends State<LifePlanScreen> {
   List<LifeGoal> _goals = [];
   bool _isLoading = true;
+  final Set<String> _expandedGoalIds = {};
+
+  void _toggleGoalCompletion(LifeGoal goal) {
+    HapticService.habitComplete(!goal.isDone);
+    setState(() {
+      goal.isDone = !goal.isDone;
+      if (goal.isDone) {
+        goal.progress = 1.0;
+        for (var t in goal.subTasks) {
+          t.isDone = true;
+        }
+        AudioService.playAllHabitsDone();
+      } else {
+        goal.progress = 0.0;
+        for (var t in goal.subTasks) {
+          t.isDone = false;
+        }
+        AudioService.playHabitComplete();
+      }
+    });
+    _saveGoals();
+  }
+
+  void _toggleSubTask(LifeGoal goal, SubTask subtask) {
+    HapticService.selection();
+    AudioService.playHabitComplete();
+    setState(() {
+      subtask.isDone = !subtask.isDone;
+      if (goal.subTasks.isNotEmpty) {
+        final doneCount = goal.subTasks.where((t) => t.isDone).length;
+        goal.progress = doneCount / goal.subTasks.length;
+        goal.isDone = doneCount == goal.subTasks.length;
+      }
+    });
+    _saveGoals();
+  }
+
+  void _addSubTask(LifeGoal goal, String title) {
+    if (title.isEmpty) return;
+    HapticService.medium();
+    setState(() {
+      final sub = SubTask(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+      );
+      goal.subTasks.add(sub);
+      final doneCount = goal.subTasks.where((t) => t.isDone).length;
+      goal.progress = doneCount / goal.subTasks.length;
+      goal.isDone = doneCount == goal.subTasks.length;
+    });
+    _saveGoals();
+  }
+
+  void _deleteSubTask(LifeGoal goal, SubTask subtask) {
+    HapticService.medium();
+    setState(() {
+      goal.subTasks.remove(subtask);
+      if (goal.subTasks.isNotEmpty) {
+        final doneCount = goal.subTasks.where((t) => t.isDone).length;
+        goal.progress = doneCount / goal.subTasks.length;
+        goal.isDone = doneCount == goal.subTasks.length;
+      } else {
+        goal.progress = goal.isDone ? 1.0 : 0.0;
+      }
+    });
+    _saveGoals();
+  }
 
   @override
   void initState() {
@@ -119,16 +216,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     await prefs.setString('life_plan_goals', encoded);
   }
 
-  Future<void> _incrementProgress(LifeGoal goal) async {
-    HapticService.selection();
-    AudioService.playHabitComplete();
-    setState(() {
-      double p = goal.progress + 0.05;
-      if (p > 1.0) p = 1.0;
-      goal.progress = p;
-    });
-    _saveGoals();
-  }
+
 
   void _deleteGoal(LifeGoal goal) {
     setState(() {
@@ -207,21 +295,6 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'Progress: ${(progressVal * 100).round()}%',
-                    style: TextStyle(color: widget.theme.text3),
-                  ),
-                  Slider(
-                    value: progressVal,
-                    onChanged: (val) {
-                      if (mounted) {
-                        setSheetState(() => progressVal = val);
-                      }
-                    },
-                    activeColor: selectedColor,
-                    inactiveColor: widget.theme.border,
-                  ),
-                  const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children:
@@ -447,7 +520,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No focus areas yet',
+              'No tasks yet',
               style: GoogleFonts.dmSans(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
@@ -456,7 +529,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Add your first goal to start tracking',
+              'Add your first task to start tracking',
               style: GoogleFonts.dmSans(
                 fontSize: 13,
                 color: text3,
@@ -470,8 +543,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     // Focus card helper
     Widget buildGoalCard(LifeGoal goal) {
       final isCompleted = goal.isDone;
-      const taskCountTotal = 20;
-      final taskCountDone = (goal.progress * taskCountTotal).round();
+      final expanded = _expandedGoalIds.contains(goal.id);
 
       final accentGradient = isCompleted
           ? LinearGradient(colors: [emeraldColor, goldColor])
@@ -484,7 +556,19 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
       final pillBg = isCompleted ? emeraldColor.withValues(alpha: 0.12) : azureColor.withValues(alpha: 0.12);
       final pillBorder = isCompleted ? emeraldColor.withValues(alpha: 0.3) : azureColor.withValues(alpha: 0.3);
       final pillText = isCompleted ? emeraldColor : azureColor;
-      final pillLabel = isCompleted ? 'Done' : 'Ongoing';
+      final pillLabel = isCompleted ? 'DONE' : 'ONGOING';
+
+      // Calculate progress dynamically
+      double progressVal = 0.0;
+      int doneCount = 0;
+      if (goal.subTasks.isNotEmpty) {
+        doneCount = goal.subTasks.where((t) => t.isDone).length;
+        progressVal = doneCount / goal.subTasks.length;
+      } else {
+        progressVal = goal.isDone ? 1.0 : 0.0;
+      }
+
+      final addCtrl = TextEditingController();
 
       return Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -498,34 +582,32 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                height: 3,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: accentGradient,
+              if (isCompleted)
+                Container(
+                  height: 3,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: accentGradient,
+                  ),
                 ),
-              ),
               Padding(
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header row: Title + Badge
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () => _incrementProgress(goal),
-                            child: Text(
-                              goal.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: text1,
-                                decoration: isCompleted ? TextDecoration.lineThrough : null,
-                              ),
+                          child: Text(
+                            goal.title,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: text1,
+                              decoration: isCompleted ? TextDecoration.lineThrough : null,
                             ),
                           ),
                         ),
@@ -537,27 +619,66 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: pillBorder, width: 1),
                           ),
-                          child: Text(
-                            pillLabel,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: pillText,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: pillText,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                pillLabel,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                  color: pillText,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
+
+                    // Progress Section (Header label and bar)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Progress',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: text3,
+                          ),
+                        ),
+                        Text(
+                          '${(progressVal * 100).round()}%',
+                          style: GoogleFonts.syne(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: pillText,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(2),
                       child: Container(
-                        height: 4,
+                        height: 5,
                         width: double.infinity,
                         color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
                         alignment: Alignment.centerLeft,
                         child: FractionallySizedBox(
-                          widthFactor: goal.progress,
+                          widthFactor: progressVal,
                           child: Container(
                             decoration: BoxDecoration(
                               gradient: progressGradient,
@@ -567,50 +688,31 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // Info row: "X of Y steps completed" & 3 action buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        RichText(
-                          text: TextSpan(
-                            style: GoogleFonts.dmSans(
-                              fontSize: 12,
-                              color: text3,
-                            ),
-                            children: [
-                              const TextSpan(text: 'Progress: '),
-                              TextSpan(
-                                text: '$taskCountDone/$taskCountTotal',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: text1,
-                                ),
-                              ),
-                              const TextSpan(text: ' tasks'),
-                            ],
+                        Text(
+                          goal.subTasks.isEmpty
+                              ? (isCompleted ? 'Goal completed' : 'No subtasks')
+                              : '$doneCount of ${goal.subTasks.length} steps completed',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: text3,
                           ),
                         ),
                         Row(
                           children: [
+                            // 1. Check Button (toggles complete/ongoing)
                             GestureDetector(
-                              onTap: () {
-                                final nowCompleted = !goal.isDone;
-                                HapticService.habitComplete(nowCompleted);
-                                if (nowCompleted) {
-                                  AudioService.playAllHabitsDone();
-                                } else {
-                                  AudioService.playHabitComplete();
-                                }
-                                setState(() {
-                                  goal.isDone = nowCompleted;
-                                });
-                                _saveGoals();
-                              },
+                              onTap: () => _toggleGoalCompletion(goal),
                               child: Container(
-                                width: 32,
-                                height: 32,
+                                width: 34,
+                                height: 34,
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isCompleted ? emeraldColor.withValues(alpha: 0.12) : cardBg,
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: isCompleted ? emeraldColor.withValues(alpha: 0.12) : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03)),
                                   border: Border.all(
                                     color: isCompleted ? emeraldColor.withValues(alpha: 0.3) : cardBorder,
                                     width: 1,
@@ -624,6 +726,38 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            // 2. Checklist Button (expand list of subtasks)
+                            GestureDetector(
+                              onTap: () {
+                                HapticService.selection();
+                                setState(() {
+                                  if (expanded) {
+                                    _expandedGoalIds.remove(goal.id);
+                                  } else {
+                                    _expandedGoalIds.add(goal.id);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: expanded ? azureColor.withValues(alpha: 0.12) : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03)),
+                                  border: Border.all(
+                                    color: expanded ? azureColor.withValues(alpha: 0.3) : cardBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.list_alt_rounded,
+                                  size: 16,
+                                  color: expanded ? azureColor : text3,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // 3. Delete button
                             GestureDetector(
                               onTap: () {
                                 showDialog(
@@ -635,14 +769,14 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                       side: BorderSide(color: cardBorder, width: 0.5),
                                     ),
                                     title: Text(
-                                      'Delete Goal',
+                                      'Delete Task',
                                       style: GoogleFonts.syne(
                                         fontWeight: FontWeight.w800,
                                         color: text1,
                                       ),
                                     ),
                                     content: Text(
-                                      'Are you sure you want to delete this goal?',
+                                      'Are you sure you want to delete this task?',
                                       style: GoogleFonts.dmSans(color: text3),
                                     ),
                                     actions: [
@@ -676,18 +810,18 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                 );
                               },
                               child: Container(
-                                width: 32,
-                                height: 32,
+                                width: 34,
+                                height: 34,
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: redColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: redColor.withValues(alpha: 0.08),
                                   border: Border.all(
                                     color: redColor.withValues(alpha: 0.2),
                                     width: 1,
                                   ),
                                 ),
                                 child: Icon(
-                                  Icons.delete_outline,
+                                  Icons.delete_outline_rounded,
                                   size: 16,
                                   color: redColor,
                                 ),
@@ -697,6 +831,98 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         ),
                       ],
                     ),
+
+                    // Subtasks checklist list (when expanded)
+                    if (expanded) ...[
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, thickness: 0.5),
+                      const SizedBox(height: 14),
+                      // List of subtasks
+                      if (goal.subTasks.isNotEmpty)
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: goal.subTasks.length,
+                          itemBuilder: (context, idx) {
+                            final sub = goal.subTasks[idx];
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                children: [
+                                  // Subtask checkbox
+                                  GestureDetector(
+                                    onTap: () => _toggleSubTask(goal, sub),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: sub.isDone ? emeraldColor : Colors.transparent,
+                                        border: Border.all(
+                                          color: sub.isDone ? emeraldColor : text3.withValues(alpha: 0.4),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: sub.isDone
+                                          ? const Icon(Icons.check, color: Colors.white, size: 12)
+                                          : null,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // Subtask Title
+                                  Expanded(
+                                    child: Text(
+                                      sub.title,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 13.5,
+                                        color: sub.isDone ? text3 : text1,
+                                        decoration: sub.isDone ? TextDecoration.lineThrough : null,
+                                      ),
+                                    ),
+                                  ),
+                                  // Subtask delete button
+                                  GestureDetector(
+                                    onTap: () => _deleteSubTask(goal, sub),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 16,
+                                      color: text3.withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      // Add subtask input field at the bottom
+                      Container(
+                        height: 38,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.02),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: cardBorder, width: 0.5),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: TextField(
+                          controller: addCtrl,
+                          onSubmitted: (val) {
+                            if (val.trim().isNotEmpty) {
+                              _addSubTask(goal, val.trim());
+                              addCtrl.clear();
+                            }
+                          },
+                          style: GoogleFonts.dmSans(fontSize: 12.5, color: text1),
+                          decoration: InputDecoration(
+                            hintText: '+ Add a step...',
+                            hintStyle: GoogleFonts.dmSans(fontSize: 12.5, color: text3),
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -725,7 +951,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Add Focus Area',
+                  'Add Task',
                   style: GoogleFonts.dmSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -734,7 +960,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Set a new goal for ${widget.userGoalYear - 1}',
+                  'Set a new task for your list',
                   style: GoogleFonts.dmSans(
                     fontSize: 11,
                     color: text3,
@@ -767,7 +993,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${widget.userGoalYear - 1} Focus',
+                          '${widget.userGoalYear - 1} Tasks',
                           style: GoogleFonts.dmSans(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -777,7 +1003,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Plan',
+                          'To Do',
                           style: GoogleFonts.syne(
                             fontSize: 26,
                             fontWeight: FontWeight.w800,

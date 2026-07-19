@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -20,6 +20,7 @@ import 'package:success/services/haptic_service.dart';
 import 'package:success/services/audio_service.dart';
 import 'package:success/services/sound_manager.dart';
 import 'package:success/widgets/stick_figure_painter.dart';
+import 'package:success/core/islamic_data.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,7 +81,6 @@ List<TodayTask> kTodayTasks = List<TodayTask>.from(kDefaultTodayTasks);
 const kPrayerNames = [
   'Tahajjud',
   'Fajr',
-  'Dhuha',
   'Dhuhr',
   'Asr',
   'Maghrib',
@@ -388,6 +388,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   int _userGoalMonth = 1;
   int _userGoalDay = 1;
 
+  String _userDob = '2000-01-01';
+
   DayRecord get _today => _recordFor(DateTime.now());
 
   DateTime _lastDate = DateTime.now();
@@ -429,30 +431,38 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     final year = prefs.getInt('user_goal_year');
     final month = prefs.getInt('user_goal_month');
     final day = prefs.getInt('user_goal_day');
+    final dob = prefs.getString('user_dob');
     if (mounted) {
       setState(() {
         if (name != null) _userName = name;
         if (year != null) _userGoalYear = year;
         if (month != null) _userGoalMonth = month;
         if (day != null) _userGoalDay = day;
+        if (dob != null) _userDob = dob;
       });
     }
   }
 
-  Future<void> _updateProfile(String name, int year, int month, int day) async {
+  Future<void> _updateProfile(String name, int year, int month, int day, String dob) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', name);
     await prefs.setInt('user_goal_year', year);
     await prefs.setInt('user_goal_month', month);
     await prefs.setInt('user_goal_day', day);
+    await prefs.setString('user_dob', dob);
     if (mounted) {
       setState(() {
         _userName = name;
         _userGoalYear = year;
         _userGoalMonth = month;
         _userGoalDay = day;
+        _userDob = dob;
       });
     }
+  }
+
+  Future<void> _updateProfileFromNameChanged(String name, int year, int month, int day) async {
+    await _updateProfile(name, year, month, day, _userDob);
   }
 
   @override
@@ -1078,10 +1088,11 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           waterGlasses: _waterGlasses,
           onWaterChange: _setWaterGlasses,
           onScreenshot: _takeScreenshot,
-          userName: _userName,
+           userName: _userName,
           userGoalYear: _userGoalYear,
           userGoalMonth: _userGoalMonth,
           userGoalDay: _userGoalDay,
+          userDob: _userDob,
           onProfileChanged: _updateProfile,
         ),
       ),
@@ -1106,7 +1117,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           onWorkoutProgressChanged: _updateWorkoutProgress,
           onScreenshot: _takeScreenshot,
           userName: _userName,
-          onNameChanged: _updateProfile,
+          onNameChanged: _updateProfileFromNameChanged,
           userGoalYear: _userGoalYear,
           userGoalMonth: _userGoalMonth,
           userGoalDay: _userGoalDay,
@@ -1190,7 +1201,7 @@ class _BottomNavBarState extends State<_BottomNavBar>
     Icons.flag_outlined,
   ];
 
-  static const _labels = ['Today', 'Habits', 'Workout', 'Income', 'Plan'];
+  static const _labels = ['Today', 'Habits', 'Workout', 'Income', 'To Do'];
 
   @override
   Widget build(BuildContext context) {
@@ -1481,10 +1492,11 @@ class TodayScreen extends StatefulWidget {
     required this.userGoalYear,
     required this.userGoalMonth,
     required this.userGoalDay,
+    required this.userDob,
     this.onProfileChanged,
   });
 
-  final Function(String, int, int, int)? onProfileChanged;
+  final Function(String, int, int, int, String)? onProfileChanged;
 
   final ThemeColors theme;
   final DayRecord record;
@@ -1505,6 +1517,7 @@ class TodayScreen extends StatefulWidget {
   final int userGoalYear;
   final int userGoalMonth;
   final int userGoalDay;
+  final String userDob;
 
   @override // Fix 1: Mixins
   State<TodayScreen> createState() => _TodayScreenState(); // Fix 1: Mixins
@@ -1521,15 +1534,15 @@ class _TodayScreenState extends State<TodayScreen>
   int _daysLeft = 0;
   int _countdownTick = 0;
   String _fastStatus = 'fasting';
-  bool _suhoorAlarmSet = false;
-  int get _ayahIndex {
+
+  int get _dayOfYearIndex {
     final now = DateTime.now();
     final day = DateTime(
       now.year,
       now.month,
       now.day,
     ).difference(DateTime(now.year, 1, 1)).inDays;
-    return day % _TodayScreenState.ayahs.length;
+    return day % quranAyahs365.length;
   }
 
   final ScrollController _scrollController = ScrollController();
@@ -1577,6 +1590,7 @@ class _TodayScreenState extends State<TodayScreen>
         userGoalYear: widget.userGoalYear,
         userGoalMonth: widget.userGoalMonth,
         userGoalDay: widget.userGoalDay,
+        userDob: widget.userDob,
         onProfileChanged: widget.onProfileChanged,
         onSaved: () {
           if (mounted) {
@@ -1592,6 +1606,8 @@ class _TodayScreenState extends State<TodayScreen>
     super.initState();
     _updateTime(); // Initial update
     _loadFastStatus();
+    _loadNoFapStreak();
+    _loadNoBadHabitsState();
 
     _animCtrl = AnimationController(
       vsync: this,
@@ -1604,7 +1620,7 @@ class _TodayScreenState extends State<TodayScreen>
     )..repeat(reverse: true);
 
     // Create 8 staggered animation intervals
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 12; i++) {
       double start = (i * 0.12).clamp(
         0.0,
         1.0,
@@ -1840,74 +1856,6 @@ class _TodayScreenState extends State<TodayScreen>
     return done ? Opacity(opacity: 0.6, child: card) : card;
   }
 
-  Widget _suhoorReminderCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            widget.theme.text2.withValues(alpha: 0.22),
-            widget.theme.blue.withValues(alpha: 0.10),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: widget.theme.blue.withValues(alpha: 0.25),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Suhoor Tomorrow',
-                  style: GoogleFonts.syne(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                    color: widget.theme.text3,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '4:38 AM',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: widget.theme.text1,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Before Fajr → Mon fast',
-                  style: TextStyle(fontSize: 11, color: widget.theme.text3),
-                ),
-              ],
-            ),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _suhoorAlarmSet
-                  ? widget.theme.teal
-                  : widget.theme.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => setState(() => _suhoorAlarmSet = true),
-            child: Text(_suhoorAlarmSet ? '✓ Set' : 'Set Alarm'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _waterTracker() {
     final double consumed = (widget.waterGlasses * 260) / 1000;
 
@@ -2058,6 +2006,568 @@ class _TodayScreenState extends State<TodayScreen>
     await prefs.setString('fast_status_${dayKey(DateTime.now())}', status);
   }
 
+  int? _noFapLastReset;
+
+  // No Bad Habits — 3 sub-habits
+  bool _habSmoking = true;
+  bool _habFastFood = true;
+  bool _habNoFap = true;
+
+  Future<void> _loadNoBadHabitsState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _habSmoking  = prefs.getBool('hab_no_smoking')  ?? true;
+      _habFastFood = prefs.getBool('hab_no_fastfood') ?? true;
+      _habNoFap    = prefs.getBool('hab_no_fap')      ?? true;
+    });
+  }
+
+  Future<void> _saveHabit(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  void _toggleHabit(String key, bool current) {
+    HapticService.tapFeedback();
+    final next = !current;
+    _saveHabit(key, next);
+    setState(() {
+      if (key == 'hab_no_smoking')  _habSmoking  = next;
+      if (key == 'hab_no_fastfood') _habFastFood = next;
+      if (key == 'hab_no_fap')      _habNoFap    = next;
+    });
+  }
+
+  void _checkAllHabits() {
+    HapticService.tapFeedback();
+    _saveHabit('hab_no_smoking', true);
+    _saveHabit('hab_no_fastfood', true);
+    _saveHabit('hab_no_fap', true);
+    setState(() {
+      _habSmoking  = true;
+      _habFastFood = true;
+      _habNoFap    = true;
+    });
+  }
+
+  Future<void> _loadNoFapStreak() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _noFapLastReset = prefs.getInt('nofap_last_reset');
+      if (_noFapLastReset == null) {
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        _noFapLastReset = nowMs;
+        prefs.setInt('nofap_last_reset', nowMs);
+      }
+    });
+  }
+
+  int get _noFapDaysClean {
+    if (_noFapLastReset == null) return 0;
+    final lastReset = DateTime.fromMillisecondsSinceEpoch(_noFapLastReset!);
+    final now = DateTime.now();
+    final lastResetDate = DateTime(lastReset.year, lastReset.month, lastReset.day);
+    final nowDate = DateTime(now.year, now.month, now.day);
+    return nowDate.difference(lastResetDate).inDays;
+  }
+
+  Future<void> _resetNoFapStreak() async {
+    final prefs = await SharedPreferences.getInstance();
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    await prefs.setInt('nofap_last_reset', nowMs);
+    HapticService.tapFeedback();
+    SoundManager.playTapClick();
+    if (mounted) {
+      setState(() {
+        _noFapLastReset = nowMs;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Streak reset to 0 days. Keep strong! 💪'),
+          backgroundColor: widget.theme.red,
+        ),
+      );
+    }
+  }
+
+  void _showResetConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: widget.theme.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: widget.theme.border, width: 0.5),
+          ),
+          title: Text(
+            'Confirm Reset',
+            style: GoogleFonts.syne(
+              fontWeight: FontWeight.w800,
+              color: widget.theme.text1,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to reset your streak to 0 days?',
+            style: TextStyle(color: widget.theme.text2),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.dmSans(
+                  fontWeight: FontWeight.w600,
+                  color: widget.theme.text3,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _resetNoFapStreak();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: widget.theme.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                'Yes, Reset',
+                style: GoogleFonts.dmSans(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Map<String, int> calculateExactAge(DateTime dob) {
+    final now = DateTime.now();
+    int years = now.year - dob.year;
+    int months = now.month - dob.month;
+    int days = now.day - dob.day;
+
+    if (days < 0) {
+      final prevMonth = DateTime(now.year, now.month, 0);
+      days += prevMonth.day;
+      months--;
+    }
+    if (months < 0) {
+      months += 12;
+      years--;
+    }
+
+    return {
+      'years': years.clamp(0, 150),
+      'months': months.clamp(0, 11),
+      'days': days.clamp(0, 31),
+    };
+  }
+
+  Widget _buildDigitalDigit(String digit) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F0F1A),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: widget.theme.isDark ? const Color(0x33E8B84B) : widget.theme.border,
+          width: 1,
+        ),
+        boxShadow: widget.theme.isDark ? [
+          const BoxShadow(
+            color: Color(0x10E8B84B),
+            blurRadius: 3,
+            spreadRadius: 0.5,
+          )
+        ] : null,
+      ),
+      child: Text(
+        digit,
+        style: GoogleFonts.shareTechMono(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: const Color(0xFFE8B84B),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDigitalMeterGroup(String label, int value) {
+    final valStr = value.toString().padLeft(2, '0');
+    final digits = valStr.split('');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: digits.map((d) => _buildDigitalDigit(d)).toList(),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.dmSans(
+            fontSize: 8,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+            color: widget.theme.text3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAgeDigitalMeter() {
+    final dob = DateTime.tryParse(widget.userDob) ?? DateTime(2000, 1, 1);
+    final ageData = calculateExactAge(dob);
+    return _GlassCard(
+      theme: widget.theme,
+      glowColor: const Color(0xFFE8B84B),
+      radius: 16,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('⏳', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'LIFE ODOMETER (AGE)',
+                  style: GoogleFonts.syne(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                    color: widget.theme.text2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildDigitalMeterGroup('years', ageData['years']!),
+              Text(':', style: GoogleFonts.shareTechMono(fontSize: 20, color: widget.theme.text3, fontWeight: FontWeight.bold)),
+              _buildDigitalMeterGroup('months', ageData['months']!),
+              Text(':', style: GoogleFonts.shareTechMono(fontSize: 20, color: widget.theme.text3, fontWeight: FontWeight.bold)),
+              _buildDigitalMeterGroup('days', ageData['days']!),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoBadHabitsCard() {
+    final days = _noFapDaysClean;
+    const coralColor = Color(0xFFFF6B6B);
+    const smokeColor = Color(0xFF94A3B8);
+    const fastFoodColor = Color(0xFFFBBF24);
+    const fapColor = Color(0xFF818CF8);
+
+    final allClean = _habSmoking && _habFastFood && _habNoFap;
+
+    final milestones = [7, 14, 30, 60, 90, 180];
+
+    String motivationalText() {
+      if (days >= 180) return 'Half a year! You are legendary 👑';
+      if (days >= 90) return 'Three months strong! 🏆';
+      if (days >= 30) return 'Incredible self-control! 🌟';
+      if (days >= 14) return 'Two weeks! Keep pushing 🚀';
+      if (days >= 7) return 'One week down, stay strong! 💪';
+      return 'Every day is a victory. Stay clean! 🔥';
+    }
+
+    Widget subHabitRow({
+      required String label,
+      required String emoji,
+      required Color color,
+      required bool checked,
+      required String habitKey,
+    }) {
+      return GestureDetector(
+        onTap: () => _toggleHabit(habitKey, checked),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: checked
+                ? color.withValues(alpha: 0.08)
+                : (widget.theme.isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.03)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: checked
+                  ? color.withValues(alpha: 0.25)
+                  : widget.theme.border,
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: widget.theme.text1,
+                      ),
+                    ),
+                    Text(
+                      checked ? '$days day streak' : 'Broken today',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        color: checked ? color : widget.theme.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: checked ? color : Colors.transparent,
+                  border: Border.all(
+                    color: checked ? color : widget.theme.border,
+                    width: 1.5,
+                  ),
+                  boxShadow: checked
+                      ? [BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 8)]
+                      : null,
+                ),
+                child: checked
+                    ? const Icon(Icons.check, color: Colors.white, size: 14)
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return _GlassCard(
+      theme: widget.theme,
+      glowColor: coralColor,
+      radius: 16,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header ──
+          Row(
+            children: [
+              const Text('🔥', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NO BAD HABITS',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2.0,
+                        color: widget.theme.text3,
+                      ),
+                    ),
+                    Text(
+                      '$days Days Clean',
+                      style: GoogleFonts.syne(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: coralColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Streak badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: coralColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: coralColor.withValues(alpha: 0.3), width: 0.8),
+                ),
+                child: Text(
+                  allClean ? '✅ All Clean' : '⚠️ In Progress',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: allClean ? coralColor : widget.theme.gold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            motivationalText(),
+            style: GoogleFonts.dmSans(fontSize: 11, color: widget.theme.text3),
+          ),
+          const SizedBox(height: 14),
+
+          // ── Sub-habit rows ──
+          subHabitRow(
+            label: 'No Smoking',
+            emoji: '🚭',
+            color: smokeColor,
+            checked: _habSmoking,
+            habitKey: 'hab_no_smoking',
+          ),
+          subHabitRow(
+            label: 'No Fast Food',
+            emoji: '🍔',
+            color: fastFoodColor,
+            checked: _habFastFood,
+            habitKey: 'hab_no_fastfood',
+          ),
+          subHabitRow(
+            label: 'No Fap',
+            emoji: '🚫',
+            color: fapColor,
+            checked: _habNoFap,
+            habitKey: 'hab_no_fap',
+          ),
+
+          const SizedBox(height: 12),
+
+          // ── Milestone badges ──
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: milestones.map((m) {
+                final reached = days >= m;
+                return Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: reached
+                        ? coralColor.withValues(alpha: 0.18)
+                        : (widget.theme.isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.04)),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: reached
+                          ? coralColor.withValues(alpha: 0.5)
+                          : widget.theme.border,
+                      width: reached ? 1.2 : 0.5,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        reached ? '🏅' : '○',
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                      Text(
+                        '$m',
+                        style: GoogleFonts.syne(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: reached ? coralColor : widget.theme.text3,
+                        ),
+                      ),
+                      Text(
+                        'DAYS',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                          color: reached ? coralColor.withValues(alpha: 0.7) : widget.theme.text4,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // ── Action buttons ──
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: _checkAllHabits,
+                  child: Container(
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: widget.theme.isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: widget.theme.border, width: 0.8),
+                    ),
+                    child: Text(
+                      'Check All ✅',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: widget.theme.text1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: _showResetConfirmDialog,
+                  child: Container(
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: coralColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: coralColor.withValues(alpha: 0.3), width: 0.8),
+                    ),
+                    child: Text(
+                      'Reset Counter',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: coralColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _fastingStatusCard() {
     final isSunnah = _isSunnahDay();
     final countdown = _getCountdown();
@@ -2175,8 +2685,12 @@ class _TodayScreenState extends State<TodayScreen>
     final isNext = !done && !missed && _getNextPrayer()['name'] == prayer;
 
     final tod = _prayerTimes[prayer] ?? const TimeOfDay(hour: 0, minute: 0);
+    final hour12 = tod.hour == 0
+        ? 12
+        : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
+    final ampm = tod.hour < 12 ? 'AM' : 'PM';
     final timeStr =
-        '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
+        '$hour12:${tod.minute.toString().padLeft(2, '0')} $ampm';
 
     Color borderColor;
     Color timeColor;
@@ -2260,7 +2774,6 @@ class _TodayScreenState extends State<TodayScreen>
     for (final prayer in [
       'Tahajjud',
       'Fajr',
-      'Dhuha',
       'Dhuhr',
       'Asr',
       'Maghrib',
@@ -2292,7 +2805,7 @@ class _TodayScreenState extends State<TodayScreen>
     final completedCount = widget.record.prayers.entries
         .where((e) => e.key != 'Tahajjud' && e.value == true)
         .length;
-    return {'name': 'All Done', 'time': '$completedCount/6 prayed', 'in': '✓'};
+    return {'name': 'All Done', 'time': '$completedCount/5 prayed', 'in': '✓'};
   }
 
   Widget _nextPrayerBanner() {
@@ -2628,16 +3141,23 @@ class _TodayScreenState extends State<TodayScreen>
                   child: Column(
                     children: [
                       _wrapWithStaggered(0, _buildHeroCountdown()),
+                      const SizedBox(height: 20),
+                      _wrapWithStaggered(1, _buildAgeDigitalMeter()),
                       const SizedBox(height: 28),
                       _wrapWithStaggered(
-                        1,
-                        _buildAyahCard(_TodayScreenState.ayahs[_ayahIndex]),
+                        2,
+                        _buildAyahCard(quranAyahs365[_dayOfYearIndex]),
+                      ),
+                      const SizedBox(height: 12),
+                      _wrapWithStaggered(
+                        11,
+                        _buildHadithCard(hadiths365[_dayOfYearIndex]),
                       ),
                       const SizedBox(height: 24),
-                      _wrapWithStaggered(2, _buildMetricRow(visibleTaskCount)),
+                      _wrapWithStaggered(3, _buildMetricRow(visibleTaskCount)),
                       const SizedBox(height: 20),
                       _wrapWithStaggered(
-                        3,
+                        4,
                         _buildScoreCard(
                           todayScore,
                           prayerProgress,
@@ -2646,10 +3166,10 @@ class _TodayScreenState extends State<TodayScreen>
                         ),
                       ),
                       const SizedBox(height: 20),
-                      _wrapWithStaggered(4, _nextPrayerBanner()),
+                      _wrapWithStaggered(5, _nextPrayerBanner()),
                       const SizedBox(height: 20),
                       _wrapWithStaggered(
-                        5,
+                        6,
                         KeyedSubtree(
                           key: _prayersKey,
                           child: _buildPrayerGrid(),
@@ -2657,18 +3177,18 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                       const SizedBox(height: 20),
                       _wrapWithStaggered(
-                        6,
+                        7,
                         KeyedSubtree(key: _tasksKey, child: _buildTasksList()),
                       ),
-                      const SizedBox(height: 20),
-                      _wrapWithStaggered(7, _suhoorReminderCard()),
                       const SizedBox(height: 20),
                       _wrapWithStaggered(
                         8,
                         KeyedSubtree(key: _waterKey, child: _waterTracker()),
                       ),
                       const SizedBox(height: 20),
-                      _wrapWithStaggered(9, _fastingStatusCard()),
+                      _wrapWithStaggered(9, _buildNoBadHabitsCard()),
+                      const SizedBox(height: 20),
+                      _wrapWithStaggered(10, _fastingStatusCard()),
                     ],
                   ),
                 ),
@@ -2692,25 +3212,50 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
-  Widget _buildAyahCard(List<String> ayah) {
+  Widget _buildAyahCard(IslamicQuote quote) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: _GlassCard(
         theme: widget.theme,
         border: Border.all(color: const Color(0x66E8B84B), width: 0.5),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 10,
+                    color: widget.theme.isDark
+                        ? const Color(0xFFE8B84B)
+                        : widget.theme.gold,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'VERSE OF THE DAY',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.0,
+                      color: widget.theme.isDark
+                          ? const Color(0xFFE8B84B).withValues(alpha: 0.7)
+                          : widget.theme.gold.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               Text(
-                ayah[0],
+                quote.arabic,
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.rtl,
                 style: TextStyle(
                   fontFamily: 'NotoNaskhArabic',
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: widget.theme.isDark
                       ? const Color(0xFFF5D78E)
@@ -2718,28 +3263,28 @@ class _TodayScreenState extends State<TodayScreen>
                   height: 1.5,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Container(
                 width: 40,
-                height: 1.5,
+                height: 1.0,
                 color: widget.theme.gold.withValues(alpha: 0.25),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
-                ayah[1],
+                quote.translation,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: widget.theme.text2,
                   fontStyle: FontStyle.italic,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Quran ${ayah[2]}',
+                quote.reference,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.syne(
-                  fontSize: 10,
+                  fontSize: 9,
                   color: widget.theme.text3,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
@@ -2751,6 +3296,88 @@ class _TodayScreenState extends State<TodayScreen>
       ),
     );
   }
+
+  Widget _buildHadithCard(IslamicQuote quote) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: _GlassCard(
+        theme: widget.theme,
+        border: Border.all(color: widget.theme.teal.withValues(alpha: 0.4), width: 0.5),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.star_border,
+                    size: 10,
+                    color: widget.theme.teal,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'HADITH OF THE DAY',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.0,
+                      color: widget.theme.teal.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                quote.arabic,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  fontFamily: 'NotoNaskhArabic',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: widget.theme.isDark
+                      ? widget.theme.text1
+                      : widget.theme.teal,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 1.0,
+                color: widget.theme.teal.withValues(alpha: 0.25),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                quote.translation,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: widget.theme.text2,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                quote.reference,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.syne(
+                  fontSize: 9,
+                  color: widget.theme.text3,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildSectionHeader(String label, {VoidCallback? onAdd}) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -3015,65 +3642,11 @@ class _TodayScreenState extends State<TodayScreen>
   static const arabicNames = {
     'Tahajjud': '\u062a\u0647\u062c\u062f',
     'Fajr': '\u0641\u062c\u0631',
-    'Dhuha': '\u0636\u062d\u0649',
     'Dhuhr': '\u0638\u0647\u0631',
     'Asr': '\u0639\u0635\u0631',
     'Maghrib': '\u0645\u063a\u0631\u0628',
     'Isha': '\u0639\u0634\u0627\u0621',
   };
-
-  static const ayahs = [
-    [
-      '\u0625\u0650\u0646\u064e\u0651 \u0645\u064e\u0639\u064e \u0627\u0644\u0652\u0639\u064f\u0633\u0652\u0631\u0650 \u064a\u064f\u0633\u0652\u0631\u064b\u0627',
-      'Indeed, with hardship comes ease.',
-      '94:6',
-    ],
-    [
-      '\u0648\u064e\u0645\u064e\u0646 \u064a\u064e\u062a\u064e\u0651\u0642\u0650 \u0627\u0644\u0644\u064e\u0651\u0647\u064e \u064a\u064e\u062c\u0652\u0639\u064e\u0644 \u0644\u064e\u0651\u0647\u064e \u0645\u064e\u062e\u0652\u0631\u064e\u062c\u064b\u0627',
-      'Whoever fears Allah, He makes a way out.',
-      '65:2',
-    ],
-    [
-      '\u0641\u064e\u0627\u0630\u0652\u0643\u064f\u0631\u064f\u0648\u0646\u0650\u064a \u0623\u064e\u0630\u0652\u0643\u064f\u0631\u0652\u0643\u064f\u0645\u0652',
-      'Remember Me and I will remember you.',
-      '2:152',
-    ],
-    [
-      '\u0625\u0650\u0646\u064e\u0651 \u0627\u0644\u0644\u064e\u0651\u0647\u064e \u0645\u064e\u0639\u064e \u0627\u0644\u0635\u064e\u0651\u0627\u0628\u0650\u0631\u0650\u064a\u0646\u064e',
-      'Indeed Allah is with the patient.',
-      '2:153',
-    ],
-    [
-      '\u0648\u064e\u062a\u064e\u0648\u064e\u0643\u064e\u0651\u0644\u0652 \u0639\u064e\u0644\u064e\u0649 \u0627\u0644\u0644\u064e\u0651\u0647\u0650',
-      'And put your trust in Allah.',
-      '33:3',
-    ],
-    [
-      '\u0644\u064e\u0627 \u064a\u064f\u0633\u0652\u062a\u064e\u062c\u064e\u0627\u0628\u064f \u0625\u0650\u0644\u0651\u064e\u0627 \u0628\u0650\u0627\u0644\u0635\u0651\u064e\u0628\u0652\u0631\u0650',
-      'Allah does not burden a soul beyond that it can bear.',
-      '2:286',
-    ],
-    [
-      '\u0641\u064e\u0625\u0650\u0646\u0651\u064e \u0645\u064e\u0639\u064e \u0627\u0644\u0652\u0639\u064f\u0633\u0652\u0631\u0650 \u064a\u064f\u0633\u0652\u0631\u064b\u0627',
-      'So verily, with the hardship, there is relief.',
-      '94:5',
-    ],
-    [
-      '\u0648\u064e\u0648\u064e\u062c\u064e\u062f\u064e\u0643\u064e \u0636\u064e\u0627\u0644\u0651\u064b\u0627 \u0641\u064e\u0647\u064e\u0625\u064e\u0649',
-      'And He found you lost and guided [you].',
-      '93:7',
-    ],
-    [
-      '\u0648\u064e\u0631\u064e\u062d\u0652\u0645\u064e\u062a\u0650\u064a \u0648\u064e\u0633\u0650\u0639\u064e\u062a\u0652 \u0643\u064f\u0644\u0651\u064e \u0634\u064e\u064a\u0652\u0621\u064d',
-      'My mercy encompasses all things.',
-      '7:156',
-    ],
-    [
-      '\u0627\u062f\u0652\u0639\u064f\u0648\u0646\u0650\u064a \u0623\u064e\u0633\u0652\u062a\u064e\u062c\u0650\u0628\u0652 \u0644\u064f\u0633\u0652\u0643\u064f\u0645\u0652',
-      'Call upon Me; I will respond to you.',
-      '40:60',
-    ],
-  ];
 }
 
 class _GlassCard extends StatelessWidget {
@@ -3084,7 +3657,6 @@ class _GlassCard extends StatelessWidget {
     this.border,
     this.radius = 18,
     this.glowColor,
-    this.blurSigma = 18,
   });
   final ThemeColors theme;
   final Widget child;
@@ -3092,7 +3664,7 @@ class _GlassCard extends StatelessWidget {
   final BoxBorder? border;
   final double radius;
   final Color? glowColor;
-  final double blurSigma;
+  final double blurSigma = 12.0;
 
   @override
   Widget build(BuildContext context) {
@@ -3111,13 +3683,24 @@ class _GlassCard extends StatelessWidget {
         boxShadow: isDark && glowColor != null
             ? [
                 BoxShadow(
-                  color: glowColor!.withValues(alpha: 0.08),
-                  blurRadius: 24,
+                  color: glowColor!.withValues(alpha: 0.12),
+                  blurRadius: 32,
                   spreadRadius: -4,
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
                 ),
               ]
             : isDark
-            ? null
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                ),
+              ]
             : [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.06),
@@ -3883,7 +4466,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
   DateTime _selectedDate = DateTime.now();
   int _selectedWaterGlasses = 0;
   String _selectedFastStatus = 'none';
-  int _fastingStreak = 0;
   final Map<String, bool> _selectedIslamicHabits = {};
 
   static const _extraHabitNames = [
@@ -3930,28 +4512,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
         date.weekday == DateTime.monday || date.weekday == DateTime.thursday;
     final fastStatus = fastVal ?? (isSunnah ? 'fasting' : 'none');
 
-    // Fasting streak loop — only count explicitly logged fasts
-    int streak = 0;
-    final today = DateTime.now();
-    final todayVal = prefs.getString('fast_status_${dayKey(today)}');
-    final startDayIndex = (todayVal == 'fasting') ? 0 : 1;
 
-    if (todayVal != null && todayVal != 'fasting') {
-      // If today is explicitly marked as non-fasting or broke, the streak is 0.
-      streak = 0;
-    } else {
-      for (int i = startDayIndex; i < 30; i++) {
-        final d = today.subtract(Duration(days: i));
-        final dStr = dayKey(d);
-        final fVal = prefs.getString('fast_status_$dStr');
-        if (fVal == 'fasting') {
-          streak++;
-        } else {
-          // Any unlogged or non-fasting day in the past breaks the consecutive streak
-          break;
-        }
-      }
-    }
 
     // 3. Load extra habits
     final Map<String, bool> habits = {};
@@ -3963,7 +4524,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
     setState(() {
       _selectedWaterGlasses = waterVal.clamp(0, 10);
       _selectedFastStatus = fastStatus;
-      _fastingStreak = streak;
       _selectedIslamicHabits.clear();
       _selectedIslamicHabits.addAll(habits);
     });
@@ -4340,14 +4900,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
             _buildSection(
               title: 'Prayers',
               rightText:
-                  "Prayers ${record.prayers.entries.where((e) => e.key != 'Tahajjud' && e.value == true).length}/6",
+                  "Prayers ${record.prayers.entries.where((e) => e.key != 'Tahajjud' && e.value == true).length}/5",
               rightColor: appColors.emerald,
               appColors: appColors,
               child: Row(
                 children: [
                   for (final prayer in [
                     'Fajr',
-                    'Dhuha',
                     'Dhuhr',
                     'Asr',
                     'Maghrib',
@@ -4563,7 +5122,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
               ),
             ),
 
-            // 10. FASTING MODULE
             _buildSection(
               title: 'Fasting',
               rightText: fastingHeaderStatus,
@@ -4579,13 +5137,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     valueColor: fastingCardStatus == 'Completed'
                         ? appColors.emerald
                         : appColors.gold,
-                    appColors: appColors,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMiniCard(
-                    label: 'Streak',
-                    value: '$_fastingStreak days',
-                    valueColor: appColors.gold,
                     appColors: appColors,
                   ),
                 ],
@@ -5543,7 +6094,6 @@ DayRecord recordFor(Map<String, DayRecord> history, DateTime date) {
 Map<String, TimeOfDay> _prayerTimes = {
   'Tahajjud': const TimeOfDay(hour: 3, minute: 0),
   'Fajr': const TimeOfDay(hour: 5, minute: 12),
-  'Dhuha': const TimeOfDay(hour: 6, minute: 22),
   'Dhuhr': const TimeOfDay(hour: 12, minute: 14),
   'Asr': const TimeOfDay(hour: 15, minute: 41),
   'Maghrib': const TimeOfDay(hour: 18, minute: 42),
@@ -5601,12 +6151,10 @@ Map<String, TimeOfDay> calculateDailyPrayerTimes(
 
   final fajrTime = p.fajr;
   final tahajjudTime = fajrTime.subtract(const Duration(hours: 2));
-  final dhuhaTime = p.sunrise.add(const Duration(minutes: 20));
 
   return {
     'Tahajjud': toTimeOfDay(tahajjudTime),
     'Fajr': toTimeOfDay(fajrTime),
-    'Dhuha': toTimeOfDay(dhuhaTime),
     'Dhuhr': toTimeOfDay(p.dhuhr),
     'Asr': toTimeOfDay(p.asr),
     'Maghrib': toTimeOfDay(p.maghrib),
@@ -5730,7 +6278,6 @@ IconData prayerIcon(String p) {
   const map = {
     'Tahajjud': Icons.nights_stay,
     'Fajr': Icons.dark_mode,
-    'Dhuha': Icons.wb_sunny,
     'Dhuhr': Icons.light_mode,
     'Asr': Icons.sunny,
     'Maghrib': Icons.wb_sunny,
@@ -5743,7 +6290,6 @@ Color prayerColor(String p, ThemeColors theme) {
   final map = {
     'Tahajjud': kPurple,
     'Fajr': theme.teal,
-    'Dhuha': kAmber,
     'Dhuhr': theme.gold,
     'Asr': kBlue,
     'Maghrib': kRed,
@@ -5919,6 +6465,12 @@ class WorkoutExerciseState {
       'completed': completed,
     };
   }
+}
+
+/// Removes stray spaces around hyphens in exercise names.
+/// e.g. 'Push - ups' → 'Push-ups', 'Archer Push - Up' → 'Archer Push-Up'
+String normalizeExerciseName(String name) {
+  return name.replaceAll(RegExp(r'\s*-\s*'), '-');
 }
 
 int parseSets(String description) {
@@ -6715,7 +7267,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   _weekdayName(DateTime.now()),
-                                  style: GoogleFonts.syne(
+                                  style: GoogleFonts.dmSans(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w800,
                                     color: theme.text1,
@@ -7355,7 +7907,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           children: [
             Container(
               width: 3,
-              height: 16,
+              height: 14,
               decoration: BoxDecoration(
                 color: const Color(0xFF00C896),
                 borderRadius: BorderRadius.circular(1.5),
@@ -7365,10 +7917,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             Text(
               'MY ROUTINE',
               style: GoogleFonts.dmSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.0,
-                color: theme.text1,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2.0,
+                color: theme.text3,
               ),
             ),
             const SizedBox(width: 8),
@@ -7436,7 +7988,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           children: [
             Container(
               width: 3,
-              height: 16,
+              height: 14,
               decoration: BoxDecoration(
                 color: const Color(0xFF00C896),
                 borderRadius: BorderRadius.circular(1.5),
@@ -7446,10 +7998,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             Text(
               'EXERCISE LIBRARY',
               style: GoogleFonts.dmSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.0,
-                color: theme.text1,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2.0,
+                color: theme.text3,
               ),
             ),
             const SizedBox(width: 8),
@@ -7517,8 +8069,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   String _getTargetMuscleLabel(String name) {
     final lower = name.toLowerCase();
-    if (lower.contains('push-up') || lower.contains('push up'))
+    if (lower.contains('push-up') || lower.contains('push up')) {
       return 'CHEST & TRICEPS';
+    }
     if (lower.contains('squat')) return 'QUADS & GLUTES';
     if (lower.contains('lunge')) return 'QUADS & HAMSTRINGS';
     if (lower.contains('bridge')) return 'GLUTES & HAMSTRINGS';
@@ -7635,8 +8188,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
                       // Stick figure canvas
                       Container(
-                        width: 120,
-                        height: 120,
+                        width: 90,
+                        height: 90,
                         decoration: BoxDecoration(
                           color: theme.card,
                           borderRadius: BorderRadius.circular(16),
@@ -7649,7 +8202,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 ? 'celebrate'
                                 : _activeExerciseName!,
                             accentColor: theme.teal,
-                            size: 120,
+                            size: 90,
                           ),
                         ),
                       ),
@@ -7679,15 +8232,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       _SetTransitionNumberWidget(
                         value: _repsRemaining,
                         currentSet: currentSet,
-                        style: GoogleFonts.syne(
-                          fontSize: 96,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 72,
                           fontWeight: FontWeight.w900,
                           color: isSetDone ? theme.text3 : theme.teal,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       _ComboIndicator(combo: _comboCount),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 6),
 
                       Text(
                         isSetDone ? 'Set complete!' : 'Tap to count down',
@@ -7697,7 +8250,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
 
                       // TAP Button with particles & progress ring
                       _TapBurstButtonWrapper(
@@ -7812,7 +8365,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 100),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -8008,7 +8561,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     child: TextField(
                       controller: _editRepsController,
                       keyboardType: TextInputType.number,
-                      style: GoogleFonts.syne(
+                      style: GoogleFonts.dmSans(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: theme.text1,
@@ -8147,7 +8700,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   ),
                   Text(
                     '$_restSeconds',
-                    style: GoogleFonts.syne(
+                    style: GoogleFonts.dmSans(
                       fontSize: 64,
                       fontWeight: FontWeight.w800,
                       color: theme.teal,
@@ -8246,6 +8799,58 @@ class ProgressRingPainter extends CustomPainter {
       oldDelegate.progressColor != progressColor;
 }
 
+class SavingsGoal {
+  final String id;
+  final String name;
+  final double percentage;
+  final int target;
+  final String iconName;
+  final int colorValue;
+
+  SavingsGoal({
+    required this.id,
+    required this.name,
+    required this.percentage,
+    required this.target,
+    required this.iconName,
+    required this.colorValue,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'percentage': percentage,
+    'target': target,
+    'iconName': iconName,
+    'colorValue': colorValue,
+  };
+
+  factory SavingsGoal.fromJson(Map<String, dynamic> json) {
+    return SavingsGoal(
+      id: json['id'] as String? ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      name: json['name'] as String? ?? 'New Goal',
+      percentage: (json['percentage'] as num?)?.toDouble() ?? 10.0,
+      target: (json['target'] as num?)?.toInt() ?? 50000,
+      iconName: json['iconName'] as String? ?? 'star',
+      colorValue: (json['colorValue'] as num?)?.toInt() ?? 0xFFE8B84B,
+    );
+  }
+}
+
+
+
+class _TransactionItem {
+  final DateTime date;
+  final int amount;
+  final bool isIncome;
+
+  _TransactionItem({
+    required this.date,
+    required this.amount,
+    required this.isIncome,
+  });
+}
+
 class IncomeScreen extends StatefulWidget {
   const IncomeScreen({
     super.key,
@@ -8268,21 +8873,113 @@ class IncomeScreen extends StatefulWidget {
   State<IncomeScreen> createState() => _IncomeScreenState();
 }
 
-class _IncomeScreenState extends State<IncomeScreen> {
+class _IncomeScreenState extends State<IncomeScreen>
+    with TickerProviderStateMixin {
+  // --- Preserved controllers & state ---
   final TextEditingController _incomeCtrl = TextEditingController();
-  String _filter = 'All'; // 'All', 'Earned', 'Spent'
-
-  // Editable sources state from SharedPreferences
+  final TextEditingController _sourceCtrl = TextEditingController();
   late List<Map<String, dynamic>> _sources = _defaultIncomeSources();
-
-  bool _isInputIncome = true;
   final int _selectedSourceIndex = 0;
+
+  // --- New state ---
+  late int _selectedMonth;
+  late int _selectedYear;
+  String _filter = 'All';
+  bool _isInputIncome = true;
+
+  // --- Editable goals (persisted) ---
+  List<SavingsGoal> _savingsGoals = [];
+  String _earningCurrent = '₹1.5L';
+  String _earningTarget = '₹3L';
+  String _earningTip = 'Aim: ₹3L/month · ₹10,000 a day';
+
+  // --- Animation controllers ---
+  late AnimationController _fireController;
+  late AnimationController _velocityBarController;
+  late AnimationController _shimmerController;
+  late AnimationController _goalBarsController;
+  late AnimationController _chartBarsController;
+  late AnimationController _listStaggerController;
+  late AnimationController _fabPulseController;
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _selectedMonth = now.month;
+    _selectedYear = now.year;
+
     _loadIncomeSourcesForMonth();
+    _loadEditableGoals();
+
+    // Fire emoji pulse
+    _fireController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    // Velocity bar fill
+    _velocityBarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    // Shimmer sweep
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+
+    // Goal bars stagger
+    _goalBarsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+
+    // Chart bars stagger
+    _chartBarsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    );
+
+    // List stagger
+    _listStaggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+
+    // FAB pulse ring
+    _fabPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+
+    // Trigger entry animations after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _velocityBarController.forward();
+      _goalBarsController.forward();
+      _chartBarsController.forward();
+      _listStaggerController.forward();
+    });
   }
+
+  @override
+  void dispose() {
+    _incomeCtrl.dispose();
+    _sourceCtrl.dispose();
+    _fireController.dispose();
+    _velocityBarController.dispose();
+    _shimmerController.dispose();
+    _goalBarsController.dispose();
+    _chartBarsController.dispose();
+    _listStaggerController.dispose();
+    _fabPulseController.dispose();
+    super.dispose();
+  }
+
+  // ═══════════════════════════════════════════════
+  // PRESERVED DATA METHODS (unchanged logic)
+  // ═══════════════════════════════════════════════
 
   List<Map<String, dynamic>> _defaultIncomeSources() {
     return [
@@ -8372,17 +9069,11 @@ class _IncomeScreenState extends State<IncomeScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _incomeCtrl.dispose();
-    super.dispose();
-  }
-
-  int _monthTotal(Map<String, int> log, DateTime now) {
+  int _monthTotal(Map<String, int> log, DateTime ref) {
     var total = 0;
     for (final entry in log.entries) {
       final date = dateFromKey(entry.key);
-      if (date.month == now.month && date.year == now.year) {
+      if (date.month == ref.month && date.year == ref.year) {
         total += entry.value;
       }
     }
@@ -8400,18 +9091,8 @@ class _IncomeScreenState extends State<IncomeScreen> {
   String formatDayRowDate(DateTime date) {
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
   }
@@ -8421,42 +9102,179 @@ class _IncomeScreenState extends State<IncomeScreen> {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final compareDate = DateTime(date.year, date.month, date.day);
-    if (compareDate == today) {
-      return 'Today';
-    } else if (compareDate == yesterday) {
-      return 'Yesterday';
-    } else {
-      const weekdays = [
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-        'Sunday',
-      ];
-      return weekdays[date.weekday - 1];
-    }
+    if (compareDate == today) return 'Today';
+    if (compareDate == yesterday) return 'Yesterday';
+    const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return weekdays[date.weekday - 1];
   }
 
-  void _submitAmount() {
-    final amount = int.tryParse(_incomeCtrl.text.trim());
-    if (amount == null || amount <= 0) return;
+  void _submitIncome(int amount, String source) {
+    if (amount <= 0) return;
+    setState(() {
+      if (_selectedSourceIndex < _sources.length) {
+        _sources[_selectedSourceIndex]['amount'] =
+            (_sources[_selectedSourceIndex]['amount'] as int) + amount;
+      }
+    });
+    _saveIncomeSourcesForMonth();
+    widget.onAddEntry(amount);
 
-    if (_isInputIncome) {
-      setState(() {
-        if (_selectedSourceIndex < _sources.length) {
-          _sources[_selectedSourceIndex]['amount'] =
-              (_sources[_selectedSourceIndex]['amount'] as int) + amount;
+    // Re-trigger animations
+    _velocityBarController.reset();
+    _velocityBarController.forward();
+    _goalBarsController.reset();
+    _goalBarsController.forward();
+    _chartBarsController.reset();
+    _chartBarsController.forward();
+    _listStaggerController.reset();
+    _listStaggerController.forward();
+  }
+
+  // ═══════════════════════════════════════════════
+  // NEW HELPER METHODS
+  // ═══════════════════════════════════════════════
+
+  Future<void> _loadEditableGoals() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _earningCurrent = prefs.getString('income_earning_current') ?? '₹1.5L';
+      _earningTarget = prefs.getString('income_earning_target') ?? '₹3L';
+      _earningTip = prefs.getString('income_earning_tip') ??
+          'Aim: ₹3L/month · ₹10,000 a day';
+      
+      final rawGoals = prefs.getString('income_savings_goals_list');
+      if (rawGoals != null && rawGoals.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawGoals) as List<dynamic>;
+          _savingsGoals = decoded.map((g) => SavingsGoal.fromJson(g as Map<String, dynamic>)).toList();
+        } catch (_) {
+          _loadDefaultSavingsGoals();
         }
-      });
-      _saveIncomeSourcesForMonth();
-      widget.onAddEntry(amount);
-    } else {
-      widget.onAddExpense(amount);
+      } else {
+        _loadDefaultSavingsGoals();
+      }
+    });
+  }
+
+  void _loadDefaultSavingsGoals() {
+    _savingsGoals = [
+      SavingsGoal(
+        id: 'nikah',
+        name: 'Nikah Fund',
+        percentage: 15.0,
+        target: 100000,
+        iconName: 'favorite',
+        colorValue: 0xFFE8B84B, // Gold
+      ),
+      SavingsGoal(
+        id: 'crypto',
+        name: 'Crypto & Assets',
+        percentage: 10.0,
+        target: 50000,
+        iconName: 'bitcoin',
+        colorValue: 0xFFA78BFA, // Purple
+      ),
+      SavingsGoal(
+        id: 'travel',
+        name: 'Travel Fund',
+        percentage: 10.0,
+        target: 50000,
+        iconName: 'flight',
+        colorValue: 0xFF60A5FA, // Blue
+      ),
+    ];
+  }
+
+  Future<void> _saveEditableGoals() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('income_earning_current', _earningCurrent);
+    await prefs.setString('income_earning_target', _earningTarget);
+    await prefs.setString('income_earning_tip', _earningTip);
+    
+    final encoded = jsonEncode(_savingsGoals.map((g) => g.toJson()).toList());
+    await prefs.setString('income_savings_goals_list', encoded);
+  }
+
+  int _earningStreak() {
+    int streak = 0;
+    final now = DateTime.now();
+    for (int i = 0; i < 365; i++) {
+      final date = now.subtract(Duration(days: i));
+      final amt = widget.incomeLog[dayKey(date)] ?? 0;
+      if (amt > 0) {
+        streak++;
+      } else {
+        break;
+      }
     }
-    _incomeCtrl.clear();
-    FocusScope.of(context).unfocus();
+    return streak;
+  }
+
+  String _hijriApprox() {
+    final now = DateTime(_selectedYear, _selectedMonth, 15);
+    final jd = (now.millisecondsSinceEpoch / 86400000.0 + 2440587.5).floor();
+    final l = jd - 1948440 + 10632;
+    final n = (l - 1) ~/ 10631;
+    final rem = l - 10631 * n + 354;
+    final j = ((10985 - rem) ~/ 5316) * ((50 * rem) ~/ 17719) +
+        (rem ~/ 5670) * ((43 * rem) ~/ 15238);
+    final lp = rem -
+        ((30 - j) ~/ 15) * ((17719 * j) ~/ 50) -
+        (j ~/ 16) * ((15238 * j) ~/ 43) +
+        29;
+    final m = (24 * lp) ~/ 709;
+    final y = 30 * n + j - 30;
+    const hijriMonths = [
+      'Muharram', 'Safar', "Rabī' al-Awwal", "Rabī' ath-Thānī",
+      'Jumādā al-Ūlā', 'Jumādā ath-Thāniyah', 'Rajab', "Sha'bān",
+      'Ramaḍān', 'Shawwāl', "Dhū al-Qa'dah", "Dhū al-Ḥijjah",
+    ];
+    final mi = (m - 1).clamp(0, 11);
+    return '${hijriMonths[mi]} $y AH';
+  }
+
+  static const _monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  void _prevMonth() {
+    HapticService.selection();
+    setState(() {
+      _selectedMonth--;
+      if (_selectedMonth < 1) {
+        _selectedMonth = 12;
+        _selectedYear--;
+      }
+    });
+    _velocityBarController.reset();
+    _velocityBarController.forward();
+    _goalBarsController.reset();
+    _goalBarsController.forward();
+    _chartBarsController.reset();
+    _chartBarsController.forward();
+    _listStaggerController.reset();
+    _listStaggerController.forward();
+  }
+
+  void _nextMonth() {
+    HapticService.selection();
+    setState(() {
+      _selectedMonth++;
+      if (_selectedMonth > 12) {
+        _selectedMonth = 1;
+        _selectedYear++;
+      }
+    });
+    _velocityBarController.reset();
+    _velocityBarController.forward();
+    _goalBarsController.reset();
+    _goalBarsController.forward();
+    _chartBarsController.reset();
+    _chartBarsController.forward();
+    _listStaggerController.reset();
+    _listStaggerController.forward();
   }
 
   Widget _filterChip(String label, AppColors colors) {
@@ -8464,10 +9282,14 @@ class _IncomeScreenState extends State<IncomeScreen> {
     return GestureDetector(
       onTap: () {
         HapticService.selection();
-        setState(() => _filter = label);
+        setState(() {
+          _filter = label;
+        });
+        _listStaggerController.reset();
+        _listStaggerController.forward();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 12),
         decoration: BoxDecoration(
           color: selected ? colors.gold3 : colors.card,
           borderRadius: BorderRadius.circular(20),
@@ -8481,7 +9303,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
         child: Text(
           label,
           style: GoogleFonts.dmSans(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.bold,
             color: selected ? colors.gold : colors.text3,
           ),
@@ -8490,490 +9312,1692 @@ class _IncomeScreenState extends State<IncomeScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _showDeleteConfirmation(SavingsGoal goal) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors(widget.theme).bg,
+        title: Text('Delete Goal',
+            style: GoogleFonts.syne(
+                fontSize: 18, fontWeight: FontWeight.w700,
+                color: AppColors(widget.theme).text1)),
+        content: Text('Are you sure you want to delete "${goal.name}"?',
+            style: GoogleFonts.dmSans(
+                fontSize: 14, color: AppColors(widget.theme).text2)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+                style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3)),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _savingsGoals.removeWhere((g) => g.id == goal.id);
+              });
+              _saveEditableGoals();
+              Navigator.pop(ctx); // Close confirmation dialog
+              Navigator.pop(context); // Close sheet
+              _goalBarsController.reset();
+              _goalBarsController.forward();
+            },
+            child: Text('Delete',
+                style: GoogleFonts.dmSans(
+                    color: AppColors(widget.theme).red,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGoalFormSheet({SavingsGoal? existing}) {
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
+    final targetCtrl = TextEditingController(text: existing?.target.toString() ?? '');
+    double pct = existing?.percentage ?? 10.0;
+    String selectedIcon = existing?.iconName ?? 'star';
+    int selectedColor = existing?.colorValue ?? 0xFFE8B84B;
+
     final colors = AppColors(widget.theme);
-    final now = DateTime.now();
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
 
-    final totalEarned = _monthTotal(widget.incomeLog, now);
-    final totalSpent = _monthTotal(widget.expenseLog, now);
-    final netSavings = totalEarned - totalSpent;
-    final dailyAvgEarned = (totalEarned / 31).round();
-    final dailyAvgSpent = (totalSpent / 31).round();
+    final iconsList = ['favorite', 'bitcoin', 'flight', 'home', 'car', 'school', 'star'];
+    final iconDataMap = {
+      'favorite': Icons.favorite,
+      'bitcoin': Icons.currency_bitcoin,
+      'flight': Icons.flight,
+      'home': Icons.home,
+      'car': Icons.directions_car,
+      'school': Icons.school,
+      'star': Icons.star,
+    };
 
-    final visibleDays =
-        List.generate(
-          now.day,
-          (i) => DateTime(now.year, now.month, now.day - i),
-        ).where((date) {
-          final earned = widget.incomeLog[dayKey(date)] ?? 0;
-          final spent = widget.expenseLog[dayKey(date)] ?? 0;
-          if (earned == 0 && spent == 0) return false;
-          if (_filter == 'Earned') {
-            return earned > 0;
-          }
-          if (_filter == 'Spent') {
-            return spent > 0;
-          }
-          return true;
-        }).toList();
+    final colorOptions = [
+      0xFFE8B84B, // Gold
+      0xFFA78BFA, // Purple
+      0xFF60A5FA, // Blue
+      0xFF00C896, // Teal/Green
+      0xFFF87171, // Rose/Red
+    ];
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        clipBehavior: Clip.none,
-        padding: const EdgeInsets.fromLTRB(20, 30, 20, 110),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. HEADER
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: const Color(0xD906060F),
+      builder: (ctx) {
+        return BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: StatefulBuilder(builder: (ctx, setSheetState) {
+            return AnimatedPadding(
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.theme.isDark
+                      ? const Color(0xFF0E0E18)
+                      : const Color(0xFFF9F7F2),
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.all(24),
+                child: SingleChildScrollView(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'FINANCE',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 3.0,
-                          color: colors.gold,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(existing == null ? 'Add Savings Goal' : 'Edit Savings Goal',
+                              style: GoogleFonts.syne(
+                                  fontSize: 18, fontWeight: FontWeight.w700,
+                                  color: colors.text1)),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: Container(
+                              width: 32, height: 32,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: colors.card,
+                                border: Border.all(
+                                    color: colors.cardBorder, width: 1),
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(Icons.close,
+                                  size: 12, color: colors.text2),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Income',
-                        style: GoogleFonts.syne(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: colors.text1,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Automation career to \u20B93L/month',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          color: colors.text2,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => themeNotifier.toggle(),
-                      child: Container(
-                        width: 40,
-                        height: 40,
+                      const SizedBox(height: 20),
+
+                      Text('GOAL NAME',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              letterSpacing: 1, color: colors.text3)),
+                      const SizedBox(height: 6),
+                      Container(
                         decoration: BoxDecoration(
                           color: colors.card,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colors.cardBorder,
-                            width: 0.5,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.cardBorder),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                        child: TextField(
+                          controller: nameCtrl,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 16, fontWeight: FontWeight.w600,
+                              color: colors.text1),
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Wedding Fund',
+                            hintStyle: GoogleFonts.dmSans(
+                                color: colors.text3,
+                                fontWeight: FontWeight.w400),
+                            border: InputBorder.none,
                           ),
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          colors.theme.isDark ? '☀️' : '🌙',
-                          style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(height: 16),
+
+                      Text('TARGET AMOUNT (₹)',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              letterSpacing: 1, color: colors.text3)),
+                      const SizedBox(height: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: colors.card,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.cardBorder),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                        child: TextField(
+                          controller: targetCtrl,
+                          keyboardType: TextInputType.number,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 16, fontWeight: FontWeight.w600,
+                              color: colors.text1),
+                          decoration: InputDecoration(
+                            hintText: 'e.g. 100000',
+                            hintStyle: GoogleFonts.dmSans(
+                                color: colors.text3,
+                                fontWeight: FontWeight.w400),
+                            border: InputBorder.none,
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('INCOME PERCENTAGE',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 10, fontWeight: FontWeight.w700,
+                                  letterSpacing: 1, color: colors.text3)),
+                          Text('${pct.toStringAsFixed(0)}%',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 14, fontWeight: FontWeight.w700,
+                                  color: colors.gold)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Slider(
+                        value: pct,
+                        min: 0.0,
+                        max: 100.0,
+                        divisions: 100,
+                        activeColor: colors.gold,
+                        inactiveColor: colors.cardBorder,
+                        onChanged: (val) {
+                          setSheetState(() {
+                            pct = val;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      Text('SELECT ICON',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              letterSpacing: 1, color: colors.text3)),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 48,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: iconsList.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 10),
+                          itemBuilder: (context, idx) {
+                            final key = iconsList[idx];
+                            final icon = iconDataMap[key]!;
+                            final isSelected = selectedIcon == key;
+                            return GestureDetector(
+                              onTap: () {
+                                HapticService.selection();
+                                setSheetState(() {
+                                  selectedIcon = key;
+                                });
+                              },
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? colors.gold3 : colors.card,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                      color: isSelected ? colors.gold : colors.cardBorder,
+                                      width: isSelected ? 2 : 1),
+                                ),
+                                child: Icon(icon,
+                                    size: 18,
+                                    color: isSelected ? colors.gold : colors.text2),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      Text('SELECT COLOR',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              letterSpacing: 1, color: colors.text3)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: colorOptions.map((cVal) {
+                          final isSelected = selectedColor == cVal;
+                          return GestureDetector(
+                            onTap: () {
+                              HapticService.selection();
+                              setSheetState(() {
+                                selectedColor = cVal;
+                              });
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 12),
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: Color(cVal),
+                                shape: BoxShape.circle,
+                                border: isSelected
+                                    ? Border.all(
+                                        color: colors.text1,
+                                        width: 3)
+                                    : Border.all(
+                                        color: Colors.transparent,
+                                        width: 0),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Row(
+                        children: [
+                          if (existing != null) ...[
+                            Expanded(
+                              flex: 1,
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticService.light();
+                                  _showDeleteConfirmation(existing);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  decoration: BoxDecoration(
+                                    color: colors.red2,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                        color: colors.red.withValues(alpha: 0.3),
+                                        width: 1),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Icon(Icons.delete, color: colors.red, size: 20),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Expanded(
+                            flex: 3,
+                            child: GestureDetector(
+                              onTap: () {
+                                final name = nameCtrl.text.trim();
+                                final target = int.tryParse(targetCtrl.text.trim()) ?? 0;
+                                if (name.isEmpty || target <= 0) return;
+
+                                setState(() {
+                                  if (existing != null) {
+                                    final index = _savingsGoals.indexWhere((g) => g.id == existing.id);
+                                    if (index != -1) {
+                                      _savingsGoals[index] = SavingsGoal(
+                                        id: existing.id,
+                                        name: name,
+                                        percentage: pct,
+                                        target: target,
+                                        iconName: selectedIcon,
+                                        colorValue: selectedColor,
+                                      );
+                                    }
+                                  } else {
+                                    _savingsGoals.add(SavingsGoal(
+                                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                      name: name,
+                                      percentage: pct,
+                                      target: target,
+                                      iconName: selectedIcon,
+                                      colorValue: selectedColor,
+                                    ));
+                                  }
+                                });
+                                _saveEditableGoals();
+                                _goalBarsController.reset();
+                                _goalBarsController.forward();
+                                Navigator.pop(ctx);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [colors.gold, colors.theme.isDark
+                                        ? colors.gold.withValues(alpha: 0.8)
+                                        : const Color(0xFFB8860B)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  existing == null ? 'Create Goal' : 'Save Changes',
+                                  style: GoogleFonts.dmSans(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  void _editStringField(String label, String current, ValueChanged<String> onSave) {
+    final ctrl = TextEditingController(text: current);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors(widget.theme).bg,
+        title: Text('Edit $label',
+            style: GoogleFonts.syne(
+                fontSize: 18, fontWeight: FontWeight.w700,
+                color: AppColors(widget.theme).text1)),
+        content: TextField(
+          controller: ctrl,
+          style: GoogleFonts.dmSans(
+              fontSize: 16, color: AppColors(widget.theme).text1),
+          decoration: InputDecoration(
+            hintText: 'Enter value',
+            hintStyle: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+                style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3)),
+          ),
+          TextButton(
+            onPressed: () {
+              final val = ctrl.text.trim();
+              if (val.isNotEmpty) {
+                onSave(val);
+                _saveEditableGoals();
+              }
+              Navigator.pop(ctx);
+            },
+            child: Text('Save',
+                style: GoogleFonts.dmSans(
+                    color: AppColors(widget.theme).gold,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // CELEBRATION EFFECTS
+  // ═══════════════════════════════════════════════
+
+  void _triggerCelebrations(int amount) {
+    _showMoneyRain();
+    if (amount >= 2000) _showConfetti();
+    if (amount >= 1000) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) _showFireFlame();
+      });
+    }
+    _showGoldToast(amount);
+  }
+
+  void _showMoneyRain() {
+    final overlay = Overlay.of(context);
+    final rng = math.Random();
+    final screenW = MediaQuery.of(context).size.width;
+    final screenH = MediaQuery.of(context).size.height;
+    const symbols = ['₹', '💰', '✨', '🪙'];
+
+    for (int i = 0; i < 12; i++) {
+      late OverlayEntry entry;
+      final symbol = symbols[rng.nextInt(symbols.length)];
+      final startX = rng.nextDouble() * screenW;
+      final startY = screenH * 0.3 + rng.nextDouble() * screenH * 0.2;
+      final size = 14.0 + rng.nextDouble() * 16;
+      final dur = 1000 + rng.nextInt(1000);
+      final delay = rng.nextInt(300);
+
+      entry = OverlayEntry(builder: (context) {
+        return _CelebrationParticle(
+          symbol: symbol,
+          startX: startX,
+          startY: startY,
+          fontSize: size,
+          duration: dur,
+          delay: delay,
+          fallDistance: 200,
+          onComplete: () {
+            entry.remove();
+          },
+        );
+      });
+      overlay.insert(entry);
+    }
+  }
+
+  void _showConfetti() {
+    final overlay = Overlay.of(context);
+    final rng = math.Random();
+    final screenW = MediaQuery.of(context).size.width;
+    final colors = AppColors(widget.theme);
+    final confettiColors = [
+      colors.gold, colors.emerald, const Color(0xFFA78BFA),
+      colors.red, const Color(0xFF60A5FA), Colors.white,
+    ];
+
+    for (int i = 0; i < 25; i++) {
+      late OverlayEntry entry;
+      final color = confettiColors[rng.nextInt(confettiColors.length)];
+      final startX = rng.nextDouble() * screenW;
+      final size = 4.0 + rng.nextDouble() * 6;
+      final dur = 1200 + rng.nextInt(1500);
+      final delay = rng.nextInt(500);
+      final isCircle = rng.nextBool();
+
+      entry = OverlayEntry(builder: (context) {
+        return _IncomeConfettiDot(
+          startX: startX,
+          size: size,
+          color: color,
+          duration: dur,
+          delay: delay,
+          isCircle: isCircle,
+          onComplete: () {
+            entry.remove();
+          },
+        );
+      });
+      overlay.insert(entry);
+    }
+  }
+
+  void _showFireFlame() {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(builder: (context) {
+      return _FireFlameOverlay(onComplete: () => entry.remove());
+    });
+    overlay.insert(entry);
+  }
+
+  void _showGoldToast(int amount) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    final colors = AppColors(widget.theme);
+    entry = OverlayEntry(builder: (context) {
+      return _GoldToast(
+        message: '${_money(amount)} added! 💰',
+        goldColor: colors.gold,
+        onComplete: () => entry.remove(),
+      );
+    });
+    overlay.insert(entry);
+  }
+
+  // ═══════════════════════════════════════════════
+  // ADD INCOME BOTTOM SHEET
+  // ═══════════════════════════════════════════════
+
+  void _showExpenseToast(int amount) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    final colors = AppColors(widget.theme);
+    entry = OverlayEntry(builder: (context) {
+      return _GoldToast(
+        message: '${_money(amount)} expense added! 💸',
+        goldColor: colors.red,
+        onComplete: () => entry.remove(),
+      );
+    });
+    overlay.insert(entry);
+  }
+
+  void _showAddIncomeSheet() {
+    _incomeCtrl.clear();
+    _sourceCtrl.clear();
+    final colors = AppColors(widget.theme);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: const Color(0xD906060F),
+      builder: (ctx) {
+        return BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: StatefulBuilder(builder: (ctx, setSheetState) {
+            final isAddingIncome = _isInputIncome;
+
+            return AnimatedPadding(
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.theme.isDark
+                      ? const Color(0xFF0E0E18)
+                      : const Color(0xFFF9F7F2),
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24)),
+                ),
+                padding: const EdgeInsets.all(24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(isAddingIncome ? 'Add Income' : 'Add Expense',
+                              style: GoogleFonts.syne(
+                                  fontSize: 18, fontWeight: FontWeight.w700,
+                                  color: colors.text1)),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: Container(
+                              width: 32, height: 32,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: colors.card,
+                                border: Border.all(
+                                    color: colors.cardBorder, width: 1),
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(Icons.close,
+                                  size: 12, color: colors.text2),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticService.selection();
+                                setSheetState(() {
+                                  _isInputIncome = true;
+                                });
+                              },
+                              child: Container(
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: isAddingIncome
+                                      ? colors.emerald2
+                                      : colors.bg,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isAddingIncome
+                                        ? colors.emerald.withValues(alpha: 0.25)
+                                        : colors.cardBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Income',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: isAddingIncome
+                                        ? colors.emerald
+                                        : colors.text3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticService.selection();
+                                setSheetState(() {
+                                  _isInputIncome = false;
+                                });
+                              },
+                              child: Container(
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: !isAddingIncome ? colors.red2 : colors.bg,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: !isAddingIncome
+                                        ? colors.red.withValues(alpha: 0.25)
+                                        : colors.cardBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Expense',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: !isAddingIncome
+                                        ? colors.red
+                                        : colors.text3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      Text('AMOUNT (₹)',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              letterSpacing: 1, color: colors.text3)),
+                      const SizedBox(height: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: colors.card,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.cardBorder),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 2),
+                        child: TextField(
+                          controller: _incomeCtrl,
+                          keyboardType: TextInputType.number,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 16, fontWeight: FontWeight.w600,
+                              color: colors.text1),
+                          decoration: InputDecoration(
+                            hintText: '0',
+                            hintStyle: GoogleFonts.dmSans(
+                                color: colors.text3,
+                                fontWeight: FontWeight.w400),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      Text(isAddingIncome ? 'SOURCE' : 'DESCRIPTION',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              letterSpacing: 1, color: colors.text3)),
+                      const SizedBox(height: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: colors.card,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.cardBorder),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 2),
+                        child: TextField(
+                          controller: _sourceCtrl,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 16, fontWeight: FontWeight.w600,
+                              color: colors.text1),
+                          decoration: InputDecoration(
+                            hintText: isAddingIncome
+                                ? 'e.g. Freelance project'
+                                : 'e.g. Groceries, internet bills',
+                            hintStyle: GoogleFonts.dmSans(
+                                color: colors.text3,
+                                fontWeight: FontWeight.w400),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      Text('QUICK ADD',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              letterSpacing: 1, color: colors.text3)),
+                      const SizedBox(height: 8),
+                      GridView.count(
+                        crossAxisCount: 4,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 2.0,
+                        children: [500, 1000, 2000, 5000].map((val) {
+                          return GestureDetector(
+                            onTap: () {
+                              HapticService.selection();
+                              setSheetState(() {
+                                _incomeCtrl.text = val.toString();
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: colors.card,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: colors.cardBorder, width: 1),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                _money(val),
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.text2),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+
+                      GestureDetector(
+                        onTap: () {
+                          final amount =
+                              int.tryParse(_incomeCtrl.text.trim());
+                          if (amount == null || amount <= 0) return;
+                          HapticService.light();
+                          Navigator.pop(ctx);
+                          
+                          if (isAddingIncome) {
+                            _submitIncome(amount, _sourceCtrl.text.trim());
+                            _triggerCelebrations(amount);
+                          } else {
+                            widget.onAddExpense(amount);
+                            _showExpenseToast(amount);
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isAddingIncome
+                                  ? [colors.gold, colors.theme.isDark
+                                      ? colors.gold.withValues(alpha: 0.8)
+                                      : const Color(0xFFB8860B)]
+                                  : [colors.red, colors.theme.isDark
+                                      ? colors.red.withValues(alpha: 0.8)
+                                      : const Color(0xFFC0392B)],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isAddingIncome ? colors.gold3 : colors.red2,
+                                blurRadius: 24,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(isAddingIncome ? Icons.add : Icons.remove,
+                                  size: 18, color: Colors.white),
+                              const SizedBox(width: 6),
+                              Text(isAddingIncome ? 'Add Income' : 'Add Expense',
+                                  style: GoogleFonts.dmSans(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // SECTION BUILDERS
+  // ═══════════════════════════════════════════════
+
+  Widget _buildHeader(AppColors colors) {
+    final streak = _earningStreak();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: label + streak badge
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('INCOME TRACKER',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 10, fontWeight: FontWeight.w700,
+                      letterSpacing: 2, color: colors.text3)),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colors.gold3,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: colors.gold.withValues(alpha: 0.2), width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _fireController,
+                      builder: (_, child) {
+                        final scale = 1.0 +
+                            0.2 *
+                                Curves.easeInOut
+                                    .transform(_fireController.value);
+                        return Transform.scale(
+                            scale: scale, child: child);
+                      },
+                      child: const Text('🔥', style: TextStyle(fontSize: 10)),
                     ),
+                    const SizedBox(width: 4),
+                    Text('$streak day streak',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 10, fontWeight: FontWeight.w700,
+                            color: colors.gold)),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // 2. SUMMARY CARD
-            Container(
-              decoration: BoxDecoration(
-                color: colors.card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: colors.cardBorder, width: 0.5),
-                boxShadow: colors.shadow,
               ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Month nav row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: _prevMonth,
+                child: Container(
+                  width: 30, height: 30,
+                  decoration: BoxDecoration(
+                    color: colors.card,
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: colors.cardBorder, width: 1),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.chevron_left,
+                      size: 11, color: colors.text2),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                '${_monthNames[_selectedMonth - 1]} $_selectedYear',
+                style: GoogleFonts.syne(
+                    fontSize: 24, fontWeight: FontWeight.w800,
+                    color: colors.text1),
+              ),
+              const SizedBox(width: 16),
+              GestureDetector(
+                onTap: _nextMonth,
+                child: Container(
+                  width: 30, height: 30,
+                  decoration: BoxDecoration(
+                    color: colors.card,
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: colors.cardBorder, width: 1),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.chevron_right,
+                      size: 11, color: colors.text2),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+
+          // Hijri date
+          Center(
+            child: Text(
+              _hijriApprox(),
+              style: GoogleFonts.amiri(
+                  fontSize: 14, fontWeight: FontWeight.w500,
+                  color: colors.text2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVelocityMeter(AppColors colors, int totalEarned, int daysInMonth) {
+    final now = DateTime.now();
+    final isCurrentMonth =
+        _selectedMonth == now.month && _selectedYear == now.year;
+    final daysSoFar = isCurrentMonth ? now.day : daysInMonth;
+    final dailyAvg = daysSoFar > 0 ? totalEarned / daysSoFar : 0.0;
+    final fillPct = (dailyAvg / 20000).clamp(0.0, 1.0);
+
+    Color statusColor;
+    String statusText;
+    if (dailyAvg >= 10000) {
+      statusColor = colors.emerald;
+      statusText = '${_money(dailyAvg.round())}/day — On track!';
+    } else if (dailyAvg >= 5000) {
+      statusColor = colors.gold;
+      statusText = '${_money(dailyAvg.round())}/day — Below target';
+    } else {
+      statusColor = colors.red;
+      statusText = '${_money(dailyAvg.round())}/day — Keep going! 💪';
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.cardBorder, width: 1),
+      ),
+      child: Column(
+        children: [
+          // Top row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
                 children: [
-                  Text(
-                    _money(netSavings),
-                    style: GoogleFonts.syne(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: colors.gold,
+                  Icon(Icons.speed, size: 10, color: colors.gold),
+                  const SizedBox(width: 6),
+                  Text('DAILY VELOCITY',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 10, fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5, color: colors.text3)),
+                ],
+              ),
+              Text(statusText,
+                  style: GoogleFonts.dmSans(
+                      fontSize: 11, fontWeight: FontWeight.w600,
+                      color: statusColor)),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Bar
+          AnimatedBuilder(
+            animation: _velocityBarController,
+            builder: (_, _) {
+              final animFill = fillPct *
+                  Curves.easeOutCubic
+                      .transform(_velocityBarController.value);
+              return Stack(
+                children: [
+                  // Background track
+                  Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: colors.theme.isDark
+                          ? Colors.white.withValues(alpha: 0.04)
+                          : Colors.black.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'THIS MONTH',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.0,
-                      color: colors.text3,
+                  // Filled bar
+                  FractionallySizedBox(
+                    widthFactor: animFill,
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          dailyAvg >= 10000
+                              ? colors.emerald.withValues(alpha: 0.7)
+                              : dailyAvg >= 5000
+                                  ? const Color(0xFFB8860B)
+                                  : const Color(0xFFC0392B),
+                          dailyAvg >= 10000
+                              ? colors.emerald
+                              : dailyAvg >= 5000
+                                  ? colors.gold
+                                  : colors.red,
+                        ]),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: AnimatedBuilder(
+                        animation: _shimmerController,
+                        builder: (_, _) {
+                          return ShaderMask(
+                            shaderCallback: (bounds) {
+                              final dx = _shimmerController.value *
+                                  (bounds.width + 40) -
+                                  20;
+                              return LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.white.withValues(alpha: 0.3),
+                                  Colors.transparent,
+                                ],
+                                stops: const [0.0, 0.5, 1.0],
+                                transform: GradientTranslation(dx),
+                              ).createShader(bounds);
+                            },
+                            blendMode: BlendMode.srcATop,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 6),
+
+          // Scale labels
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('₹0',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 8, color: colors.text3)),
+              Text('₹10,000 target',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 8, fontWeight: FontWeight.w700,
+                      color: colors.gold)),
+              Text('₹20,000+',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 8, color: colors.text3)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroCard(AppColors colors, int totalEarned, int daysInMonth) {
+    final now = DateTime.now();
+    final isCurrentMonth =
+        _selectedMonth == now.month && _selectedYear == now.year;
+    final daysSoFar = isCurrentMonth ? now.day : daysInMonth;
+    final dailyAvg = daysSoFar > 0 ? (totalEarned / daysSoFar).round() : 0;
+    final projected = (dailyAvg * daysInMonth);
+
+    final ref = DateTime(_selectedYear, _selectedMonth, 1);
+    final totalSpent = _monthTotal(widget.expenseLog, ref);
+    final netBalance = totalEarned - totalSpent;
+    final dailyAvgSpent = daysSoFar > 0 ? (totalSpent / daysSoFar).round() : 0;
+
+    final prevRef = DateTime(
+        _selectedMonth == 1 ? _selectedYear - 1 : _selectedYear,
+        _selectedMonth == 1 ? 12 : _selectedMonth - 1, 1);
+    final prevTotal = _monthTotal(widget.incomeLog, prevRef);
+    final changePct =
+        prevTotal > 0 ? ((totalEarned - prevTotal) / prevTotal * 100) : 0.0;
+    final isUp = changePct >= 0;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+            color: colors.gold.withValues(alpha: 0.12), width: 1),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.gold.withValues(alpha: 0.1),
+            colors.gold.withValues(alpha: 0.02),
+            colors.emerald.withValues(alpha: 0.05),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -20, right: -20,
+            child: Container(
+              width: 100, height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [
+                  colors.gold.withValues(alpha: 0.15),
+                  Colors.transparent,
+                ]),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -15, left: -15,
+            child: Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [
+                  colors.emerald.withValues(alpha: 0.08),
+                  Colors.transparent,
+                ]),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 4, right: 4,
+            child: CustomPaint(
+              size: const Size(20, 20),
+              painter: _IslamicStarPainter(
+                color: colors.theme.isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.04),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Row(
                     children: [
-                      // Left Earned Card
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colors.emerald2,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: colors.emerald.withValues(alpha: 0.15),
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _money(totalEarned),
-                                style: GoogleFonts.syne(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.emerald,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'EARNED',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.0,
-                                  color: colors.text3,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_money(dailyAvgEarned)}/day',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.text2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Right Spent Card
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colors.red2,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: colors.red.withValues(alpha: 0.15),
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _money(totalSpent),
-                                style: GoogleFonts.syne(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.red,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'SPENT',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.0,
-                                  color: colors.text3,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_money(dailyAvgSpent)}/day',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.text2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      Icon(Icons.account_balance_wallet, size: 10, color: colors.gold),
+                      const SizedBox(width: 6),
+                      Text('NET BALANCE',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, fontWeight: FontWeight.w700,
+                              letterSpacing: 1.5, color: colors.text3)),
                     ],
+                  ),
+                  if (prevTotal > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isUp ? colors.emerald2 : colors.red2,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${isUp ? "↑" : "↓"} ${changePct.abs().toStringAsFixed(0)}%',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 11, fontWeight: FontWeight.w700,
+                            color: isUp ? colors.emerald : colors.red),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('₹',
+                      style: GoogleFonts.syne(
+                          fontSize: 20, fontWeight: FontWeight.w600,
+                          color: colors.text2)),
+                  TweenAnimationBuilder<double>(
+                    key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
+                    tween: Tween<double>(
+                        begin: 0.0,
+                        end: netBalance.toDouble()),
+                    duration: const Duration(milliseconds: 1200),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, value, _) {
+                      final display = value.round().abs().toString()
+                          .replaceAllMapped(
+                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                        (m) => '${m[1]},',
+                      );
+                      final isNegative = netBalance < 0;
+                      return Text(
+                        '${isNegative ? "-" : ""}$display',
+                        style: GoogleFonts.syne(
+                            fontSize: 34, fontWeight: FontWeight.w800,
+                            letterSpacing: -1.0,
+                            color: isNegative ? colors.red : colors.text1),
+                      );
+                    },
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // 3. DAY-BY-DAY LIST
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Day by Day',
+              const SizedBox(height: 12),
+              
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.emerald2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colors.emerald.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('INCOME',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 8, fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.0, color: colors.text3)),
+                          const SizedBox(height: 4),
+                          Text(_money(totalEarned),
+                              style: GoogleFonts.syne(
+                                  fontSize: 16, fontWeight: FontWeight.w700,
+                                  color: colors.emerald)),
+                          const SizedBox(height: 2),
+                          Text('Avg: ${_money(dailyAvg)}/day',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 9, color: colors.text2)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.red2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colors.red.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('EXPENSES',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 8, fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.0, color: colors.text3)),
+                          const SizedBox(height: 4),
+                          Text(_money(totalSpent),
+                              style: GoogleFonts.syne(
+                                  fontSize: 16, fontWeight: FontWeight.w700,
+                                  color: colors.red)),
+                          const SizedBox(height: 2),
+                          Text('Avg: ${_money(dailyAvgSpent)}/day',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 9, color: colors.text2)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              
+              Center(
+                child: Text(
+                  'Projected income: ${_money(projected)} this month',
                   style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: colors.text1,
+                      fontSize: 11, fontWeight: FontWeight.w600,
+                      color: colors.gold),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavingsGoals(AppColors colors, int totalEarned) {
+    final iconDataMap = {
+      'favorite': Icons.favorite,
+      'bitcoin': Icons.currency_bitcoin,
+      'flight': Icons.flight,
+      'home': Icons.home,
+      'car': Icons.directions_car,
+      'school': Icons.school,
+      'star': Icons.star,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 3, height: 12,
+                decoration: BoxDecoration(
+                  color: colors.gold,
+                  borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(width: 8),
+              Text('SAVINGS GOALS',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 10, fontWeight: FontWeight.w700,
+                      letterSpacing: 2, color: colors.text3)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  HapticService.light();
+                  _showGoalFormSheet();
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle_outline, size: 13, color: colors.emerald),
+                    const SizedBox(width: 4),
+                    Text('Add Goal',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 10, fontWeight: FontWeight.w600,
+                            color: colors.emerald)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_savingsGoals.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: colors.card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: colors.cardBorder, width: 1),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'No savings goals created yet.',
+                style: GoogleFonts.dmSans(fontSize: 12, color: colors.text3),
+              ),
+            )
+          else
+            ...List.generate(_savingsGoals.length, (i) {
+              final g = _savingsGoals[i];
+              final current = (totalEarned * (g.percentage / 100)).round();
+              final target = g.target;
+              final pct = (totalEarned <= 0 || target <= 0) ? 0.0 : (current / target).clamp(0.0, 1.0);
+              final monthsLeft = current > 0
+                  ? ((target - current) / (current > 0 ? current : 1)).ceil().clamp(0, 999)
+                  : 0;
+
+              Color colorVal = Color(g.colorValue);
+              Color gradStart;
+              Color gradEnd = colorVal;
+              if (g.colorValue == 0xFFE8B84B) {
+                gradStart = const Color(0xFFB8860B);
+                gradEnd = colors.gold;
+              } else if (g.colorValue == 0xFFA78BFA) {
+                gradStart = const Color(0xFF7C3AED);
+              } else if (g.colorValue == 0xFF60A5FA) {
+                gradStart = const Color(0xFF2563EB);
+              } else if (g.colorValue == 0xFF00C896) {
+                gradStart = const Color(0xFF0A7A5A);
+              } else if (g.colorValue == 0xFFF87171) {
+                gradStart = const Color(0xFFC0392B);
+              } else {
+                gradStart = colorVal.withValues(alpha: 0.7);
+              }
+
+              final staggerStart = (i * 200.0 / 1800.0).clamp(0.0, 1.0);
+              final staggerEnd = (staggerStart + 1000.0 / 1800.0).clamp(0.0, 1.0);
+
+              final iconData = iconDataMap[g.iconName] ?? Icons.star;
+
+              return GestureDetector(
+                onTap: () {
+                  HapticService.light();
+                  _showGoalFormSheet(existing: g);
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    color: colors.card,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: colors.cardBorder, width: 1),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 34, height: 34,
+                            decoration: BoxDecoration(
+                              color: colorVal.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(iconData, size: 14, color: colorVal),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(g.name,
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 13, fontWeight: FontWeight.w600,
+                                        color: colors.text1)),
+                                const SizedBox(height: 1),
+                                Text('${g.percentage.toStringAsFixed(0)}% of income',
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 9, fontWeight: FontWeight.w500,
+                                        color: colors.text3)),
+                              ],
+                            ),
+                          ),
+                          RichText(
+                            text: TextSpan(
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12, fontWeight: FontWeight.w700,
+                                  color: colors.text2),
+                              children: [
+                                TextSpan(
+                                    text: _money(current),
+                                    style: TextStyle(color: colors.text1)),
+                                TextSpan(text: ' / ${_money(target)}'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    // Progress bar
+                    AnimatedBuilder(
+                      animation: _goalBarsController,
+                      builder: (_, _) {
+                        final interval = Interval(
+                            staggerStart, staggerEnd,
+                            curve: Curves.easeOutCubic);
+                        final animPct =
+                            (pct * interval.transform(
+                                _goalBarsController.value)).clamp(0.0, 1.0);
+                        return Stack(
+                          children: [
+                            Container(
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: colors.theme.isDark
+                                    ? Colors.white.withValues(alpha: 0.04)
+                                    : Colors.black.withValues(alpha: 0.04),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            FractionallySizedBox(
+                              widthFactor: animPct,
+                              child: Container(
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: [
+                                    gradStart,
+                                    gradEnd,
+                                  ]),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                            '${(pct * 100).toStringAsFixed(0)}% complete',
+                            style: GoogleFonts.dmSans(
+                                fontSize: 9, color: colors.text3)),
+                        Text(
+                            '~$monthsLeft months left',
+                            style: GoogleFonts.dmSans(
+                                fontSize: 9, color: colors.text3)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEarningPotential(AppColors colors) {
+    return GestureDetector(
+      onLongPress: () {
+        _editStringField('Earning Tip', _earningTip, (v) {
+          setState(() => _earningTip = v);
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.cardBorder, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.rocket_launch, size: 14,
+                    color: const Color(0xFFA78BFA)),
+                const SizedBox(width: 6),
+                Text('EARNING POTENTIAL',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 10, fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5, color: colors.text3)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onLongPress: () {
+                      _editStringField('Current', _earningCurrent, (v) {
+                        setState(() => _earningCurrent = v);
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colors.theme.isDark
+                            ? Colors.white.withValues(alpha: 0.02)
+                            : Colors.black.withValues(alpha: 0.02),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: colors.cardBorder, width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_earningCurrent,
+                              style: GoogleFonts.syne(
+                                  fontSize: 18, fontWeight: FontWeight.w800,
+                                  color: colors.text2)),
+                          const SizedBox(height: 2),
+                          Text('CURRENT /MONTH',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 8, color: colors.text3)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _filterChip('All', colors),
-                    const SizedBox(width: 6),
-                    _filterChip('Earned', colors),
-                    const SizedBox(width: 6),
-                    _filterChip('Spent', colors),
-                  ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onLongPress: () {
+                      _editStringField('Target', _earningTarget, (v) {
+                        setState(() => _earningTarget = v);
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFA78BFA).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: const Color(0xFFA78BFA)
+                                .withValues(alpha: 0.15),
+                            width: 1),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_earningTarget,
+                              style: GoogleFonts.syne(
+                                  fontSize: 18, fontWeight: FontWeight.w800,
+                                  color: const Color(0xFFA78BFA))),
+                          const SizedBox(height: 2),
+                          Text('FREELANCE POTENTIAL',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 8, color: colors.text3)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            if (visibleDays.isEmpty)
-              Container(
-                height: 100,
-                alignment: Alignment.center,
-                child: Text(
-                  'No transactions yet',
-                  style: GoogleFonts.dmSans(fontSize: 13, color: colors.text3),
-                ),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-                itemCount: visibleDays.length,
-                itemBuilder: (context, idx) {
-                  final date = visibleDays[idx];
-                  final earned = widget.incomeLog[dayKey(date)] ?? 0;
-                  final spent = widget.expenseLog[dayKey(date)] ?? 0;
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colors.card,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: colors.cardBorder, width: 0.5),
-                      boxShadow: colors.shadow,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              getDayName(date),
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: colors.text1,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              formatDayRowDate(date),
-                              style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                color: colors.text3,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _money(earned),
-                              style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: earned > 0
-                                    ? colors.emerald
-                                    : colors.text4,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              spent > 0 ? '−${_money(spent)}' : _money(0),
-                              style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: spent > 0 ? colors.red : colors.text4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            const SizedBox(height: 20),
-
-            // 4. INPUT SECTION
-            Container(
-              decoration: BoxDecoration(
-                color: colors.card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: colors.cardBorder, width: 0.5),
-                boxShadow: colors.shadow,
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Toggle row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _isInputIncome = true),
-                          child: Container(
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: _isInputIncome
-                                  ? colors.emerald2
-                                  : colors.bg,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: _isInputIncome
-                                    ? colors.emerald.withValues(alpha: 0.25)
-                                    : colors.cardBorder,
-                                width: 1,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'Income',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: _isInputIncome
-                                    ? colors.emerald
-                                    : colors.text3,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _isInputIncome = false),
-                          child: Container(
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: !_isInputIncome ? colors.red2 : colors.bg,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: !_isInputIncome
-                                    ? colors.red.withValues(alpha: 0.25)
-                                    : colors.cardBorder,
-                                width: 1,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'Expense',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: !_isInputIncome
-                                    ? colors.red
-                                    : colors.text3,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Input row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: colors.bg,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: colors.cardBorder,
-                              width: 0.5,
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          alignment: Alignment.center,
-                          child: TextField(
-                            controller: _incomeCtrl,
-                            keyboardType: TextInputType.number,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 16,
-                              color: colors.text1,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Enter amount (\u20B9)...',
-                              hintStyle: GoogleFonts.dmSans(
-                                color: colors.text4,
-                              ),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                            onSubmitted: (_) => _submitAmount(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: _submitAmount,
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: _isInputIncome ? colors.emerald : colors.red,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            '+',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Icon(Icons.bolt, size: 8,
+                      color: Color(0xFFA78BFA)),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(_earningTip,
+                        style: GoogleFonts.dmSans(
+                            fontSize: 9, fontWeight: FontWeight.w600,
+                            color: const Color(0xFFA78BFA)),
+                        overflow: TextOverflow.ellipsis),
                   ),
                 ],
               ),
@@ -8981,6 +11005,826 @@ class _IncomeScreenState extends State<IncomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildChart(AppColors colors, int daysInMonth) {
+    // Compute daily amounts
+    final dailyAmounts = <int>[];
+    int maxDaily = 1;
+    for (int d = 1; d <= daysInMonth; d++) {
+      final date = DateTime(_selectedYear, _selectedMonth, d);
+      final amt = widget.incomeLog[dayKey(date)] ?? 0;
+      dailyAmounts.add(amt);
+      if (amt > maxDaily) maxDaily = amt;
+    }
+
+    final now = DateTime.now();
+    final isCurrentMonth =
+        _selectedMonth == now.month && _selectedYear == now.year;
+    final todayDay = isCurrentMonth ? now.day : -1;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.cardBorder, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('DAILY EARNINGS',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 10, fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5, color: colors.text3)),
+              Text(_monthNames[_selectedMonth - 1],
+                  style: GoogleFonts.dmSans(
+                      fontSize: 10, fontWeight: FontWeight.w600,
+                      color: colors.emerald)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 80,
+            child: AnimatedBuilder(
+              animation: _chartBarsController,
+              builder: (_, _) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List.generate(daysInMonth, (i) {
+                    final amt = dailyAmounts[i];
+                    final barPct =
+                        maxDaily > 0 ? (amt / maxDaily).clamp(0.0, 1.0) : 0.0;
+                    final barH = amt > 0
+                        ? math.max(3.0, barPct * 60.0)
+                        : 3.0;
+                    final isToday = (i + 1) == todayDay;
+                    final showLabel =
+                        (i + 1) % 7 == 0; // Day 7, 14, 21, 28
+
+                    // Stagger: each bar 15ms delay
+                    final staggerStart =
+                        (i * 15.0 / 1300.0).clamp(0.0, 1.0);
+                    final staggerEnd =
+                        (staggerStart + 800.0 / 1300.0).clamp(0.0, 1.0);
+                    final interval = Interval(
+                        staggerStart, staggerEnd,
+                        curve: Curves.easeOutCubic);
+                    final animH =
+                        barH * interval.transform(
+                            _chartBarsController.value);
+
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                            left: i == 0 ? 0 : 1.5,
+                            right: i == daysInMonth - 1 ? 0 : 1.5),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              height: animH,
+                              decoration: BoxDecoration(
+                                gradient: amt > 0
+                                    ? LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          colors.gold,
+                                          colors.gold.withValues(alpha: 0.3),
+                                        ],
+                                      )
+                                    : null,
+                                color: amt <= 0
+                                    ? (colors.theme.isDark
+                                        ? Colors.white.withValues(alpha: 0.03)
+                                        : Colors.black.withValues(alpha: 0.03))
+                                    : null,
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(3),
+                                    bottom: Radius.circular(1)),
+                                boxShadow: isToday && amt > 0
+                                    ? [
+                                        BoxShadow(
+                                            color: colors.gold3,
+                                            blurRadius: 8)
+                                      ]
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            SizedBox(
+                              height: 10,
+                              child: showLabel
+                                  ? Text('${i + 1}',
+                                      style: GoogleFonts.dmSans(
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.w500,
+                                          color: colors.text3))
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionList(AppColors colors) {
+    final now = DateTime.now();
+    final isCurrentMonth =
+        _selectedMonth == now.month && _selectedYear == now.year;
+    final daysInMonth =
+        DateTime(_selectedYear, _selectedMonth + 1, 0).day;
+    final maxDay = isCurrentMonth ? now.day : daysInMonth;
+
+    final entries = <_TransactionItem>[];
+    for (int d = maxDay; d >= 1; d--) {
+      final date = DateTime(_selectedYear, _selectedMonth, d);
+      final earned = widget.incomeLog[dayKey(date)] ?? 0;
+      final spent = widget.expenseLog[dayKey(date)] ?? 0;
+
+      if (_filter == 'All') {
+        if (earned > 0) {
+          entries.add(_TransactionItem(date: date, amount: earned, isIncome: true));
+        }
+        if (spent > 0) {
+          entries.add(_TransactionItem(date: date, amount: spent, isIncome: false));
+        }
+      } else if (_filter == 'Earned') {
+        if (earned > 0) {
+          entries.add(_TransactionItem(date: date, amount: earned, isIncome: true));
+        }
+      } else if (_filter == 'Spent') {
+        if (spent > 0) {
+          entries.add(_TransactionItem(date: date, amount: spent, isIncome: false));
+        }
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              children: [
+                Container(
+                  width: 3, height: 12,
+                  decoration: BoxDecoration(
+                    color: colors.emerald,
+                    borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(width: 8),
+                Text('RECENT',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 10, fontWeight: FontWeight.w700,
+                        letterSpacing: 2, color: colors.text3)),
+                const Spacer(),
+                Text('${entries.length} entries',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 10, fontWeight: FontWeight.w500,
+                        color: colors.text3)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              children: [
+                _filterChip('All', colors),
+                const SizedBox(width: 8),
+                _filterChip('Earned', colors),
+                const SizedBox(width: 8),
+                _filterChip('Spent', colors),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (entries.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Text('No transactions recorded this month',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 13, color: colors.text3)),
+              ),
+            )
+          else
+            AnimatedBuilder(
+              animation: _listStaggerController,
+              builder: (_, _) {
+                return Column(
+                  children: List.generate(entries.length, (i) {
+                    final e = entries[i];
+                    final staggerStart =
+                        (i * 40.0 / 2000.0).clamp(0.0, 1.0);
+                    final staggerEnd =
+                        (staggerStart + 350.0 / 2000.0).clamp(0.0, 1.0);
+                    final interval = Interval(
+                        staggerStart, staggerEnd,
+                        curve: Curves.easeOutCubic);
+                    final progress =
+                        interval.transform(
+                            _listStaggerController.value);
+                    final opacity = progress;
+                    final translateY = (1 - progress) * 14;
+
+                    final isInc = e.isIncome;
+                    final displayColor = isInc ? colors.emerald : colors.red;
+                    final iconBgColor = isInc ? colors.emerald2 : colors.red2;
+                    final iconData = isInc ? Icons.south_west : Icons.north_east;
+                    final prefix = isInc ? '+' : '−';
+
+                    return Transform.translate(
+                      offset: Offset(0, translateY),
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Container(
+                          margin: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                          decoration: BoxDecoration(
+                            color: i.isOdd
+                                ? (colors.theme.isDark
+                                    ? Colors.white.withValues(alpha: 0.03)
+                                    : Colors.black.withValues(alpha: 0.02))
+                                : colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: colors.cardBorder, width: 1),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 32, height: 32,
+                                decoration: BoxDecoration(
+                                  color: iconBgColor,
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(iconData,
+                                    size: 11, color: displayColor),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      getDayName(e.date),
+                                      style: GoogleFonts.dmSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: colors.text1),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      formatDayRowDate(e.date),
+                                      style: GoogleFonts.dmSans(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w500,
+                                          color: colors.text3),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '$prefix${_money(e.amount)}',
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.3,
+                                    color: displayColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFab(AppColors colors) {
+    return Positioned(
+      bottom: 88,
+      right: 24,
+      child: GestureDetector(
+        onTap: () {
+          HapticService.light();
+          _showAddIncomeSheet();
+        },
+        child: SizedBox(
+          width: 66, height: 66,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Pulse ring
+              AnimatedBuilder(
+                animation: _fabPulseController,
+                builder: (_, _) {
+                  final scale = 1.0 +
+                      0.3 * _fabPulseController.value;
+                  final opacity =
+                      0.6 * (1 - _fabPulseController.value);
+                  return Transform.scale(
+                    scale: scale,
+                    child: Opacity(
+                      opacity: opacity,
+                      child: Container(
+                        width: 62, height: 62,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: colors.gold, width: 2),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // FAB button
+              Container(
+                width: 54, height: 54,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    colors.gold,
+                    colors.theme.isDark
+                        ? colors.gold.withValues(alpha: 0.8)
+                        : const Color(0xFFB8860B),
+                  ]),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.gold3,
+                      blurRadius: 28,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: const Text('₹',
+                    style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors(widget.theme);
+    final monthRef = DateTime(_selectedYear, _selectedMonth, 1);
+    final totalEarned = _monthTotal(widget.incomeLog, monthRef);
+    final daysInMonth =
+        DateTime(_selectedYear, _selectedMonth + 1, 0).day;
+
+
+
+    return Stack(
+      children: [
+        // Background atmosphere orbs
+        Positioned(
+          top: 60, right: -40,
+          child: Container(
+            width: 200, height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [
+                colors.gold.withValues(alpha: 0.06),
+                Colors.transparent,
+              ]),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 200, left: -30,
+          child: Container(
+            width: 180, height: 180,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [
+                colors.emerald.withValues(alpha: 0.04),
+                Colors.transparent,
+              ]),
+            ),
+          ),
+        ),
+
+        // Main content
+        SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            clipBehavior: Clip.none,
+            padding: const EdgeInsets.only(top: 24, bottom: 100),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(colors),
+                const SizedBox(height: 14),
+                _buildVelocityMeter(colors, totalEarned, daysInMonth),
+                const SizedBox(height: 14),
+                _buildHeroCard(colors, totalEarned, daysInMonth),
+                const SizedBox(height: 14),
+                _buildSavingsGoals(colors, totalEarned),
+                const SizedBox(height: 14),
+                _buildEarningPotential(colors),
+                const SizedBox(height: 14),
+                _buildChart(colors, daysInMonth),
+                const SizedBox(height: 14),
+                _buildTransactionList(colors),
+                const SizedBox(height: 100),
+              ],
+            ),
+          ),
+        ),
+
+        // FAB
+        _buildFab(colors),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// ISLAMIC STAR PAINTER
+// ═══════════════════════════════════════════════
+
+class _IslamicStarPainter extends CustomPainter {
+  final Color color;
+  const _IslamicStarPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width / 2;
+    final path = Path();
+    for (int i = 0; i < 8; i++) {
+      final angle = (i * math.pi / 4) - math.pi / 2;
+      final outerX = cx + r * math.cos(angle);
+      final outerY = cy + r * math.sin(angle);
+      final innerAngle = angle + math.pi / 8;
+      final innerX = cx + r * 0.4 * math.cos(innerAngle);
+      final innerY = cy + r * 0.4 * math.sin(innerAngle);
+      if (i == 0) {
+        path.moveTo(outerX, outerY);
+      } else {
+        path.lineTo(outerX, outerY);
+      }
+      path.lineTo(innerX, innerY);
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _IslamicStarPainter old) => old.color != color;
+}
+
+// ═══════════════════════════════════════════════
+// GRADIENT TRANSLATION HELPER
+// ═══════════════════════════════════════════════
+
+class GradientTranslation extends GradientTransform {
+  final double dx;
+  const GradientTranslation(this.dx);
+
+  @override
+  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) {
+    return Matrix4.translationValues(dx, 0, 0);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// CELEBRATION OVERLAY WIDGETS
+// ═══════════════════════════════════════════════
+
+class _CelebrationParticle extends StatefulWidget {
+  final String symbol;
+  final double startX, startY, fontSize;
+  final int duration, delay;
+  final double fallDistance;
+  final VoidCallback onComplete;
+
+  const _CelebrationParticle({
+    required this.symbol, required this.startX, required this.startY,
+    required this.fontSize, required this.duration, required this.delay,
+    required this.fallDistance, required this.onComplete,
+  });
+
+  @override
+  State<_CelebrationParticle> createState() => _CelebrationParticleState();
+}
+
+class _CelebrationParticleState extends State<_CelebrationParticle>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: widget.duration),
+    );
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) {
+        _ctrl.forward().then((_) {
+          if (mounted) widget.onComplete();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, _) {
+        final t = _ctrl.value;
+        return Positioned(
+          left: widget.startX,
+          top: widget.startY + t * widget.fallDistance,
+          child: Opacity(
+            opacity: 1 - t,
+            child: Transform.scale(
+              scale: 1 - t * 0.7,
+              child: Transform.rotate(
+                angle: t * math.pi,
+                child: Text(widget.symbol,
+                    style: TextStyle(fontSize: widget.fontSize)),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _IncomeConfettiDot extends StatefulWidget {
+  final double startX, size;
+  final Color color;
+  final int duration, delay;
+  final bool isCircle;
+  final VoidCallback onComplete;
+
+  const _IncomeConfettiDot({
+    required this.startX, required this.size, required this.color,
+    required this.duration, required this.delay, required this.isCircle,
+    required this.onComplete,
+  });
+
+  @override
+  State<_IncomeConfettiDot> createState() => _IncomeConfettiDotState();
+}
+
+class _IncomeConfettiDotState extends State<_IncomeConfettiDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: widget.duration),
+    );
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) {
+        _ctrl.forward().then((_) {
+          if (mounted) widget.onComplete();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, _) {
+        final t = _ctrl.value;
+        return Positioned(
+          left: widget.startX,
+          top: -10 + t * 400,
+          child: Opacity(
+            opacity: 1 - t,
+            child: Transform.rotate(
+              angle: t * math.pi * 4,
+              child: Container(
+                width: widget.size,
+                height: widget.isCircle ? widget.size : widget.size / 2,
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  borderRadius: BorderRadius.circular(
+                      widget.isCircle ? widget.size : 1),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FireFlameOverlay extends StatefulWidget {
+  final VoidCallback onComplete;
+  const _FireFlameOverlay({required this.onComplete});
+
+  @override
+  State<_FireFlameOverlay> createState() => _FireFlameOverlayState();
+}
+
+class _FireFlameOverlayState extends State<_FireFlameOverlay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..forward().then((_) {
+        if (mounted) widget.onComplete();
+      });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, _) {
+        final t = _ctrl.value;
+        final opacity = t < 0.3
+            ? t / 0.3
+            : t > 0.7
+                ? (1 - t) / 0.3
+                : 1.0;
+        final scale = Curves.easeOutBack.transform(
+            (t * 1.5).clamp(0.0, 1.0));
+        return Positioned(
+          left: size.width / 2 - 60,
+          top: size.height / 2 - 80,
+          child: Opacity(
+            opacity: opacity.clamp(0.0, 1.0),
+            child: Transform.scale(
+              scale: 0.3 + scale * 0.9,
+              child: const Text('🔥',
+                  style: TextStyle(fontSize: 120)),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GoldToast extends StatefulWidget {
+  final String message;
+  final Color goldColor;
+  final VoidCallback onComplete;
+  const _GoldToast({
+    required this.message, required this.goldColor, required this.onComplete,
+  });
+
+  @override
+  State<_GoldToast> createState() => _GoldToastState();
+}
+
+class _GoldToastState extends State<_GoldToast>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..forward().then((_) {
+        if (mounted) widget.onComplete();
+      });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, _) {
+        final t = _ctrl.value;
+        double opacity;
+        double translateY;
+        if (t < 0.15) {
+          // Enter: 0 -> 0.15 (~400ms)
+          final p = Curves.easeOutBack.transform(t / 0.15);
+          opacity = p;
+          translateY = -20 * (1 - p);
+        } else if (t < 0.85) {
+          // Hold
+          opacity = 1;
+          translateY = 0;
+        } else {
+          // Exit: 0.85 -> 1.0 (~400ms)
+          final p = (t - 0.85) / 0.15;
+          opacity = 1 - p;
+          translateY = -20 * p;
+        }
+        return Positioned(
+          top: MediaQuery.of(context).padding.top + 16,
+          left: 40, right: 40,
+          child: Transform.translate(
+            offset: Offset(0, translateY),
+            child: Opacity(
+              opacity: opacity.clamp(0.0, 1.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    const Color(0xFFB8860B),
+                    widget.goldColor,
+                  ]),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.goldColor.withValues(alpha: 0.4),
+                      blurRadius: 30,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Text(widget.message,
+                    style: GoogleFonts.dmSans(
+                        fontSize: 13, fontWeight: FontWeight.w600,
+                        color: Colors.white)),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -9368,8 +12212,9 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
       }
       return 'MCH';
     }
-    if (name.contains('assisted') || desc.contains('assisted'))
+    if (name.contains('assisted') || desc.contains('assisted')) {
       return 'ASSISTED';
+    }
     return 'BW';
   }
 
@@ -9421,14 +12266,16 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
     final name = widget.exercise[0].toLowerCase();
     if (name.contains('push-up') ||
         name.contains('push up') ||
-        name.contains('bench'))
+        name.contains('bench')) {
       return 'CHEST';
+    }
     if (name.contains('squat') || name.contains('lunge')) return 'QUADS';
     if (name.contains('bridge')) return 'GLUTES';
     if (name.contains('row') ||
         name.contains('pull-up') ||
-        name.contains('pull up'))
+        name.contains('pull up')) {
       return 'LATS';
+    }
     if (name.contains('press')) return 'SHOULDERS';
     if (name.contains('leg raise') || name.contains('plank')) return 'CORE';
     if (name.contains('curl')) return 'BICEPS';
@@ -9594,7 +12441,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  widget.exercise[0],
+                                  normalizeExerciseName(widget.exercise[0]),
                                   style: GoogleFonts.dmSans(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -9630,8 +12477,8 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                             children: [
                               Text(
                                 '${widget.reps}',
-                                style: GoogleFonts.syne(
-                                  fontSize: 18,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                   color: widget.completed
                                       ? theme.teal
@@ -9689,7 +12536,7 @@ Widget _animatedValueText(String text, Color color, double fontSize) {
     child: Text(
       text,
       key: ValueKey(text),
-      style: GoogleFonts.syne(
+      style: GoogleFonts.dmSans(
         fontSize: fontSize,
         color: color,
         fontWeight: FontWeight.w800,
@@ -11334,7 +14181,8 @@ class _SettingsSheet extends StatefulWidget {
   final int userGoalYear;
   final int userGoalMonth;
   final int userGoalDay;
-  final Function(String, int, int, int)? onProfileChanged;
+  final String userDob;
+  final Function(String, int, int, int, String)? onProfileChanged;
   final VoidCallback onSaved;
 
   const _SettingsSheet({
@@ -11343,6 +14191,7 @@ class _SettingsSheet extends StatefulWidget {
     required this.userGoalYear,
     required this.userGoalMonth,
     required this.userGoalDay,
+    required this.userDob,
     this.onProfileChanged,
     required this.onSaved,
   });
@@ -11377,6 +14226,18 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     'Singapore': [1.3521, 103.8198],
     'Istanbul, Turkey': [41.0082, 28.9784],
   };
+
+  bool _showAdvancedTimings = false;
+
+  int getAgeFromDob(String dobStr) {
+    final dob = DateTime.tryParse(dobStr) ?? DateTime(2000, 1, 1);
+    final now = DateTime.now();
+    int age = now.year - dob.year;
+    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+      age--;
+    }
+    return age;
+  }
 
   @override
   void initState() {
@@ -11422,6 +14283,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       widget.userGoalMonth,
       widget.userGoalDay,
     );
+    // FIXED: declared outside builder so it persists across setDialogState() rebuilds
+    DateTime tempDob = DateTime.tryParse(widget.userDob) ?? DateTime(2000, 1, 1);
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -11429,6 +14292,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
+
             String formatDate(DateTime date) {
               const months = [
                 'January',
@@ -11470,6 +14334,33 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               if (picked != null && picked != tempDate) {
                 setDialogState(() {
                   tempDate = picked;
+                });
+              }
+            }
+
+            Future<void> pickDobDate() async {
+              final DateTime? picked = await showDatePicker(
+                context: dialogContext,
+                initialDate: tempDob,
+                firstDate: DateTime(1900),
+                lastDate: DateTime.now(),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: const ColorScheme.dark(
+                        primary: Color(0xFF1D9E75),
+                        onPrimary: Colors.white,
+                        surface: Color(0xFF1C1C2E),
+                        onSurface: Colors.white,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (picked != null && picked != tempDob) {
+                setDialogState(() {
+                  tempDob = picked;
                 });
               }
             }
@@ -11527,6 +14418,50 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide(color: theme.teal, width: 1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Your Date of Birth',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: theme.text2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    GestureDetector(
+                      onTap: pickDobDate,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.isDark
+                              ? const Color(0x0AFFFFFF)
+                              : const Color(0xFFF9F9F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: theme.border, width: 0.5),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              formatDate(tempDob),
+                              style: TextStyle(
+                                color: theme.text1,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Icon(
+                              Icons.cake,
+                              color: theme.gold,
+                              size: 16,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -11592,12 +14527,14 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   onPressed: () {
                     if (formKey.currentState?.validate() ?? false) {
                       final name = nameController.text.trim();
+                      final dobStr = "${tempDob.year.toString().padLeft(4, '0')}-${tempDob.month.toString().padLeft(2, '0')}-${tempDob.day.toString().padLeft(2, '0')}";
                       if (widget.onProfileChanged != null) {
                         widget.onProfileChanged!(
                           name,
                           tempDate.year,
                           tempDate.month,
                           tempDate.day,
+                          dobStr,
                         );
                       }
                       Navigator.pop(dialogContext);
@@ -11793,8 +14730,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ),
                 subtitle: Text(
                   widget.userName.isNotEmpty
-                      ? widget.userName
-                      : 'Set your name & goal',
+                      ? '${widget.userName} • ${getAgeFromDob(widget.userDob)} y/o'
+                      : 'Set your name, Date of Birth & goal',
                   style: TextStyle(color: theme.text3, fontSize: 11),
                 ),
                 trailing: Icon(Icons.chevron_right, color: theme.text2),
@@ -11929,225 +14866,251 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ),
             const SizedBox(height: 16),
 
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Latitude',
-                        style: TextStyle(
-                          color: theme.text3,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+            SwitchListTile(
+              title: Text(
+                'Advanced Settings',
+                style: TextStyle(
+                  color: theme.text1,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Text(
+                'Configure manual coordinates and calculations',
+                style: TextStyle(color: theme.text3, fontSize: 10),
+              ),
+              activeThumbColor: theme.teal,
+              contentPadding: EdgeInsets.zero,
+              value: _showAdvancedTimings,
+              onChanged: (val) {
+                setState(() {
+                  _showAdvancedTimings = val;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+
+            if (_showAdvancedTimings) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Latitude',
+                          style: TextStyle(
+                            color: theme.text3,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _latController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          style: TextStyle(color: theme.text1, fontSize: 13),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: theme.isDark
+                                ? Colors.white.withValues(alpha: 0.03)
+                                : Colors.black.withValues(alpha: 0.015),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: theme.border,
+                                width: 0.5,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: theme.gold,
+                                width: 1.0,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                          ),
+                          onChanged: (val) {
+                            setState(() {
+                              _locationName =
+                                  'Custom (${double.tryParse(_latController.text)?.toStringAsFixed(2)}, ${double.tryParse(_lonController.text)?.toStringAsFixed(2)})';
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Longitude',
+                          style: TextStyle(
+                            color: theme.text3,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _lonController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          style: TextStyle(color: theme.text1, fontSize: 13),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: theme.isDark
+                                ? Colors.white.withValues(alpha: 0.03)
+                                : Colors.black.withValues(alpha: 0.015),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: theme.border,
+                                width: 0.5,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: theme.gold,
+                                width: 1.0,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                          ),
+                          onChanged: (val) {
+                            setState(() {
+                              _locationName =
+                                  'Custom (${double.tryParse(_latController.text)?.toStringAsFixed(2)}, ${double.tryParse(_lonController.text)?.toStringAsFixed(2)})';
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              Text(
+                'Calculation Method',
+                style: TextStyle(
+                  color: theme.text2,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: theme.isDark
+                      ? Colors.white.withValues(alpha: 0.03)
+                      : Colors.black.withValues(alpha: 0.015),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.border, width: 0.5),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _selectedMethod,
+                    dropdownColor: theme.bg,
+                    style: TextStyle(color: theme.text1, fontSize: 13),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Karachi',
+                        child: Text('University of Islamic Sciences, Karachi'),
                       ),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: _latController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: TextStyle(color: theme.text1, fontSize: 13),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: theme.isDark
-                              ? Colors.white.withValues(alpha: 0.03)
-                              : Colors.black.withValues(alpha: 0.015),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: theme.border,
-                              width: 0.5,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: theme.gold,
-                              width: 1.0,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                        ),
-                        onChanged: (val) {
-                          setState(() {
-                            _locationName =
-                                'Custom (${double.tryParse(_latController.text)?.toStringAsFixed(2)}, ${double.tryParse(_lonController.text)?.toStringAsFixed(2)})';
-                          });
-                        },
+                      DropdownMenuItem(
+                        value: 'Mecca',
+                        child: Text('Umm al-Qura University, Makkah'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'MuslimWorldLeague',
+                        child: Text('Muslim World League (MWL)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Egypt',
+                        child: Text('Egyptian General Authority of Survey'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Gulf',
+                        child: Text('Gulf Region (Dubai)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'NorthAmerica',
+                        child: Text('ISNA (North America)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Singapore',
+                        child: Text('MUIS (Singapore)'),
                       ),
                     ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedMethod = val);
+                      }
+                    },
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Longitude',
-                        style: TextStyle(
-                          color: theme.text3,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
+              ),
+              const SizedBox(height: 16),
+
+              Text(
+                'Asr Calculation Madhab',
+                style: TextStyle(
+                  color: theme.text2,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: theme.isDark
+                      ? Colors.white.withValues(alpha: 0.03)
+                      : Colors.black.withValues(alpha: 0.015),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.border, width: 0.5),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _selectedMadhab,
+                    dropdownColor: theme.bg,
+                    style: TextStyle(color: theme.text1, fontSize: 13),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Shafi',
+                        child: Text('Standard (Shafi\'i, Maliki, Hanbali)'),
                       ),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: _lonController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        style: TextStyle(color: theme.text1, fontSize: 13),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: theme.isDark
-                              ? Colors.white.withValues(alpha: 0.03)
-                              : Colors.black.withValues(alpha: 0.015),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: theme.border,
-                              width: 0.5,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: theme.gold,
-                              width: 1.0,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                        ),
-                        onChanged: (val) {
-                          setState(() {
-                            _locationName =
-                                'Custom (${double.tryParse(_latController.text)?.toStringAsFixed(2)}, ${double.tryParse(_lonController.text)?.toStringAsFixed(2)})';
-                          });
-                        },
+                      DropdownMenuItem(
+                        value: 'Hanafi',
+                        child: Text('Hanafi (Later Asr)'),
                       ),
                     ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedMadhab = val);
+                      }
+                    },
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            Text(
-              'Calculation Method',
-              style: TextStyle(
-                color: theme.text2,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
               ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: theme.isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.015),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.border, width: 0.5),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: _selectedMethod,
-                  dropdownColor: theme.bg,
-                  style: TextStyle(color: theme.text1, fontSize: 13),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Karachi',
-                      child: Text('University of Islamic Sciences, Karachi'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Mecca',
-                      child: Text('Umm al-Qura University, Makkah'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'MuslimWorldLeague',
-                      child: Text('Muslim World League (MWL)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Egypt',
-                      child: Text('Egyptian General Authority of Survey'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Gulf',
-                      child: Text('Gulf Region (Dubai)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'NorthAmerica',
-                      child: Text('ISNA (North America)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Singapore',
-                      child: Text('MUIS (Singapore)'),
-                    ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _selectedMethod = val);
-                    }
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            Text(
-              'Asr Calculation Madhab',
-              style: TextStyle(
-                color: theme.text2,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: theme.isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.015),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.border, width: 0.5),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: _selectedMadhab,
-                  dropdownColor: theme.bg,
-                  style: TextStyle(color: theme.text1, fontSize: 13),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Shafi',
-                      child: Text('Standard (Shafi\'i, Maliki, Hanbali)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'Hanafi',
-                      child: Text('Hanafi (Later Asr)'),
-                    ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _selectedMadhab = val);
-                    }
-                  },
-                ),
-              ),
-            ),
+            ],
             const SizedBox(height: 24),
 
             Row(
