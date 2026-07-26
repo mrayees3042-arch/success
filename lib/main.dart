@@ -2238,18 +2238,17 @@ class _TodayScreenState extends State<TodayScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text('⏳', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'LIFE ODOMETER (AGE)',
-                  style: GoogleFonts.syne(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5,
-                    color: widget.theme.text2,
-                  ),
+              Text(
+                'LIFE ODOMETER (AGE)',
+                style: GoogleFonts.syne(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                  color: widget.theme.text2,
                 ),
               ),
             ],
@@ -9351,6 +9350,44 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
+  void _showGoalResetConfirmation(AppColors colors) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colors.bg,
+        title: Text('Reset Savings Goals',
+            style: GoogleFonts.syne(
+                fontSize: 18, fontWeight: FontWeight.w700,
+                color: colors.text1)),
+        content: Text('Are you sure you want to reset all savings goals to default?',
+            style: GoogleFonts.dmSans(
+                fontSize: 14, color: colors.text2)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+                style: GoogleFonts.dmSans(color: colors.text3)),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _loadDefaultSavingsGoals();
+              });
+              _saveEditableGoals();
+              Navigator.pop(ctx);
+              _goalBarsController.reset();
+              _goalBarsController.forward();
+            },
+            child: Text('Reset',
+                style: GoogleFonts.dmSans(
+                    color: colors.red,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showGoalFormSheet({SavingsGoal? existing}) {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final targetCtrl = TextEditingController(text: existing?.target.toString() ?? '');
@@ -10697,6 +10734,23 @@ class _IncomeScreenState extends State<IncomeScreen>
                       fontSize: 10, fontWeight: FontWeight.w700,
                       letterSpacing: 2, color: colors.text3)),
               const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  HapticService.light();
+                  _showGoalResetConfirmation(colors);
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.refresh, size: 13, color: colors.red),
+                    const SizedBox(width: 4),
+                    Text('Reset',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 10, fontWeight: FontWeight.w600,
+                            color: colors.red)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
               GestureDetector(
                 onTap: () {
                   HapticService.light();
