@@ -38,16 +38,23 @@ void main() {
 class TodayTask {
   const TodayTask(this.icon, this.title, this.tag);
 
+  static const IconData _defaultIcon = Icons.check_circle_outline;
+
+  static final Map<int, IconData> _knownIcons = {
+    Icons.check_circle_outline.codePoint: Icons.check_circle_outline,
+    Icons.check_circle.codePoint: Icons.check_circle,
+    Icons.fitness_center.codePoint: Icons.fitness_center,
+    Icons.fitness_center_outlined.codePoint: Icons.fitness_center_outlined,
+  };
+
   factory TodayTask.fromJson(Map<String, dynamic> json) {
+    final codePoint = (json['iconCodePoint'] as num?)?.toInt();
+    final icon = codePoint != null
+        ? _knownIcons[codePoint] ?? _defaultIcon
+        : _defaultIcon;
+
     return TodayTask(
-      IconData(
-        (json['iconCodePoint'] as num?)?.toInt() ??
-            Icons.check_circle.codePoint,
-        fontFamily:
-            json['iconFontFamily'] as String? ??
-            'MaterialIcons', // Default to MaterialIcons
-        fontPackage: json['iconFontPackage'] as String?,
-      ),
+      icon,
       (json['title'] as String?)?.trim().isNotEmpty == true
           ? (json['title'] as String).trim()
           : 'Daily Task',
@@ -10689,7 +10696,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                 ],
               ),
               const SizedBox(height: 10),
-              
+              _buildIncomeSplitBadge(colors, totalEarned, totalSpent),
+              const SizedBox(height: 10),
               Center(
                 child: Text(
                   'Projected income: ${_money(projected)} this month',
@@ -10705,8 +10713,113 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
-  Widget _buildSavingsGoals(AppColors colors, int totalEarned) {
-    final iconDataMap = {
+  Widget _buildIncomeSplitBadge(AppColors colors, int totalEarned, int totalSpent) {
+    final actualSpent = totalEarned > 0 ? math.min(totalSpent, totalEarned) : 0;
+    final actualSaved = totalEarned > 0 ? (totalEarned - totalSpent).clamp(0, totalEarned) : 0;
+    final totalForRatio = totalEarned > 0 ? totalEarned : (actualSpent + actualSaved);
+    final spentPct = totalForRatio > 0 ? (actualSpent / totalForRatio) : 0.0;
+    final savedPct = totalForRatio > 0 ? (actualSaved / totalForRatio) : 0.0;
+    final centerLabel = totalEarned == 0
+        ? '₹0'
+        : actualSaved <= 0
+            ? 'Overspent'
+            : '${(savedPct * 100).round()}% saved';
+    final centerSubLabel = totalEarned == 0
+        ? (totalSpent > 0
+            ? 'No income yet · Spent ${_money(totalSpent)}'
+            : 'No income recorded')
+        : 'Saved ${_money(actualSaved)} · Spent ${_money(actualSpent)}';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.theme.isDark
+            ? Colors.white.withValues(alpha: 0.02)
+            : Colors.black.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 68,
+            height: 68,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CustomPaint(
+                  size: const Size(68, 68),
+                  painter: _IncomeSplitPainter(
+                    spentPct: spentPct,
+                    spentColor: colors.red,
+                    savedColor: colors.emerald,
+                    backgroundColor: colors.theme.isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.black.withValues(alpha: 0.04),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      centerLabel,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: colors.text1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      totalEarned == 0 ? 'No income' : '${(savedPct * 100).round()}% saved',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 8,
+                        color: colors.text3,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ACTUAL SPLIT',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                        color: colors.text3)),
+                const SizedBox(height: 6),
+                Text(centerSubLabel,
+                    style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: colors.text1)),
+                const SizedBox(height: 4),
+                Text(
+                  totalEarned == 0
+                      ? 'Income is zero, no split available'
+                      : actualSaved <= 0
+                          ? 'Overspent this month'
+                          : 'Saved ${_money(actualSaved)} of ${_money(totalEarned)}',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 9, color: colors.text3),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavingsGoals(AppColors colors, int totalEarned) {    final iconDataMap = {
       'favorite': Icons.favorite,
       'bitcoin': Icons.currency_bitcoin,
       'flight': Icons.flight,
@@ -11567,6 +11680,54 @@ class _IslamicStarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _IslamicStarPainter old) => old.color != color;
+}
+
+class _IncomeSplitPainter extends CustomPainter {
+  final double spentPct;
+  final Color spentColor;
+  final Color savedColor;
+  final Color backgroundColor;
+
+  const _IncomeSplitPainter({
+    required this.spentPct,
+    required this.spentColor,
+    required this.savedColor,
+    required this.backgroundColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width / 2) - 6;
+    final bgPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..color = backgroundColor;
+    final segmentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round;
+
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    canvas.drawArc(rect, 0, 2 * math.pi, false, bgPaint);
+    if (spentPct > 0) {
+      segmentPaint.color = spentColor;
+      canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * spentPct, false, segmentPaint);
+    }
+    if (spentPct < 1.0) {
+      segmentPaint.color = savedColor;
+      canvas.drawArc(rect, -math.pi / 2 + 2 * math.pi * spentPct,
+          2 * math.pi * (1 - spentPct), false, segmentPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _IncomeSplitPainter old) {
+    return old.spentPct != spentPct ||
+        old.spentColor != spentColor ||
+        old.savedColor != savedColor ||
+        old.backgroundColor != backgroundColor;
+  }
 }
 
 // ═══════════════════════════════════════════════

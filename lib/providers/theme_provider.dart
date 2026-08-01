@@ -13,16 +13,30 @@ class ThemeNotifier extends ChangeNotifier {
   bool get isDark => _mode == ThemeMode.dark;
 
   Future<void> _loadTheme() async {
-    final hour = DateTime.now().hour;
-    final isDarkMode = hour >= 18 || hour < 6; // Dark mode between 6 PM and 6 AM
-    _mode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getBool(_prefsKey);
+      if (saved != null) {
+        _mode = saved ? ThemeMode.dark : ThemeMode.light;
+      } else {
+        final hour = DateTime.now().hour;
+        final isDarkMode = hour >= 18 || hour < 6; // Dark mode between 6 PM and 6 AM
+        _mode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+      }
+    } catch (_) {
+      final hour = DateTime.now().hour;
+      final isDarkMode = hour >= 18 || hour < 6;
+      _mode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+    }
     notifyListeners();
   }
 
   Future<void> toggle() async {
     _mode = _mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefsKey, isDark);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefsKey, isDark);
+    } catch (_) {}
   }
 }
