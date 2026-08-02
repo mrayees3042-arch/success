@@ -16,6 +16,7 @@ import 'package:adhan/adhan.dart';
 import 'package:success/providers/theme_provider.dart';
 import 'package:success/screens/life_plan_screen.dart';
 import 'package:success/screens/boot_screen.dart';
+import 'package:success/screens/onboarding_screen.dart';
 import 'package:success/services/haptic_service.dart';
 import 'package:success/services/audio_service.dart';
 import 'package:success/services/sound_manager.dart';
@@ -78,14 +79,7 @@ final kDefaultTodayTasks = <TodayTask>[];
 
 List<TodayTask> kTodayTasks = List<TodayTask>.from(kDefaultTodayTasks);
 
-const kPrayerNames = [
-  'Tahajjud',
-  'Fajr',
-  'Dhuhr',
-  'Asr',
-  'Maghrib',
-  'Isha',
-];
+const kPrayerNames = ['Tahajjud', 'Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
 String dayKey(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -270,7 +264,7 @@ class SuccessApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     return MaterialApp(
-      title: 'RAYEES',
+      title: 'MUTTAQIN',
       debugShowCheckedModeBanner: false,
       themeMode: themeNotifier.mode,
       theme: lightTheme,
@@ -366,6 +360,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
+  static final ValueNotifier<bool> hideBottomNavNotifier = ValueNotifier(false);
   static const _channel = MethodChannel('rayees.history/storage');
   static const _prefsTaskDefinitionsKey = 'today_tasks_v1';
   static const _prefsWorkoutProgressKey = 'workout_today_progress_v1';
@@ -443,7 +438,13 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _updateProfile(String name, int year, int month, int day, String dob) async {
+  Future<void> _updateProfile(
+    String name,
+    int year,
+    int month,
+    int day,
+    String dob,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', name);
     await prefs.setInt('user_goal_year', year);
@@ -461,7 +462,12 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _updateProfileFromNameChanged(String name, int year, int month, int day) async {
+  Future<void> _updateProfileFromNameChanged(
+    String name,
+    int year,
+    int month,
+    int day,
+  ) async {
     await _updateProfile(name, year, month, day, _userDob);
   }
 
@@ -1088,7 +1094,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           waterGlasses: _waterGlasses,
           onWaterChange: _setWaterGlasses,
           onScreenshot: _takeScreenshot,
-           userName: _userName,
+          userName: _userName,
           userGoalYear: _userGoalYear,
           userGoalMonth: _userGoalMonth,
           userGoalDay: _userGoalDay,
@@ -1161,15 +1167,21 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
               );
             }),
           ),
-          bottomNavigationBar: _BottomNavBar(
-            selectedIndex: _tab,
-            onTap: (i) {
-              if (_tab != i) {
-                HapticService.selection();
-                setState(() => _tab = i);
-              }
+          bottomNavigationBar: ValueListenableBuilder<bool>(
+            valueListenable: _MainScreenState.hideBottomNavNotifier,
+            builder: (context, hideNav, child) {
+              if (hideNav) return const SizedBox.shrink();
+              return _BottomNavBar(
+                selectedIndex: _tab,
+                onTap: (i) {
+                  if (_tab != i) {
+                    HapticService.selection();
+                    setState(() => _tab = i);
+                  }
+                },
+                theme: _theme,
+              );
             },
-            theme: _theme,
           ),
         ),
       ),
@@ -2017,9 +2029,9 @@ class _TodayScreenState extends State<TodayScreen>
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _habSmoking  = prefs.getBool('hab_no_smoking')  ?? true;
+      _habSmoking = prefs.getBool('hab_no_smoking') ?? true;
       _habFastFood = prefs.getBool('hab_no_fastfood') ?? true;
-      _habNoFap    = prefs.getBool('hab_no_fap')      ?? true;
+      _habNoFap = prefs.getBool('hab_no_fap') ?? true;
     });
   }
 
@@ -2033,9 +2045,9 @@ class _TodayScreenState extends State<TodayScreen>
     final next = !current;
     _saveHabit(key, next);
     setState(() {
-      if (key == 'hab_no_smoking')  _habSmoking  = next;
+      if (key == 'hab_no_smoking') _habSmoking = next;
       if (key == 'hab_no_fastfood') _habFastFood = next;
-      if (key == 'hab_no_fap')      _habNoFap    = next;
+      if (key == 'hab_no_fap') _habNoFap = next;
     });
   }
 
@@ -2045,9 +2057,9 @@ class _TodayScreenState extends State<TodayScreen>
     _saveHabit('hab_no_fastfood', true);
     _saveHabit('hab_no_fap', true);
     setState(() {
-      _habSmoking  = true;
+      _habSmoking = true;
       _habFastFood = true;
-      _habNoFap    = true;
+      _habNoFap = true;
     });
   }
 
@@ -2068,7 +2080,11 @@ class _TodayScreenState extends State<TodayScreen>
     if (_noFapLastReset == null) return 0;
     final lastReset = DateTime.fromMillisecondsSinceEpoch(_noFapLastReset!);
     final now = DateTime.now();
-    final lastResetDate = DateTime(lastReset.year, lastReset.month, lastReset.day);
+    final lastResetDate = DateTime(
+      lastReset.year,
+      lastReset.month,
+      lastReset.day,
+    );
     final nowDate = DateTime(now.year, now.month, now.day);
     return nowDate.difference(lastResetDate).inDays;
   }
@@ -2180,16 +2196,20 @@ class _TodayScreenState extends State<TodayScreen>
         color: const Color(0xFF0F0F1A),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: widget.theme.isDark ? const Color(0x33E8B84B) : widget.theme.border,
+          color: widget.theme.isDark
+              ? const Color(0x33E8B84B)
+              : widget.theme.border,
           width: 1,
         ),
-        boxShadow: widget.theme.isDark ? [
-          const BoxShadow(
-            color: Color(0x10E8B84B),
-            blurRadius: 3,
-            spreadRadius: 0.5,
-          )
-        ] : null,
+        boxShadow: widget.theme.isDark
+            ? [
+                const BoxShadow(
+                  color: Color(0x10E8B84B),
+                  blurRadius: 3,
+                  spreadRadius: 0.5,
+                ),
+              ]
+            : null,
       ),
       child: Text(
         digit,
@@ -2243,7 +2263,7 @@ class _TodayScreenState extends State<TodayScreen>
               const Text('⏳', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 8),
               Text(
-                'LIFE ODOMETER (AGE)',
+                'LIFE ODOMETER',
                 style: GoogleFonts.syne(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
@@ -2258,9 +2278,23 @@ class _TodayScreenState extends State<TodayScreen>
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildDigitalMeterGroup('years', ageData['years']!),
-              Text(':', style: GoogleFonts.shareTechMono(fontSize: 20, color: widget.theme.text3, fontWeight: FontWeight.bold)),
+              Text(
+                ':',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 20,
+                  color: widget.theme.text3,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               _buildDigitalMeterGroup('months', ageData['months']!),
-              Text(':', style: GoogleFonts.shareTechMono(fontSize: 20, color: widget.theme.text3, fontWeight: FontWeight.bold)),
+              Text(
+                ':',
+                style: GoogleFonts.shareTechMono(
+                  fontSize: 20,
+                  color: widget.theme.text3,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               _buildDigitalMeterGroup('days', ageData['days']!),
             ],
           ),
@@ -2305,8 +2339,8 @@ class _TodayScreenState extends State<TodayScreen>
             color: checked
                 ? color.withValues(alpha: 0.08)
                 : (widget.theme.isDark
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.black.withValues(alpha: 0.03)),
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.03)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: checked
@@ -2353,7 +2387,12 @@ class _TodayScreenState extends State<TodayScreen>
                     width: 1.5,
                   ),
                   boxShadow: checked
-                      ? [BoxShadow(color: color.withValues(alpha: 0.35), blurRadius: 8)]
+                      ? [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.35),
+                            blurRadius: 8,
+                          ),
+                        ]
                       : null,
                 ),
                 child: checked
@@ -2405,11 +2444,17 @@ class _TodayScreenState extends State<TodayScreen>
               ),
               // Streak badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: coralColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: coralColor.withValues(alpha: 0.3), width: 0.8),
+                  border: Border.all(
+                    color: coralColor.withValues(alpha: 0.3),
+                    width: 0.8,
+                  ),
                 ),
                 child: Text(
                   allClean ? '✅ All Clean' : '⚠️ In Progress',
@@ -2462,13 +2507,16 @@ class _TodayScreenState extends State<TodayScreen>
                 final reached = days >= m;
                 return Container(
                   margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: reached
                         ? coralColor.withValues(alpha: 0.18)
                         : (widget.theme.isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.04)),
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.04)),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: reached
@@ -2498,7 +2546,9 @@ class _TodayScreenState extends State<TodayScreen>
                           fontSize: 8,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.0,
-                          color: reached ? coralColor.withValues(alpha: 0.7) : widget.theme.text4,
+                          color: reached
+                              ? coralColor.withValues(alpha: 0.7)
+                              : widget.theme.text4,
                         ),
                       ),
                     ],
@@ -2524,7 +2574,10 @@ class _TodayScreenState extends State<TodayScreen>
                           ? Colors.white.withValues(alpha: 0.06)
                           : Colors.black.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: widget.theme.border, width: 0.8),
+                      border: Border.all(
+                        color: widget.theme.border,
+                        width: 0.8,
+                      ),
                     ),
                     child: Text(
                       'Check All ✅',
@@ -2547,7 +2600,10 @@ class _TodayScreenState extends State<TodayScreen>
                     decoration: BoxDecoration(
                       color: coralColor.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: coralColor.withValues(alpha: 0.3), width: 0.8),
+                      border: Border.all(
+                        color: coralColor.withValues(alpha: 0.3),
+                        width: 0.8,
+                      ),
                     ),
                     child: Text(
                       'Reset Counter',
@@ -2688,8 +2744,7 @@ class _TodayScreenState extends State<TodayScreen>
         ? 12
         : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
     final ampm = tod.hour < 12 ? 'AM' : 'PM';
-    final timeStr =
-        '$hour12:${tod.minute.toString().padLeft(2, '0')} $ampm';
+    final timeStr = '$hour12:${tod.minute.toString().padLeft(2, '0')} $ampm';
 
     Color borderColor;
     Color timeColor;
@@ -3301,7 +3356,10 @@ class _TodayScreenState extends State<TodayScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: _GlassCard(
         theme: widget.theme,
-        border: Border.all(color: widget.theme.teal.withValues(alpha: 0.4), width: 0.5),
+        border: Border.all(
+          color: widget.theme.teal.withValues(alpha: 0.4),
+          width: 0.5,
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -3311,11 +3369,7 @@ class _TodayScreenState extends State<TodayScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.star_border,
-                    size: 10,
-                    color: widget.theme.teal,
-                  ),
+                  Icon(Icons.star_border, size: 10, color: widget.theme.teal),
                   const SizedBox(width: 6),
                   Text(
                     'HADITH OF THE DAY',
@@ -3376,7 +3430,6 @@ class _TodayScreenState extends State<TodayScreen>
       ),
     );
   }
-
 
   Widget _buildSectionHeader(String label, {VoidCallback? onAdd}) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -4510,8 +4563,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
     final isSunnah =
         date.weekday == DateTime.monday || date.weekday == DateTime.thursday;
     final fastStatus = fastVal ?? (isSunnah ? 'fasting' : 'none');
-
-
 
     // 3. Load extra habits
     final Map<String, bool> habits = {};
@@ -6589,12 +6640,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   int _repsRemaining = 0;
   bool _showEditRepsModal = false;
   final TextEditingController _editRepsController = TextEditingController();
+  int _exerciseTab = 0; // 0 = My Routine, 1 = Exercise Library
 
   // State variables for Duolingo & Brilliant upgrades
   bool _showExerciseCompleteOverlay = false;
   bool _showWorkoutCompleteOverlay = false;
   bool _isCelebrating = false;
   DateTime? _workoutStartTime;
+  bool _showRpeOverlay = false;
+  int? _selectedRpe;
+  bool _isPaused = false;
+  bool _voiceCuesEnabled = true;
+  double _skipHoldProgress = 0.0;
+  Timer? _skipHoldTimer;
   int _comboCount = 1;
   DateTime? _lastTapTime;
   Timer? _comboResetTimer;
@@ -7078,6 +7136,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           }
           _showRepCounter = true;
         });
+        _MainScreenState.hideBottomNavNotifier.value = true;
       }
     }
   }
@@ -7498,14 +7557,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _StreakFireIcon(isActive: currentStreak > 0),
+                        _StreakFireIcon(isActive: true),
                         const SizedBox(width: 6),
                         _animatedValueText(
-                          '${currentStreak}d',
-                          currentStreak > 0
-                              ? const Color(0xFFFF6B35)
-                              : const Color(0xFF5A5A6A),
-                          24,
+                          currentStreak > 0 ? '${currentStreak}d' : 'Ready',
+                          const Color(0xFFE8B84B),
+                          18,
                         ),
                       ],
                     ),
@@ -7558,7 +7615,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           color: Color(0xFF00C896),
                         ),
                         const SizedBox(width: 4),
-                        _animatedValueText('$monthSessions', theme.text1, 18),
+                        _animatedValueText(
+                          monthSessions > 0 ? '$monthSessions' : 'Start 1st',
+                          const Color(0xFF00C896),
+                          monthSessions > 0 ? 18 : 11,
+                        ),
                       ],
                     ),
                   ),
@@ -7648,9 +7709,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Weight',
+                      'BW (Current)',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         color: theme.text3,
                         fontWeight: FontWeight.w700,
                       ),
@@ -7689,9 +7750,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         Icon(Icons.access_time, size: 14, color: theme.text2),
                         const SizedBox(width: 4),
                         _animatedValueText(
-                          hoursThisWeek.toStringAsFixed(1),
+                          hoursThisWeek > 0 ? hoursThisWeek.toStringAsFixed(1) : '~25m',
                           theme.text1,
-                          18,
+                          15,
                         ),
                       ],
                     ),
@@ -7700,9 +7761,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Hours',
+                      hoursThisWeek > 0 ? 'Hours' : 'Est. Time',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         color: theme.text3,
                         fontWeight: FontWeight.w700,
                       ),
@@ -7829,20 +7890,27 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 color: theme.text1,
               ),
             ),
-            TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0.0, end: _setProgress),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                return Text(
-                  '${(value * 100).round()}% · $_completedExercises/${_selectedSplit.exercises.length} exercises',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    color: theme.text2,
-                    fontWeight: FontWeight.w600,
-                  ),
-                );
-              },
+            Expanded(
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.0, end: _setProgress),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, child) {
+                  final percent = (value * 100).round();
+                  return Text(
+                    percent == 0
+                        ? 'Ready · ${_selectedSplit.exercises.length} exercises (~25m)'
+                        : '$percent% · $_completedExercises/${_selectedSplit.exercises.length} exercises',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: percent == 0 ? const Color(0xFF00C896) : theme.text2,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -7901,167 +7969,155 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section 1: MY ROUTINE (with left green bar accent)
-        Row(
-          children: [
-            Container(
-              width: 3,
-              height: 14,
-              decoration: BoxDecoration(
-                color: const Color(0xFF00C896),
-                borderRadius: BorderRadius.circular(1.5),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'MY ROUTINE',
-              style: GoogleFonts.dmSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2.0,
-                color: theme.text3,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: theme.teal.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'ORIGINAL',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                  color: theme.teal,
+        // Segmented Tab Toggle (My Routine vs Library)
+        Container(
+          height: 40,
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: theme.card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.border, width: 0.5),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticService.tapFeedback();
+                    setState(() => _exerciseTab = 0);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: _exerciseTab == 0 ? theme.teal : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'MY ROUTINE (${selectedSplit.exercises.length})',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: _exerciseTab == 0 ? Colors.white : theme.text3,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Container(height: 1, color: theme.border),
-        const SizedBox(height: 10),
-        ...Iterable.generate(selectedSplit.exercises.length).map((index) {
-          final exercise = selectedSplit.exercises[index];
-          final key = '${selectedSplit.title}|${exercise[0]}';
-          final state = _exerciseStates[key];
-          final completed = state?.completed == true;
-          final sets = parseSets(exercise[1]);
-          final reps = state != null ? state.maxReps : parseReps(exercise[1]);
-          final muscle = exercise.length > 2 ? exercise[2] : '';
-          return _ScrollRevealWidget(
-            index: index,
-            scrollController: _scrollController,
-            child: ExerciseLogRowWidget(
-              index: index,
-              theme: theme,
-              exercise: exercise,
-              isLibrary: false,
-              completed: completed,
-              sets: sets,
-              reps: reps,
-              muscle: muscle,
-              onToggle: () => _toggleExercise(key),
-              onTapReps: () {
-                if (state != null) {
-                  setState(() {
-                    _selectNewPhrase();
-                    _activeExerciseState = state;
-                    _activeExerciseName = exercise[0];
-                    _repsRemaining = state.repsRemaining;
-                    if (_repsRemaining <= 0) {
-                      _repsRemaining = state.maxReps;
-                    }
-                    _showRepCounter = true;
-                  });
-                }
-              },
-            ),
-          );
-        }),
-        const SizedBox(height: 24),
-        // Section 2: EXERCISE LIBRARY (with left green bar accent)
-        Row(
-          children: [
-            Container(
-              width: 3,
-              height: 14,
-              decoration: BoxDecoration(
-                color: const Color(0xFF00C896),
-                borderRadius: BorderRadius.circular(1.5),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'EXERCISE LIBRARY',
-              style: GoogleFonts.dmSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2.0,
-                color: theme.text3,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0x26E67E22), // Orange glow
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'FROM FILE',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFE67E22),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticService.tapFeedback();
+                    setState(() => _exerciseTab = 1);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: _exerciseTab == 1 ? const Color(0xFFE67E22) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'LIBRARY (${_libraryExercises.length})',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: _exerciseTab == 1 ? Colors.white : theme.text3,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 6),
-        Container(height: 1, color: theme.border),
-        const SizedBox(height: 10),
-        ...Iterable.generate(_libraryExercises.length).map((index) {
-          final exercise = _libraryExercises[index];
-          final key = 'lib|${exercise[0]}';
-          final state = _exerciseStates[key];
-          final completed = state?.completed == true;
-          final sets = parseSets(exercise[1]);
-          final reps = state != null ? state.maxReps : parseReps(exercise[1]);
-          final muscle = exercise.length > 2 ? exercise[2] : '';
-          return _ScrollRevealWidget(
-            index: index + selectedSplit.exercises.length,
-            scrollController: _scrollController,
-            child: ExerciseLogRowWidget(
+
+        if (_exerciseTab == 0) ...[
+          // Section 1: MY ROUTINE
+          ...Iterable.generate(selectedSplit.exercises.length).map((index) {
+            final exercise = selectedSplit.exercises[index];
+            final key = '${selectedSplit.title}|${exercise[0]}';
+            final state = _exerciseStates[key];
+            final completed = state?.completed == true;
+            final sets = parseSets(exercise[1]);
+            final reps = state != null ? state.maxReps : parseReps(exercise[1]);
+            final muscle = exercise.length > 2 ? exercise[2] : '';
+            return _ScrollRevealWidget(
               index: index,
-              theme: theme,
-              exercise: exercise,
-              isLibrary: true,
-              completed: completed,
-              sets: sets,
-              reps: reps,
-              muscle: muscle,
-              onToggle: () => _toggleExercise(key),
-              onTapReps: () {
-                if (state != null) {
-                  setState(() {
-                    _selectNewPhrase();
-                    _activeExerciseState = state;
-                    _activeExerciseName = exercise[0];
-                    _repsRemaining = state.repsRemaining;
-                    if (_repsRemaining <= 0) {
-                      _repsRemaining = state.maxReps;
-                    }
-                    _showRepCounter = true;
-                  });
-                }
-              },
-            ),
-          );
-        }),
+              scrollController: _scrollController,
+              child: ExerciseLogRowWidget(
+                index: index,
+                theme: theme,
+                exercise: exercise,
+                isLibrary: false,
+                completed: completed,
+                sets: sets,
+                reps: reps,
+                muscle: muscle,
+                onToggle: () => _toggleExercise(key),
+                onTapReps: () {
+                  if (state != null) {
+                    setState(() {
+                      _selectNewPhrase();
+                      _activeExerciseState = state;
+                      _activeExerciseName = exercise[0];
+                      _repsRemaining = state.repsRemaining;
+                      if (_repsRemaining <= 0) {
+                        _repsRemaining = state.maxReps;
+                      }
+                      _showRepCounter = true;
+                    });
+                    _MainScreenState.hideBottomNavNotifier.value = true;
+                  }
+                },
+              ),
+            );
+          }),
+        ] else ...[
+          // Section 2: EXERCISE LIBRARY
+          ...Iterable.generate(_libraryExercises.length).map((index) {
+            final exercise = _libraryExercises[index];
+            final key = 'lib|${exercise[0]}';
+            final state = _exerciseStates[key];
+            final completed = state?.completed == true;
+            final sets = parseSets(exercise[1]);
+            final reps = state != null ? state.maxReps : parseReps(exercise[1]);
+            final muscle = exercise.length > 2 ? exercise[2] : '';
+            return _ScrollRevealWidget(
+              index: index + selectedSplit.exercises.length,
+              scrollController: _scrollController,
+              child: ExerciseLogRowWidget(
+                index: index,
+                theme: theme,
+                exercise: exercise,
+                isLibrary: true,
+                completed: completed,
+                sets: sets,
+                reps: reps,
+                muscle: muscle,
+                onToggle: () => _toggleExercise(key),
+                onTapReps: () {
+                  if (state != null) {
+                    setState(() {
+                      _selectNewPhrase();
+                      _activeExerciseState = state;
+                      _activeExerciseName = exercise[0];
+                      _repsRemaining = state.repsRemaining;
+                      if (_repsRemaining <= 0) {
+                        _repsRemaining = state.maxReps;
+                      }
+                      _showRepCounter = true;
+                    });
+                    _MainScreenState.hideBottomNavNotifier.value = true;
+                  }
+                },
+              ),
+            );
+          }),
+        ],
       ],
     );
   }
@@ -8093,6 +8149,280 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return 'TARGET MUSCLES';
   }
 
+  String _getEquipmentForExercise(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('incline')) return 'Table edge';
+    if (lower.contains('pike')) return 'Bodyweight';
+    if (lower.contains('door')) return 'Doorframe';
+    if (lower.contains('bottle') || lower.contains('water')) return '2×1L bottles';
+    if (lower.contains('towel')) return 'Thick towel';
+    if (lower.contains('wall') || lower.contains('handstand')) return 'Wall';
+    if (lower.contains('plank')) return 'Floor';
+    return 'Bodyweight';
+  }
+
+  String _getFormCueForExercise(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('incline')) return 'Hands on table, lower chest to edge';
+    if (lower.contains('pike')) return 'Hips high, lower crown of head toward floor';
+    if (lower.contains('push')) return 'Keep core tight — body straight as a plank';
+    if (lower.contains('door')) return 'Grip doorframe firmly, pull chest to door';
+    if (lower.contains('circle')) return 'Keep arms horizontal, make controlled circles';
+    if (lower.contains('plank')) return 'Squeeze glutes & core, don\'t let hips sag';
+    if (lower.contains('squat')) return 'Keep chest up, knees tracking over toes';
+    if (lower.contains('lunge')) return 'Step long, drop back knee close to floor';
+    return 'Maintain controlled movement & steady breathing';
+  }
+
+  int _getPrescribedRestSeconds(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('pike')) return 120;
+    if (lower.contains('push') || lower.contains('row') || lower.contains('squat')) return 90;
+    return 60;
+  }
+
+  void _showEndWorkoutConfirmation(ThemeColors theme) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF181B21),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('End workout?', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text('Progress for completed sets will be saved.', style: GoogleFonts.dmSans(color: const Color(0xFF8B929D))),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.dmSans(color: const Color(0xFF6B7280))),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _showRepCounter = false;
+                _isPaused = false;
+              });
+              _MainScreenState.hideBottomNavNotifier.value = false;
+            },
+            child: Text('End Workout', style: GoogleFonts.dmSans(color: const Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPauseOverlay(ThemeColors theme) {
+    return Container(
+      color: const Color(0xFF0A0C10).withValues(alpha: 0.96),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2C94C).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFF2C94C).withValues(alpha: 0.3), width: 2),
+                ),
+                child: const Icon(Icons.pause_rounded, size: 36, color: Color(0xFFF2C94C)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'WORKOUT PAUSED',
+                style: GoogleFonts.dmSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Take a breath. Timer & progress are frozen.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: const Color(0xFF8B929D),
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Resume Button
+              ElevatedButton(
+                onPressed: () {
+                  HapticService.medium();
+                  setState(() => _isPaused = false);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2ECC71),
+                  foregroundColor: const Color(0xFF0A0C10),
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 4,
+                ),
+                child: Text(
+                  'RESUME WORKOUT',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // End Workout Button
+              OutlinedButton(
+                onPressed: () => _showEndWorkoutConfirmation(theme),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFEF4444),
+                  minimumSize: const Size(double.infinity, 48),
+                  side: const BorderSide(color: Color(0xFF23262D), width: 1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: Text(
+                  'End Workout',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRpeRatingOverlay(ThemeColors theme, WorkoutExerciseState state, bool isLastSet) {
+    return Container(
+      color: const Color(0xFF0A0C10).withValues(alpha: 0.94),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'How hard was that set?',
+                style: GoogleFonts.dmSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Rate your exertion (RPE)',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: const Color(0xFF8B929D),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(5, (i) {
+                  final rpeVal = 6 + i;
+                  final isSelected = _selectedRpe == rpeVal;
+                  return GestureDetector(
+                    onTap: () {
+                      HapticService.light();
+                      setState(() {
+                        _selectedRpe = rpeVal;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected ? const Color(0xFF2ECC71) : const Color(0xFF181B21),
+                        border: Border.all(
+                          color: isSelected ? const Color(0xFF2ECC71) : const Color(0xFF23262D),
+                          width: 2,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF2ECC71).withValues(alpha: 0.3),
+                                  blurRadius: 16,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$rpeVal',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? const Color(0xFF0A0C10) : Colors.white,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Easy', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF6B7280))),
+                  Text('Hard', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF6B7280))),
+                  Text('Max effort', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF6B7280))),
+                ],
+              ),
+              const SizedBox(height: 28),
+              ElevatedButton(
+                onPressed: _selectedRpe == null
+                    ? null
+                    : () {
+                        HapticService.medium();
+                        setState(() {
+                          _showRpeOverlay = false;
+                          if (isLastSet) {
+                            state.completed = true;
+                            state.repsRemaining = 0;
+                            _showExerciseCompleteOverlay = true;
+                            _maybeCompleteWorkout();
+                          } else {
+                            state.currentSet = state.currentSet + 1;
+                            state.repsRemaining = state.maxReps;
+                            _repsRemaining = state.maxReps;
+                            _restSeconds = _getPrescribedRestSeconds(_activeExerciseName!);
+                            _restExerciseKey = state.exerciseKey;
+                            _isResting = true;
+                            _startRestTimer();
+                          }
+                        });
+                        _savePreferences();
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2ECC71),
+                  disabledBackgroundColor: const Color(0xFF23262D),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(
+                  'Start rest timer',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _selectedRpe == null ? const Color(0xFF6B7280) : const Color(0xFF0A0C10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildRepCounterOverlay(ThemeColors theme) {
     if (_activeExerciseState == null || _activeExerciseName == null) {
       return const SizedBox.shrink();
@@ -8103,405 +8433,640 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final currentSet = state.currentSet;
     final isSetDone = _repsRemaining == 0;
     final isLastSet = currentSet == totalSets;
+    final targetReps = state.maxReps;
+    final currentRepsLogged = targetReps - _repsRemaining;
+    final currentExIndex = _currentExerciseIndex;
+    final totalExCount = _selectedSplit.exercises.length;
 
-    return Container(
-      color: theme.bg,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Top Navigation row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      HapticService.negative();
-                      SoundManager.playTapClick();
-                      setState(() => _showRepCounter = false);
-                    },
-                    child: Icon(Icons.arrow_back, color: theme.text1, size: 24),
-                  ),
-                  Text(
-                    'Set $currentSet of $totalSets',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: theme.teal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    final nextExName = currentExIndex < totalExCount
+        ? _selectedSplit.exercises[currentExIndex][0]
+        : null;
+    final nextExMeta = currentExIndex < totalExCount
+        ? '${_selectedSplit.exercises[currentExIndex][1]} · ${_getEquipmentForExercise(_selectedSplit.exercises[currentExIndex][0])}'
+        : null;
 
-            // Scrollable Middle Content
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
+    // Realistic time calculation: (Work 45s + Rest 90s) * remaining sets
+    final remainingSetsCount = (totalExCount - currentExIndex) * totalSets + (totalSets - currentSet + 1);
+    final minutesLeft = ((remainingSetsCount * (45 + _getPrescribedRestSeconds(_activeExerciseName!))) / 60).round();
+
+    return Stack(
+      children: [
+        // Instrument Panel Container (#0A0C10 background, no bottom nav bar)
+        Container(
+          color: const Color(0xFF0A0C10),
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Top Navigation Bar (Instrument Panel)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Exercise Name
-                      Text(
-                        _activeExerciseName!,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: theme.text1,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      // Sets x Reps Target
-                      Text(
-                        '$totalSets sets × ${state.maxReps} reps',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          color: theme.text3,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Overall exercise progress & estimated time
-                      Text(
-                        'Exercise $_currentExerciseIndex of ${_selectedSplit.exercises.length}',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          color: theme.text3,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _timeEstimate,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          color: theme.text3,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Stick figure canvas
-                      Container(
-                        width: 90,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: theme.card,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: theme.border, width: 1),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: StickFigureWidget(
-                            exerciseName: _isCelebrating
-                                ? 'celebrate'
-                                : _activeExerciseName!,
-                            accentColor: theme.teal,
-                            size: 90,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      // Target Muscle Label below figure
-                      Text(
-                        _getTargetMuscleLabel(_activeExerciseName!),
-                        style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          color: theme.text3,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Set Progress Dots
-                      SetProgressDots(
-                        totalSets: totalSets,
-                        currentSet: currentSet,
-                        isCompleted: state.completed,
-                        theme: theme,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Hero counter number (animated transition)
-                      _SetTransitionNumberWidget(
-                        value: _repsRemaining,
-                        currentSet: currentSet,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 72,
-                          fontWeight: FontWeight.w900,
-                          color: isSetDone ? theme.text3 : theme.teal,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      _ComboIndicator(combo: _comboCount),
-                      const SizedBox(height: 6),
-
-                      Text(
-                        isSetDone ? 'Set complete!' : 'Tap to count down',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: const Color(0xFF5A5A6A),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // TAP Button with particles & progress ring
-                      _TapBurstButtonWrapper(
-                        repsRemaining: _repsRemaining,
-                        totalReps: state.maxReps,
-                        theme: theme,
+                      // Back Button (Requires Confirmation)
+                      GestureDetector(
                         onTap: () {
-                          if (_repsRemaining > 0) {
-                            final now = DateTime.now();
-                            if (_lastTapTime != null) {
-                              final diff = now
-                                  .difference(_lastTapTime!)
-                                  .inMilliseconds;
-                              if (diff <= 800) {
-                                _comboCount++;
-                              } else {
-                                _comboCount = 1;
-                              }
-                            } else {
-                              _comboCount = 1;
-                            }
-                            _lastTapTime = now;
-
-                            _comboResetTimer?.cancel();
-                            _comboResetTimer = Timer(
-                              const Duration(milliseconds: 800),
-                              () {
-                                if (mounted) {
-                                  setState(() {
-                                    _comboCount = 1;
-                                  });
-                                }
-                              },
-                            );
-
-                            // Track tap times for time estimation
-                            _recentTapTimes.add(now);
-                            if (_recentTapTimes.length > 10) {
-                              _recentTapTimes.removeAt(0);
-                            }
-                            _tapCountForEstimate++;
-                            if (_tapCountForEstimate % 5 == 0) {
-                              _timeEstimate = _calculateTimeEstimate();
-                            }
-
-                            setState(() {
-                              _repsRemaining--;
-                              state.repsRemaining = _repsRemaining;
-                            });
-
-                            if (_repsRemaining == 0) {
-                              // Current set complete
-                              HapticService.workoutRepZero();
-
-                              if (isLastSet) {
-                                // Exercise complete
-                                SoundManager.playExerciseComplete();
-                                HapticService.exerciseComplete();
-
-                                setState(() {
-                                  _isCelebrating = true;
-                                });
-
-                                Future.delayed(
-                                  const Duration(milliseconds: 800),
-                                  () {
-                                    if (mounted) {
-                                      setState(() {
-                                        _isCelebrating = false;
-
-                                        // Finalize exercise
-                                        state.completed = true;
-                                        state.repsRemaining = 0;
-                                        _recalculateStats();
-                                      });
-                                      _savePreferences();
-                                      _saveWorkoutProgress(
-                                        _selectedSplit,
-                                        completed:
-                                            _dayCompletedExercises(
-                                              _selectedSplit,
-                                            ) ==
-                                            _selectedSplit.exercises.length,
-                                      );
-                                      setState(() {
-                                        _showExerciseCompleteOverlay = true;
-                                      });
-                                      _maybeCompleteWorkout();
-                                    }
-                                  },
-                                );
-                              } else {
-                                // Set complete
-                                SoundManager.playSetComplete();
-                              }
-                            }
-                          }
+                          HapticService.negative();
+                          SoundManager.playTapClick();
+                          _showEndWorkoutConfirmation(theme);
                         },
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Rotating motivational phrase with fade
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: Text(
-                          _motivationalPhrase,
-                          key: ValueKey(_motivationalPhrase),
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: const Color(0xFF5A5A6A),
-                            fontWeight: FontWeight.w600,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF181B21),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFF23262D), width: 1),
                           ),
+                          child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFFE8EAED)),
                         ),
                       ),
-                      const SizedBox(height: 16),
+
+                      // Set Progress Badge + Large Segmented Bar (Issue 12)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2ECC71).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xFF2ECC71).withValues(alpha: 0.25),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Set $currentSet/$totalSets',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF2ECC71),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Segmented Progress Bar (3 blocks, 6px height)
+                                Row(
+                                  children: List.generate(totalSets, (i) {
+                                    final filled = i < currentSet;
+                                    return Container(
+                                      width: 12,
+                                      height: 6,
+                                      margin: EdgeInsets.only(left: i > 0 ? 3 : 0),
+                                      decoration: BoxDecoration(
+                                        color: filled ? const Color(0xFF2ECC71) : const Color(0xFF23262D),
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Voice Cue Toggle & Pause Button (Issues 3 & 13)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Voice Cue Toggle
+                          GestureDetector(
+                            onTap: () {
+                              HapticService.light();
+                              setState(() {
+                                _voiceCuesEnabled = !_voiceCuesEnabled;
+                              });
+                            },
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF181B21),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF23262D), width: 1),
+                              ),
+                              child: Icon(
+                                _voiceCuesEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                                size: 18,
+                                color: _voiceCuesEnabled ? const Color(0xFF2ECC71) : const Color(0xFF6B7280),
+                              ),
+                            ),
+                          ),
+                          // Pause Button (Issue 3)
+                          GestureDetector(
+                            onTap: () {
+                              HapticService.light();
+                              setState(() => _isPaused = true);
+                            },
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF181B21),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF23262D), width: 1),
+                              ),
+                              child: const Icon(Icons.pause_rounded, size: 20, color: Color(0xFFF2C94C)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ),
 
-            // Fixed Footer: Skip | Next Set (if done) | Edit
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Skip Button (left, dark)
-                  TextButton(
-                    onPressed: () {
-                      HapticService.negative();
-                      SoundManager.playTapClick();
-                      setState(() => _showRepCounter = false);
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: theme.card,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(color: theme.border, width: 0.5),
-                      ),
-                    ),
-                    child: Text(
-                      'Skip',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        color: theme.text2,
-                        fontWeight: FontWeight.bold,
-                      ),
+                // Main Scrollable Area (Instrument Panel during set, Recovery Dashboard during rest)
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 8),
+
+                        // Exercise Title
+                        Text(
+                          _activeExerciseName!,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+
+                        // Exercise Meta line + Realistic Time Estimate (Issue 5)
+                        Text(
+                          '$totalSets sets × $targetReps reps · ${_getEquipmentForExercise(_activeExerciseName!)}',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            color: const Color(0xFF8B929D),
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '~$minutesLeft min left (work + rest)',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: const Color(0xFF6B7280),
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Last Session Performance & RPE Context Pill (Issue 10)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF181B21),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFF23262D), width: 1),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.trending_up_rounded, size: 14, color: Color(0xFF6B7280)),
+                              const SizedBox(width: 6),
+                              RichText(
+                                text: TextSpan(
+                                  style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF8B929D)),
+                                  children: [
+                                    const TextSpan(text: 'Last: '),
+                                    TextSpan(
+                                      text: '${targetReps - 1} reps @ RPE 8 ',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                      text: '↑',
+                                      style: TextStyle(
+                                        color: Color(0xFF2ECC71),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Exercise Illustration Card (140x140) (Issue 11)
+                        Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF181B21),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFF23262D), width: 1),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: StickFigureWidget(
+                              exerciseName: _isCelebrating ? 'celebrate' : _activeExerciseName!,
+                              accentColor: const Color(0xFF2ECC71),
+                              size: 140,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Form Cue Banner with Left Accent Border (Issue 9)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF181B21),
+                            borderRadius: BorderRadius.circular(10),
+                            border: const Border(
+                              left: BorderSide(color: Color(0xFFF2C94C), width: 3),
+                              top: BorderSide(color: Color(0xFF23262D), width: 1),
+                              right: BorderSide(color: Color(0xFF23262D), width: 1),
+                              bottom: BorderSide(color: Color(0xFF23262D), width: 1),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFF2C94C)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _getFormCueForExercise(_activeExerciseName!),
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFFF2C94C),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Circular Progress Ring & Large Rep Display (Issue 8)
+                        _isResting
+                            ? Column(
+                                children: [
+                                  Text(
+                                    '${(_restSeconds ~/ 60)}:${(_restSeconds % 60).toString().padLeft(2, '0')}',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 64,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFFF2C94C),
+                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                    ),
+                                  ),
+                                  Text(
+                                    'Resting... breathe & recover',
+                                    style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF6B7280)),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                children: [
+                                  // Circular Progress Ring wrapping Hero Number
+                                  SizedBox(
+                                    width: 150,
+                                    height: 150,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 150,
+                                          height: 150,
+                                          child: CustomPaint(
+                                            painter: _CircularProgressRingPainter(
+                                              progress: targetReps > 0
+                                                  ? (currentRepsLogged / targetReps).clamp(0.0, 1.0)
+                                                  : 0.0,
+                                              trackColor: const Color(0xFF23262D),
+                                              color: currentRepsLogged >= targetReps
+                                                  ? const Color(0xFF2ECC71)
+                                                  : const Color(0xFF2ECC71),
+                                            ),
+                                          ),
+                                        ),
+                                        Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              '$currentRepsLogged',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 56,
+                                                fontWeight: FontWeight.w500,
+                                                color: currentRepsLogged >= targetReps
+                                                    ? const Color(0xFF2ECC71)
+                                                    : Colors.white,
+                                                fontFeatures: const [FontFeature.tabularFigures()],
+                                              ),
+                                            ),
+                                            Text(
+                                              'of $targetReps reps',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 12,
+                                                color: const Color(0xFF6B7280),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                        const SizedBox(height: 20),
+
+                        // Hero Single Tap Button + Undo Link (Issues 6 & 7)
+                        if (!_isResting)
+                          Column(
+                            children: [
+                              // Main Hero Tap Button
+                              GestureDetector(
+                                onTap: () {
+                                  HapticService.medium();
+                                  SoundManager.playTapClick();
+
+                                  if (currentRepsLogged >= targetReps) {
+                                    // Finish set -> trigger RPE overlay
+                                    setState(() {
+                                      _selectedRpe = null;
+                                      _showRpeOverlay = true;
+                                    });
+                                  } else {
+                                    // Log rep
+                                    setState(() {
+                                      _repsRemaining--;
+                                      state.repsRemaining = _repsRemaining;
+                                    });
+                                    if (_repsRemaining == 0) {
+                                      HapticService.workoutRepZero();
+                                      setState(() {
+                                        _selectedRpe = null;
+                                        _showRpeOverlay = true;
+                                      });
+                                    }
+                                  }
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: currentRepsLogged >= targetReps
+                                        ? const Color(0xFF2ECC71)
+                                        : const Color(0xFF181B21),
+                                    border: Border.all(
+                                      color: const Color(0xFF2ECC71),
+                                      width: 3,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF2ECC71).withValues(alpha: 0.15),
+                                        blurRadius: 24,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        currentRepsLogged >= targetReps ? Icons.check : Icons.add_rounded,
+                                        size: 32,
+                                        color: currentRepsLogged >= targetReps
+                                            ? const Color(0xFF0A0C10)
+                                            : const Color(0xFF2ECC71),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        currentRepsLogged >= targetReps ? 'FINISH SET' : 'LOG REP',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.5,
+                                          color: currentRepsLogged >= targetReps
+                                              ? const Color(0xFF0A0C10)
+                                              : const Color(0xFF2ECC71),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Undo last rep link (Issue 7)
+                              if (currentRepsLogged > 0)
+                                TextButton.icon(
+                                  onPressed: () {
+                                    HapticService.light();
+                                    setState(() {
+                                      if (_repsRemaining < targetReps) {
+                                        _repsRemaining++;
+                                        state.repsRemaining = _repsRemaining;
+                                      }
+                                    });
+                                  },
+                                  icon: const Icon(Icons.undo_rounded, size: 14, color: Color(0xFF6B7280)),
+                                  label: Text(
+                                    'Undo last rep (−1)',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      color: const Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                )
+                              else
+                                const SizedBox(height: 24),
+                            ],
+                          )
+                        else
+                          // Skip Rest Button (Rest Mode)
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              _restTimer?.cancel();
+                              setState(() {
+                                _isResting = false;
+                                _restSeconds = 0;
+                              });
+                            },
+                            icon: const Icon(Icons.fast_forward_rounded, color: Color(0xFF0A0C10)),
+                            label: Text(
+                              'SKIP REST',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: const Color(0xFF0A0C10),
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF2C94C),
+                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        const SizedBox(height: 20),
+
+                        // Long-Press Skip Exercise Button (Issue 2)
+                        GestureDetector(
+                          onLongPressStart: (_) {
+                            HapticService.selection();
+                            _skipHoldProgress = 0.0;
+                            _skipHoldTimer?.cancel();
+                            _skipHoldTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+                              setState(() {
+                                _skipHoldProgress += 0.033; // 1.5 seconds total
+                              });
+                              if (_skipHoldProgress >= 1.0) {
+                                timer.cancel();
+                                HapticService.medium();
+                                setState(() {
+                                  _activeExerciseState?.completed = true;
+                                  _showRepCounter = false;
+                                  _skipHoldProgress = 0.0;
+                                });
+                                _MainScreenState.hideBottomNavNotifier.value = false;
+                              }
+                            });
+                          },
+                          onLongPressEnd: (_) {
+                            _skipHoldTimer?.cancel();
+                            setState(() => _skipHoldProgress = 0.0);
+                          },
+                          child: Container(
+                            width: 220,
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF181B21),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF23262D), width: 1),
+                            ),
+                            child: Stack(
+                              alignment: Alignment.centerLeft,
+                              children: [
+                                // Fill progress bar during long press
+                                if (_skipHoldProgress > 0)
+                                  FractionallySizedBox(
+                                    widthFactor: _skipHoldProgress.clamp(0.0, 1.0),
+                                    child: Container(
+                                      height: 24,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                    ),
+                                  ),
+                                Center(
+                                  child: Text(
+                                    _skipHoldProgress > 0 ? 'Hold to skip...' : 'Hold 1.5s to Skip Exercise',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      color: _skipHoldProgress > 0 ? const Color(0xFFEF4444) : const Color(0xFF6B7280),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 60),
+                      ],
                     ),
                   ),
+                ),
 
-                  // Next Set / Finish (center, only shows when set done)
-                  if (isSetDone)
-                    ElevatedButton(
-                      onPressed: () {
-                        HapticService.medium();
-                        SoundManager.playTapClick();
-
-                        if (isLastSet) {
-                          // Finalize exercise
-                          setState(() {
-                            state.completed = true;
-                            state.repsRemaining = 0;
-                            _recalculateStats();
-                          });
-                          _savePreferences();
-                          _saveWorkoutProgress(
-                            _selectedSplit,
-                            completed:
-                                _dayCompletedExercises(_selectedSplit) ==
-                                _selectedSplit.exercises.length,
-                          );
-                          setState(() {
-                            _showExerciseCompleteOverlay = true;
-                          });
-                          _maybeCompleteWorkout();
-                        } else {
-                          // Go to next set and start rest timer
-                          setState(() {
-                            state.currentSet = currentSet + 1;
-                            state.repsRemaining = state.maxReps;
-                            _repsRemaining = state.maxReps;
-
-                            // Start 90 seconds rest timer
-                            _restSeconds = 90;
-                            _restExerciseKey = state.exerciseKey;
-                            _isResting = true;
-                            _startRestTimer();
-                          });
-                          _savePreferences();
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.teal,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
+                // Next Exercise Preview Bar (Fixed at bottom)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF181B21),
+                    border: Border(
+                      top: BorderSide(color: Color(0xFF23262D), width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF23262D),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        elevation: 4,
-                      ),
-                      child: Text(
-                        isLastSet ? 'Finish Exercise' : 'Next Set',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                        child: Icon(
+                          nextExName != null ? Icons.fitness_center : Icons.check_circle,
+                          size: 20,
+                          color: nextExName != null ? const Color(0xFF8B929D) : const Color(0xFF2ECC71),
                         ),
                       ),
-                    )
-                  else
-                    const SizedBox(width: 80), // spacer
-                  // Edit Button (right, dark)
-                  TextButton(
-                    onPressed: () {
-                      HapticService.tapFeedback();
-                      SoundManager.playTapClick();
-                      _editRepsController.text = '${state.maxReps}';
-                      setState(() => _showEditRepsModal = true);
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: theme.card,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              nextExName != null ? 'UP NEXT' : 'WORKOUT COMPLETE',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.0,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                            Text(
+                              nextExName ?? 'Great job completing all exercises!',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFFE8EAED),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (nextExMeta != null)
+                              Text(
+                                nextExMeta,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: const Color(0xFF6B7280),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(color: theme.border, width: 0.5),
-                      ),
-                    ),
-                    child: Text(
-                      'Edit',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        color: theme.text2,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                      const Icon(Icons.chevron_right, size: 20, color: Color(0xFF6B7280)),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+
+        // Pause Overlay (Issue 3)
+        if (_isPaused)
+          Positioned.fill(
+            child: _buildPauseOverlay(theme),
+          ),
+
+        // RPE Rating Overlay
+        if (_showRpeOverlay)
+          Positioned.fill(
+            child: _buildRpeRatingOverlay(theme, state, isLastSet),
+          ),
+      ],
     );
   }
 
@@ -8826,7 +9391,9 @@ class SavingsGoal {
 
   factory SavingsGoal.fromJson(Map<String, dynamic> json) {
     return SavingsGoal(
-      id: json['id'] as String? ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id:
+          json['id'] as String? ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       name: json['name'] as String? ?? 'New Goal',
       percentage: (json['percentage'] as num?)?.toDouble() ?? 10.0,
       target: (json['target'] as num?)?.toInt() ?? 50000,
@@ -8835,8 +9402,6 @@ class SavingsGoal {
     );
   }
 }
-
-
 
 class _TransactionItem {
   final DateTime date;
@@ -9090,8 +9655,18 @@ class _IncomeScreenState extends State<IncomeScreen>
   String formatDayRowDate(DateTime date) {
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
   }
@@ -9103,7 +9678,15 @@ class _IncomeScreenState extends State<IncomeScreen>
     final compareDate = DateTime(date.year, date.month, date.day);
     if (compareDate == today) return 'Today';
     if (compareDate == yesterday) return 'Yesterday';
-    const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
     return weekdays[date.weekday - 1];
   }
 
@@ -9139,14 +9722,17 @@ class _IncomeScreenState extends State<IncomeScreen>
     setState(() {
       _earningCurrent = prefs.getString('income_earning_current') ?? '₹1.5L';
       _earningTarget = prefs.getString('income_earning_target') ?? '₹3L';
-      _earningTip = prefs.getString('income_earning_tip') ??
+      _earningTip =
+          prefs.getString('income_earning_tip') ??
           'Aim: ₹3L/month · ₹10,000 a day';
-      
+
       final rawGoals = prefs.getString('income_savings_goals_list');
       if (rawGoals != null && rawGoals.isNotEmpty) {
         try {
           final decoded = jsonDecode(rawGoals) as List<dynamic>;
-          _savingsGoals = decoded.map((g) => SavingsGoal.fromJson(g as Map<String, dynamic>)).toList();
+          _savingsGoals = decoded
+              .map((g) => SavingsGoal.fromJson(g as Map<String, dynamic>))
+              .toList();
         } catch (_) {
           _loadDefaultSavingsGoals();
         }
@@ -9190,7 +9776,7 @@ class _IncomeScreenState extends State<IncomeScreen>
     await prefs.setString('income_earning_current', _earningCurrent);
     await prefs.setString('income_earning_target', _earningTarget);
     await prefs.setString('income_earning_tip', _earningTip);
-    
+
     final encoded = jsonEncode(_savingsGoals.map((g) => g.toJson()).toList());
     await prefs.setString('income_savings_goals_list', encoded);
   }
@@ -9216,26 +9802,47 @@ class _IncomeScreenState extends State<IncomeScreen>
     final l = jd - 1948440 + 10632;
     final n = (l - 1) ~/ 10631;
     final rem = l - 10631 * n + 354;
-    final j = ((10985 - rem) ~/ 5316) * ((50 * rem) ~/ 17719) +
+    final j =
+        ((10985 - rem) ~/ 5316) * ((50 * rem) ~/ 17719) +
         (rem ~/ 5670) * ((43 * rem) ~/ 15238);
-    final lp = rem -
+    final lp =
+        rem -
         ((30 - j) ~/ 15) * ((17719 * j) ~/ 50) -
         (j ~/ 16) * ((15238 * j) ~/ 43) +
         29;
     final m = (24 * lp) ~/ 709;
     final y = 30 * n + j - 30;
     const hijriMonths = [
-      'Muharram', 'Safar', "Rabī' al-Awwal", "Rabī' ath-Thānī",
-      'Jumādā al-Ūlā', 'Jumādā ath-Thāniyah', 'Rajab', "Sha'bān",
-      'Ramaḍān', 'Shawwāl', "Dhū al-Qa'dah", "Dhū al-Ḥijjah",
+      'Muharram',
+      'Safar',
+      "Rabī' al-Awwal",
+      "Rabī' ath-Thānī",
+      'Jumādā al-Ūlā',
+      'Jumādā ath-Thāniyah',
+      'Rajab',
+      "Sha'bān",
+      'Ramaḍān',
+      'Shawwāl',
+      "Dhū al-Qa'dah",
+      "Dhū al-Ḥijjah",
     ];
     final mi = (m - 1).clamp(0, 11);
     return '${hijriMonths[mi]} $y AH';
   }
 
   static const _monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   void _prevMonth() {
@@ -9316,18 +9923,28 @@ class _IncomeScreenState extends State<IncomeScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors(widget.theme).bg,
-        title: Text('Delete Goal',
-            style: GoogleFonts.syne(
-                fontSize: 18, fontWeight: FontWeight.w700,
-                color: AppColors(widget.theme).text1)),
-        content: Text('Are you sure you want to delete "${goal.name}"?',
-            style: GoogleFonts.dmSans(
-                fontSize: 14, color: AppColors(widget.theme).text2)),
+        title: Text(
+          'Delete Goal',
+          style: GoogleFonts.syne(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors(widget.theme).text1,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${goal.name}"?',
+          style: GoogleFonts.dmSans(
+            fontSize: 14,
+            color: AppColors(widget.theme).text2,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
-                style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -9340,10 +9957,13 @@ class _IncomeScreenState extends State<IncomeScreen>
               _goalBarsController.reset();
               _goalBarsController.forward();
             },
-            child: Text('Delete',
-                style: GoogleFonts.dmSans(
-                    color: AppColors(widget.theme).red,
-                    fontWeight: FontWeight.w700)),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.dmSans(
+                color: AppColors(widget.theme).red,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -9355,18 +9975,25 @@ class _IncomeScreenState extends State<IncomeScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: colors.bg,
-        title: Text('Reset Savings Goals',
-            style: GoogleFonts.syne(
-                fontSize: 18, fontWeight: FontWeight.w700,
-                color: colors.text1)),
-        content: Text('Are you sure you want to reset all savings goals to default?',
-            style: GoogleFonts.dmSans(
-                fontSize: 14, color: colors.text2)),
+        title: Text(
+          'Reset Savings Goals',
+          style: GoogleFonts.syne(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: colors.text1,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to reset all savings goals to default?',
+          style: GoogleFonts.dmSans(fontSize: 14, color: colors.text2),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
-                style: GoogleFonts.dmSans(color: colors.text3)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.dmSans(color: colors.text3),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -9378,10 +10005,13 @@ class _IncomeScreenState extends State<IncomeScreen>
               _goalBarsController.reset();
               _goalBarsController.forward();
             },
-            child: Text('Reset',
-                style: GoogleFonts.dmSans(
-                    color: colors.red,
-                    fontWeight: FontWeight.w700)),
+            child: Text(
+              'Reset',
+              style: GoogleFonts.dmSans(
+                color: colors.red,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -9390,14 +10020,24 @@ class _IncomeScreenState extends State<IncomeScreen>
 
   void _showGoalFormSheet({SavingsGoal? existing}) {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
-    final targetCtrl = TextEditingController(text: existing?.target.toString() ?? '');
+    final targetCtrl = TextEditingController(
+      text: existing?.target.toString() ?? '',
+    );
     double pct = existing?.percentage ?? 10.0;
     String selectedIcon = existing?.iconName ?? 'star';
     int selectedColor = existing?.colorValue ?? 0xFFE8B84B;
 
     final colors = AppColors(widget.theme);
 
-    final iconsList = ['favorite', 'bitcoin', 'flight', 'home', 'car', 'school', 'star'];
+    final iconsList = [
+      'favorite',
+      'bitcoin',
+      'flight',
+      'home',
+      'car',
+      'school',
+      'star',
+    ];
     final iconDataMap = {
       'favorite': Icons.favorite,
       'bitcoin': Icons.currency_bitcoin,
@@ -9424,330 +10064,433 @@ class _IncomeScreenState extends State<IncomeScreen>
       builder: (ctx) {
         return BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: StatefulBuilder(builder: (ctx, setSheetState) {
-            return AnimatedPadding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom),
-              duration: const Duration(milliseconds: 200),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          child: StatefulBuilder(
+            builder: (ctx, setSheetState) {
+              return AnimatedPadding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
                 ),
-                decoration: BoxDecoration(
-                  color: colors.theme.isDark
-                      ? const Color(0xFF0E0E18)
-                      : const Color(0xFFF9F7F2),
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24)),
-                ),
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(existing == null ? 'Add Savings Goal' : 'Edit Savings Goal',
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.theme.isDark
+                        ? const Color(0xFF0E0E18)
+                        : const Color(0xFFF9F7F2),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              existing == null
+                                  ? 'Add Savings Goal'
+                                  : 'Edit Savings Goal',
                               style: GoogleFonts.syne(
-                                  fontSize: 18, fontWeight: FontWeight.w700,
-                                  color: colors.text1)),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(ctx),
-                            child: Container(
-                              width: 32, height: 32,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colors.card,
-                                border: Border.all(
-                                    color: colors.cardBorder, width: 1),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text1,
                               ),
-                              alignment: Alignment.center,
-                              child: Icon(Icons.close,
-                                  size: 12, color: colors.text2),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(ctx),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.card,
+                                  border: Border.all(
+                                    color: colors.cardBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.close,
+                                  size: 12,
+                                  color: colors.text2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        Text(
+                          'GOAL NAME',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.cardBorder),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 2,
+                          ),
+                          child: TextField(
+                            controller: nameCtrl,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. Wedding Fund',
+                              hintStyle: GoogleFonts.dmSans(
+                                color: colors.text3,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              border: InputBorder.none,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      Text('GOAL NAME',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              letterSpacing: 1, color: colors.text3)),
-                      const SizedBox(height: 6),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colors.card,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.cardBorder),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                        child: TextField(
-                          controller: nameCtrl,
+                        const SizedBox(height: 16),
+
+                        Text(
+                          'TARGET AMOUNT (₹)',
                           style: GoogleFonts.dmSans(
-                              fontSize: 16, fontWeight: FontWeight.w600,
-                              color: colors.text1),
-                          decoration: InputDecoration(
-                            hintText: 'e.g. Wedding Fund',
-                            hintStyle: GoogleFonts.dmSans(
-                                color: colors.text3,
-                                fontWeight: FontWeight.w400),
-                            border: InputBorder.none,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: colors.text3,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      Text('TARGET AMOUNT (₹)',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              letterSpacing: 1, color: colors.text3)),
-                      const SizedBox(height: 6),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colors.card,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.cardBorder),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                        child: TextField(
-                          controller: targetCtrl,
-                          keyboardType: TextInputType.number,
-                          style: GoogleFonts.dmSans(
-                              fontSize: 16, fontWeight: FontWeight.w600,
-                              color: colors.text1),
-                          decoration: InputDecoration(
-                            hintText: 'e.g. 100000',
-                            hintStyle: GoogleFonts.dmSans(
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.cardBorder),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 2,
+                          ),
+                          child: TextField(
+                            controller: targetCtrl,
+                            keyboardType: TextInputType.number,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. 100000',
+                              hintStyle: GoogleFonts.dmSans(
                                 color: colors.text3,
-                                fontWeight: FontWeight.w400),
-                            border: InputBorder.none,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              border: InputBorder.none,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('INCOME PERCENTAGE',
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'INCOME PERCENTAGE',
                               style: GoogleFonts.dmSans(
-                                  fontSize: 10, fontWeight: FontWeight.w700,
-                                  letterSpacing: 1, color: colors.text3)),
-                          Text('${pct.toStringAsFixed(0)}%',
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1,
+                                color: colors.text3,
+                              ),
+                            ),
+                            Text(
+                              '${pct.toStringAsFixed(0)}%',
                               style: GoogleFonts.dmSans(
-                                  fontSize: 14, fontWeight: FontWeight.w700,
-                                  color: colors.gold)),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Slider(
-                        value: pct,
-                        min: 0.0,
-                        max: 100.0,
-                        divisions: 100,
-                        activeColor: colors.gold,
-                        inactiveColor: colors.cardBorder,
-                        onChanged: (val) {
-                          setSheetState(() {
-                            pct = val;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: colors.gold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Slider(
+                          value: pct,
+                          min: 0.0,
+                          max: 100.0,
+                          divisions: 100,
+                          activeColor: colors.gold,
+                          inactiveColor: colors.cardBorder,
+                          onChanged: (val) {
+                            setSheetState(() {
+                              pct = val;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
 
-                      Text('SELECT ICON',
+                        Text(
+                          'SELECT ICON',
                           style: GoogleFonts.dmSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              letterSpacing: 1, color: colors.text3)),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 48,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: iconsList.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 10),
-                          itemBuilder: (context, idx) {
-                            final key = iconsList[idx];
-                            final icon = iconDataMap[key]!;
-                            final isSelected = selectedIcon == key;
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 48,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: iconsList.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: 10),
+                            itemBuilder: (context, idx) {
+                              final key = iconsList[idx];
+                              final icon = iconDataMap[key]!;
+                              final isSelected = selectedIcon == key;
+                              return GestureDetector(
+                                onTap: () {
+                                  HapticService.selection();
+                                  setSheetState(() {
+                                    selectedIcon = key;
+                                  });
+                                },
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? colors.gold3
+                                        : colors.card,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? colors.gold
+                                          : colors.cardBorder,
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    icon,
+                                    size: 18,
+                                    color: isSelected
+                                        ? colors.gold
+                                        : colors.text2,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        Text(
+                          'SELECT COLOR',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: colorOptions.map((cVal) {
+                            final isSelected = selectedColor == cVal;
                             return GestureDetector(
                               onTap: () {
                                 HapticService.selection();
                                 setSheetState(() {
-                                  selectedIcon = key;
+                                  selectedColor = cVal;
                                 });
                               },
                               child: Container(
-                                width: 44,
-                                height: 44,
+                                margin: const EdgeInsets.only(right: 12),
+                                width: 34,
+                                height: 34,
                                 decoration: BoxDecoration(
-                                  color: isSelected ? colors.gold3 : colors.card,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                      color: isSelected ? colors.gold : colors.cardBorder,
-                                      width: isSelected ? 2 : 1),
+                                  color: Color(cVal),
+                                  shape: BoxShape.circle,
+                                  border: isSelected
+                                      ? Border.all(
+                                          color: colors.text1,
+                                          width: 3,
+                                        )
+                                      : Border.all(
+                                          color: Colors.transparent,
+                                          width: 0,
+                                        ),
                                 ),
-                                child: Icon(icon,
-                                    size: 18,
-                                    color: isSelected ? colors.gold : colors.text2),
                               ),
                             );
-                          },
+                          }).toList(),
                         ),
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 24),
 
-                      Text('SELECT COLOR',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              letterSpacing: 1, color: colors.text3)),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: colorOptions.map((cVal) {
-                          final isSelected = selectedColor == cVal;
-                          return GestureDetector(
-                            onTap: () {
-                              HapticService.selection();
-                              setSheetState(() {
-                                selectedColor = cVal;
-                              });
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 12),
-                              width: 34,
-                              height: 34,
-                              decoration: BoxDecoration(
-                                color: Color(cVal),
-                                shape: BoxShape.circle,
-                                border: isSelected
-                                    ? Border.all(
-                                        color: colors.text1,
-                                        width: 3)
-                                    : Border.all(
-                                        color: Colors.transparent,
-                                        width: 0),
+                        Row(
+                          children: [
+                            if (existing != null) ...[
+                              Expanded(
+                                flex: 1,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    HapticService.light();
+                                    _showDeleteConfirmation(existing);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.red2,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: colors.red.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.delete,
+                                      color: colors.red,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 24),
-
-                      Row(
-                        children: [
-                          if (existing != null) ...[
+                              const SizedBox(width: 10),
+                            ],
                             Expanded(
-                              flex: 1,
+                              flex: 3,
                               child: GestureDetector(
                                 onTap: () {
-                                  HapticService.light();
-                                  _showDeleteConfirmation(existing);
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  decoration: BoxDecoration(
-                                    color: colors.red2,
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                        color: colors.red.withValues(alpha: 0.3),
-                                        width: 1),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Icon(Icons.delete, color: colors.red, size: 20),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                          ],
-                          Expanded(
-                            flex: 3,
-                            child: GestureDetector(
-                              onTap: () {
-                                final name = nameCtrl.text.trim();
-                                final target = int.tryParse(targetCtrl.text.trim()) ?? 0;
-                                if (name.isEmpty || target <= 0) return;
+                                  final name = nameCtrl.text.trim();
+                                  final target =
+                                      int.tryParse(targetCtrl.text.trim()) ?? 0;
+                                  if (name.isEmpty || target <= 0) return;
 
-                                setState(() {
-                                  if (existing != null) {
-                                    final index = _savingsGoals.indexWhere((g) => g.id == existing.id);
-                                    if (index != -1) {
-                                      _savingsGoals[index] = SavingsGoal(
-                                        id: existing.id,
-                                        name: name,
-                                        percentage: pct,
-                                        target: target,
-                                        iconName: selectedIcon,
-                                        colorValue: selectedColor,
+                                  setState(() {
+                                    if (existing != null) {
+                                      final index = _savingsGoals.indexWhere(
+                                        (g) => g.id == existing.id,
+                                      );
+                                      if (index != -1) {
+                                        _savingsGoals[index] = SavingsGoal(
+                                          id: existing.id,
+                                          name: name,
+                                          percentage: pct,
+                                          target: target,
+                                          iconName: selectedIcon,
+                                          colorValue: selectedColor,
+                                        );
+                                      }
+                                    } else {
+                                      _savingsGoals.add(
+                                        SavingsGoal(
+                                          id: DateTime.now()
+                                              .millisecondsSinceEpoch
+                                              .toString(),
+                                          name: name,
+                                          percentage: pct,
+                                          target: target,
+                                          iconName: selectedIcon,
+                                          colorValue: selectedColor,
+                                        ),
                                       );
                                     }
-                                  } else {
-                                    _savingsGoals.add(SavingsGoal(
-                                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                                      name: name,
-                                      percentage: pct,
-                                      target: target,
-                                      iconName: selectedIcon,
-                                      colorValue: selectedColor,
-                                    ));
-                                  }
-                                });
-                                _saveEditableGoals();
-                                _goalBarsController.reset();
-                                _goalBarsController.forward();
-                                Navigator.pop(ctx);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [colors.gold, colors.theme.isDark
-                                        ? colors.gold.withValues(alpha: 0.8)
-                                        : const Color(0xFFB8860B)],
+                                  });
+                                  _saveEditableGoals();
+                                  _goalBarsController.reset();
+                                  _goalBarsController.forward();
+                                  Navigator.pop(ctx);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
                                   ),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  existing == null ? 'Create Goal' : 'Save Changes',
-                                  style: GoogleFonts.dmSans(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        colors.gold,
+                                        colors.theme.isDark
+                                            ? colors.gold.withValues(alpha: 0.8)
+                                            : const Color(0xFFB8860B),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    existing == null
+                                        ? 'Create Goal'
+                                        : 'Save Changes',
+                                    style: GoogleFonts.dmSans(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.white),
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
         );
       },
     );
   }
 
-  void _editStringField(String label, String current, ValueChanged<String> onSave) {
+  void _editStringField(
+    String label,
+    String current,
+    ValueChanged<String> onSave,
+  ) {
     final ctrl = TextEditingController(text: current);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors(widget.theme).bg,
-        title: Text('Edit $label',
-            style: GoogleFonts.syne(
-                fontSize: 18, fontWeight: FontWeight.w700,
-                color: AppColors(widget.theme).text1)),
+        title: Text(
+          'Edit $label',
+          style: GoogleFonts.syne(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors(widget.theme).text1,
+          ),
+        ),
         content: TextField(
           controller: ctrl,
           style: GoogleFonts.dmSans(
-              fontSize: 16, color: AppColors(widget.theme).text1),
+            fontSize: 16,
+            color: AppColors(widget.theme).text1,
+          ),
           decoration: InputDecoration(
             hintText: 'Enter value',
             hintStyle: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
@@ -9756,8 +10499,10 @@ class _IncomeScreenState extends State<IncomeScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
-                style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -9768,10 +10513,13 @@ class _IncomeScreenState extends State<IncomeScreen>
               }
               Navigator.pop(ctx);
             },
-            child: Text('Save',
-                style: GoogleFonts.dmSans(
-                    color: AppColors(widget.theme).gold,
-                    fontWeight: FontWeight.w700)),
+            child: Text(
+              'Save',
+              style: GoogleFonts.dmSans(
+                color: AppColors(widget.theme).gold,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -9809,20 +10557,22 @@ class _IncomeScreenState extends State<IncomeScreen>
       final dur = 1000 + rng.nextInt(1000);
       final delay = rng.nextInt(300);
 
-      entry = OverlayEntry(builder: (context) {
-        return _CelebrationParticle(
-          symbol: symbol,
-          startX: startX,
-          startY: startY,
-          fontSize: size,
-          duration: dur,
-          delay: delay,
-          fallDistance: 200,
-          onComplete: () {
-            entry.remove();
-          },
-        );
-      });
+      entry = OverlayEntry(
+        builder: (context) {
+          return _CelebrationParticle(
+            symbol: symbol,
+            startX: startX,
+            startY: startY,
+            fontSize: size,
+            duration: dur,
+            delay: delay,
+            fallDistance: 200,
+            onComplete: () {
+              entry.remove();
+            },
+          );
+        },
+      );
       overlay.insert(entry);
     }
   }
@@ -9833,8 +10583,12 @@ class _IncomeScreenState extends State<IncomeScreen>
     final screenW = MediaQuery.of(context).size.width;
     final colors = AppColors(widget.theme);
     final confettiColors = [
-      colors.gold, colors.emerald, const Color(0xFFA78BFA),
-      colors.red, const Color(0xFF60A5FA), Colors.white,
+      colors.gold,
+      colors.emerald,
+      const Color(0xFFA78BFA),
+      colors.red,
+      const Color(0xFF60A5FA),
+      Colors.white,
     ];
 
     for (int i = 0; i < 25; i++) {
@@ -9846,19 +10600,21 @@ class _IncomeScreenState extends State<IncomeScreen>
       final delay = rng.nextInt(500);
       final isCircle = rng.nextBool();
 
-      entry = OverlayEntry(builder: (context) {
-        return _IncomeConfettiDot(
-          startX: startX,
-          size: size,
-          color: color,
-          duration: dur,
-          delay: delay,
-          isCircle: isCircle,
-          onComplete: () {
-            entry.remove();
-          },
-        );
-      });
+      entry = OverlayEntry(
+        builder: (context) {
+          return _IncomeConfettiDot(
+            startX: startX,
+            size: size,
+            color: color,
+            duration: dur,
+            delay: delay,
+            isCircle: isCircle,
+            onComplete: () {
+              entry.remove();
+            },
+          );
+        },
+      );
       overlay.insert(entry);
     }
   }
@@ -9866,9 +10622,11 @@ class _IncomeScreenState extends State<IncomeScreen>
   void _showFireFlame() {
     final overlay = Overlay.of(context);
     late OverlayEntry entry;
-    entry = OverlayEntry(builder: (context) {
-      return _FireFlameOverlay(onComplete: () => entry.remove());
-    });
+    entry = OverlayEntry(
+      builder: (context) {
+        return _FireFlameOverlay(onComplete: () => entry.remove());
+      },
+    );
     overlay.insert(entry);
   }
 
@@ -9876,13 +10634,15 @@ class _IncomeScreenState extends State<IncomeScreen>
     final overlay = Overlay.of(context);
     late OverlayEntry entry;
     final colors = AppColors(widget.theme);
-    entry = OverlayEntry(builder: (context) {
-      return _GoldToast(
-        message: '${_money(amount)} added! 💰',
-        goldColor: colors.gold,
-        onComplete: () => entry.remove(),
-      );
-    });
+    entry = OverlayEntry(
+      builder: (context) {
+        return _GoldToast(
+          message: '${_money(amount)} added! 💰',
+          goldColor: colors.gold,
+          onComplete: () => entry.remove(),
+        );
+      },
+    );
     overlay.insert(entry);
   }
 
@@ -9894,13 +10654,15 @@ class _IncomeScreenState extends State<IncomeScreen>
     final overlay = Overlay.of(context);
     late OverlayEntry entry;
     final colors = AppColors(widget.theme);
-    entry = OverlayEntry(builder: (context) {
-      return _GoldToast(
-        message: '${_money(amount)} expense added! 💸',
-        goldColor: colors.red,
-        onComplete: () => entry.remove(),
-      );
-    });
+    entry = OverlayEntry(
+      builder: (context) {
+        return _GoldToast(
+          message: '${_money(amount)} expense added! 💸',
+          goldColor: colors.red,
+          onComplete: () => entry.remove(),
+        );
+      },
+    );
     overlay.insert(entry);
   }
 
@@ -9917,296 +10679,357 @@ class _IncomeScreenState extends State<IncomeScreen>
       builder: (ctx) {
         return BackdropFilter(
           filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: StatefulBuilder(builder: (ctx, setSheetState) {
-            final isAddingIncome = _isInputIncome;
+          child: StatefulBuilder(
+            builder: (ctx, setSheetState) {
+              final isAddingIncome = _isInputIncome;
 
-            return AnimatedPadding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom),
-              duration: const Duration(milliseconds: 200),
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+              return AnimatedPadding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
                 ),
-                decoration: BoxDecoration(
-                  color: colors.theme.isDark
-                      ? const Color(0xFF0E0E18)
-                      : const Color(0xFFF9F7F2),
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24)),
-                ),
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(isAddingIncome ? 'Add Income' : 'Add Expense',
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.theme.isDark
+                        ? const Color(0xFF0E0E18)
+                        : const Color(0xFFF9F7F2),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              isAddingIncome ? 'Add Income' : 'Add Expense',
                               style: GoogleFonts.syne(
-                                  fontSize: 18, fontWeight: FontWeight.w700,
-                                  color: colors.text1)),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(ctx),
-                            child: Container(
-                              width: 32, height: 32,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colors.card,
-                                border: Border.all(
-                                    color: colors.cardBorder, width: 1),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text1,
                               ),
-                              alignment: Alignment.center,
-                              child: Icon(Icons.close,
-                                  size: 12, color: colors.text2),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(ctx),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.card,
+                                  border: Border.all(
+                                    color: colors.cardBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.close,
+                                  size: 12,
+                                  color: colors.text2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticService.selection();
+                                  setSheetState(() {
+                                    _isInputIncome = true;
+                                  });
+                                },
+                                child: Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: isAddingIncome
+                                        ? colors.emerald2
+                                        : colors.bg,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isAddingIncome
+                                          ? colors.emerald.withValues(
+                                              alpha: 0.25,
+                                            )
+                                          : colors.cardBorder,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'Income',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: isAddingIncome
+                                          ? colors.emerald
+                                          : colors.text3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticService.selection();
+                                  setSheetState(() {
+                                    _isInputIncome = false;
+                                  });
+                                },
+                                child: Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: !isAddingIncome
+                                        ? colors.red2
+                                        : colors.bg,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: !isAddingIncome
+                                          ? colors.red.withValues(alpha: 0.25)
+                                          : colors.cardBorder,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    'Expense',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: !isAddingIncome
+                                          ? colors.red
+                                          : colors.text3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        Text(
+                          'AMOUNT (₹)',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.cardBorder),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 2,
+                          ),
+                          child: TextField(
+                            controller: _incomeCtrl,
+                            keyboardType: TextInputType.number,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: '0',
+                              hintStyle: GoogleFonts.dmSans(
+                                color: colors.text3,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              border: InputBorder.none,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                        ),
+                        const SizedBox(height: 14),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
+                        Text(
+                          isAddingIncome ? 'SOURCE' : 'DESCRIPTION',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.cardBorder),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 2,
+                          ),
+                          child: TextField(
+                            controller: _sourceCtrl,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: isAddingIncome
+                                  ? 'e.g. Freelance project'
+                                  : 'e.g. Groceries, internet bills',
+                              hintStyle: GoogleFonts.dmSans(
+                                color: colors.text3,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        Text(
+                          'QUICK ADD',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        GridView.count(
+                          crossAxisCount: 4,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 2.0,
+                          children: [500, 1000, 2000, 5000].map((val) {
+                            return GestureDetector(
                               onTap: () {
                                 HapticService.selection();
                                 setSheetState(() {
-                                  _isInputIncome = true;
+                                  _incomeCtrl.text = val.toString();
                                 });
                               },
                               child: Container(
-                                height: 40,
                                 decoration: BoxDecoration(
-                                  color: isAddingIncome
-                                      ? colors.emerald2
-                                      : colors.bg,
+                                  color: colors.card,
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                    color: isAddingIncome
-                                        ? colors.emerald.withValues(alpha: 0.25)
-                                        : colors.cardBorder,
+                                    color: colors.cardBorder,
                                     width: 1,
                                   ),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  'Income',
+                                  _money(val),
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: isAddingIncome
-                                        ? colors.emerald
-                                        : colors.text3,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                HapticService.selection();
-                                setSheetState(() {
-                                  _isInputIncome = false;
-                                });
-                              },
-                              child: Container(
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: !isAddingIncome ? colors.red2 : colors.bg,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: !isAddingIncome
-                                        ? colors.red.withValues(alpha: 0.25)
-                                        : colors.cardBorder,
-                                    width: 1,
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Expense',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: !isAddingIncome
-                                        ? colors.red
-                                        : colors.text3,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      Text('AMOUNT (₹)',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              letterSpacing: 1, color: colors.text3)),
-                      const SizedBox(height: 6),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colors.card,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.cardBorder),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 2),
-                        child: TextField(
-                          controller: _incomeCtrl,
-                          keyboardType: TextInputType.number,
-                          style: GoogleFonts.dmSans(
-                              fontSize: 16, fontWeight: FontWeight.w600,
-                              color: colors.text1),
-                          decoration: InputDecoration(
-                            hintText: '0',
-                            hintStyle: GoogleFonts.dmSans(
-                                color: colors.text3,
-                                fontWeight: FontWeight.w400),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      Text(isAddingIncome ? 'SOURCE' : 'DESCRIPTION',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              letterSpacing: 1, color: colors.text3)),
-                      const SizedBox(height: 6),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colors.card,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.cardBorder),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 2),
-                        child: TextField(
-                          controller: _sourceCtrl,
-                          style: GoogleFonts.dmSans(
-                              fontSize: 16, fontWeight: FontWeight.w600,
-                              color: colors.text1),
-                          decoration: InputDecoration(
-                            hintText: isAddingIncome
-                                ? 'e.g. Freelance project'
-                                : 'e.g. Groceries, internet bills',
-                            hintStyle: GoogleFonts.dmSans(
-                                color: colors.text3,
-                                fontWeight: FontWeight.w400),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      Text('QUICK ADD',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              letterSpacing: 1, color: colors.text3)),
-                      const SizedBox(height: 8),
-                      GridView.count(
-                        crossAxisCount: 4,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 2.0,
-                        children: [500, 1000, 2000, 5000].map((val) {
-                          return GestureDetector(
-                            onTap: () {
-                              HapticService.selection();
-                              setSheetState(() {
-                                _incomeCtrl.text = val.toString();
-                              });
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: colors.card,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: colors.cardBorder, width: 1),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                _money(val),
-                                style: GoogleFonts.dmSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
-                                    color: colors.text2),
+                                    color: colors.text2,
+                                  ),
+                                ),
                               ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 20),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 20),
 
-                      GestureDetector(
-                        onTap: () {
-                          final amount =
-                              int.tryParse(_incomeCtrl.text.trim());
-                          if (amount == null || amount <= 0) return;
-                          HapticService.light();
-                          Navigator.pop(ctx);
-                          
-                          if (isAddingIncome) {
-                            _submitIncome(amount, _sourceCtrl.text.trim());
-                            _triggerCelebrations(amount);
-                          } else {
-                            widget.onAddExpense(amount);
-                            _showExpenseToast(amount);
-                          }
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: isAddingIncome
-                                  ? [colors.gold, colors.theme.isDark
-                                      ? colors.gold.withValues(alpha: 0.8)
-                                      : const Color(0xFFB8860B)]
-                                  : [colors.red, colors.theme.isDark
-                                      ? colors.red.withValues(alpha: 0.8)
-                                      : const Color(0xFFC0392B)],
-                            ),
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isAddingIncome ? colors.gold3 : colors.red2,
-                                blurRadius: 24,
-                                offset: const Offset(0, 6),
+                        GestureDetector(
+                          onTap: () {
+                            final amount = int.tryParse(
+                              _incomeCtrl.text.trim(),
+                            );
+                            if (amount == null || amount <= 0) return;
+                            HapticService.light();
+                            Navigator.pop(ctx);
+
+                            if (isAddingIncome) {
+                              _submitIncome(amount, _sourceCtrl.text.trim());
+                              _triggerCelebrations(amount);
+                            } else {
+                              widget.onAddExpense(amount);
+                              _showExpenseToast(amount);
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: isAddingIncome
+                                    ? [
+                                        colors.gold,
+                                        colors.theme.isDark
+                                            ? colors.gold.withValues(alpha: 0.8)
+                                            : const Color(0xFFB8860B),
+                                      ]
+                                    : [
+                                        colors.red,
+                                        colors.theme.isDark
+                                            ? colors.red.withValues(alpha: 0.8)
+                                            : const Color(0xFFC0392B),
+                                      ],
                               ),
-                            ],
-                          ),
-                          alignment: Alignment.center,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(isAddingIncome ? Icons.add : Icons.remove,
-                                  size: 18, color: Colors.white),
-                              const SizedBox(width: 6),
-                              Text(isAddingIncome ? 'Add Income' : 'Add Expense',
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isAddingIncome
+                                      ? colors.gold3
+                                      : colors.red2,
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  isAddingIncome ? Icons.add : Icons.remove,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isAddingIncome ? 'Add Income' : 'Add Expense',
                                   style: GoogleFonts.dmSans(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white)),
-                            ],
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
         );
       },
     );
@@ -10227,18 +11050,27 @@ class _IncomeScreenState extends State<IncomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('INCOME TRACKER',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 10, fontWeight: FontWeight.w700,
-                      letterSpacing: 2, color: colors.text3)),
+              Text(
+                'INCOME TRACKER',
+                style: GoogleFonts.dmSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2,
+                  color: colors.text3,
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: colors.gold3,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: colors.gold.withValues(alpha: 0.2), width: 1),
+                    color: colors.gold.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -10246,20 +11078,25 @@ class _IncomeScreenState extends State<IncomeScreen>
                     AnimatedBuilder(
                       animation: _fireController,
                       builder: (_, child) {
-                        final scale = 1.0 +
+                        final scale =
+                            1.0 +
                             0.2 *
-                                Curves.easeInOut
-                                    .transform(_fireController.value);
-                        return Transform.scale(
-                            scale: scale, child: child);
+                                Curves.easeInOut.transform(
+                                  _fireController.value,
+                                );
+                        return Transform.scale(scale: scale, child: child);
                       },
                       child: const Text('🔥', style: TextStyle(fontSize: 10)),
                     ),
                     const SizedBox(width: 4),
-                    Text('$streak day streak',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 10, fontWeight: FontWeight.w700,
-                            color: colors.gold)),
+                    Text(
+                      '$streak day streak',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: colors.gold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -10274,37 +11111,47 @@ class _IncomeScreenState extends State<IncomeScreen>
               GestureDetector(
                 onTap: _prevMonth,
                 child: Container(
-                  width: 30, height: 30,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
                     color: colors.card,
                     borderRadius: BorderRadius.circular(9),
                     border: Border.all(color: colors.cardBorder, width: 1),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(Icons.chevron_left,
-                      size: 11, color: colors.text2),
+                  child: Icon(
+                    Icons.chevron_left,
+                    size: 11,
+                    color: colors.text2,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
               Text(
                 '${_monthNames[_selectedMonth - 1]} $_selectedYear',
                 style: GoogleFonts.syne(
-                    fontSize: 24, fontWeight: FontWeight.w800,
-                    color: colors.text1),
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: colors.text1,
+                ),
               ),
               const SizedBox(width: 16),
               GestureDetector(
                 onTap: _nextMonth,
                 child: Container(
-                  width: 30, height: 30,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
                     color: colors.card,
                     borderRadius: BorderRadius.circular(9),
                     border: Border.all(color: colors.cardBorder, width: 1),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(Icons.chevron_right,
-                      size: 11, color: colors.text2),
+                  child: Icon(
+                    Icons.chevron_right,
+                    size: 11,
+                    color: colors.text2,
+                  ),
                 ),
               ),
             ],
@@ -10316,8 +11163,10 @@ class _IncomeScreenState extends State<IncomeScreen>
             child: Text(
               _hijriApprox(),
               style: GoogleFonts.amiri(
-                  fontSize: 14, fontWeight: FontWeight.w500,
-                  color: colors.text2),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: colors.text2,
+              ),
             ),
           ),
         ],
@@ -10325,7 +11174,11 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
-  Widget _buildVelocityMeter(AppColors colors, int totalEarned, int daysInMonth) {
+  Widget _buildVelocityMeter(
+    AppColors colors,
+    int totalEarned,
+    int daysInMonth,
+  ) {
     final now = DateTime.now();
     final isCurrentMonth =
         _selectedMonth == now.month && _selectedYear == now.year;
@@ -10364,16 +11217,25 @@ class _IncomeScreenState extends State<IncomeScreen>
                 children: [
                   Icon(Icons.speed, size: 10, color: colors.gold),
                   const SizedBox(width: 6),
-                  Text('DAILY VELOCITY',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 10, fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5, color: colors.text3)),
+                  Text(
+                    'DAILY VELOCITY',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: colors.text3,
+                    ),
+                  ),
                 ],
               ),
-              Text(statusText,
-                  style: GoogleFonts.dmSans(
-                      fontSize: 11, fontWeight: FontWeight.w600,
-                      color: statusColor)),
+              Text(
+                statusText,
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -10382,9 +11244,9 @@ class _IncomeScreenState extends State<IncomeScreen>
           AnimatedBuilder(
             animation: _velocityBarController,
             builder: (_, _) {
-              final animFill = fillPct *
-                  Curves.easeOutCubic
-                      .transform(_velocityBarController.value);
+              final animFill =
+                  fillPct *
+                  Curves.easeOutCubic.transform(_velocityBarController.value);
               return Stack(
                 children: [
                   // Background track
@@ -10403,18 +11265,20 @@ class _IncomeScreenState extends State<IncomeScreen>
                     child: Container(
                       height: 8,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [
-                          dailyAvg >= 10000
-                              ? colors.emerald.withValues(alpha: 0.7)
-                              : dailyAvg >= 5000
-                                  ? const Color(0xFFB8860B)
-                                  : const Color(0xFFC0392B),
-                          dailyAvg >= 10000
-                              ? colors.emerald
-                              : dailyAvg >= 5000
-                                  ? colors.gold
-                                  : colors.red,
-                        ]),
+                        gradient: LinearGradient(
+                          colors: [
+                            dailyAvg >= 10000
+                                ? colors.emerald.withValues(alpha: 0.7)
+                                : dailyAvg >= 5000
+                                ? const Color(0xFFB8860B)
+                                : const Color(0xFFC0392B),
+                            dailyAvg >= 10000
+                                ? colors.emerald
+                                : dailyAvg >= 5000
+                                ? colors.gold
+                                : colors.red,
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: AnimatedBuilder(
@@ -10422,8 +11286,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                         builder: (_, _) {
                           return ShaderMask(
                             shaderCallback: (bounds) {
-                              final dx = _shimmerController.value *
-                                  (bounds.width + 40) -
+                              final dx =
+                                  _shimmerController.value *
+                                      (bounds.width + 40) -
                                   20;
                               return LinearGradient(
                                 begin: Alignment.centerLeft,
@@ -10459,16 +11324,22 @@ class _IncomeScreenState extends State<IncomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('₹0',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 8, color: colors.text3)),
-              Text('₹10,000 target',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 8, fontWeight: FontWeight.w700,
-                      color: colors.gold)),
-              Text('₹20,000+',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 8, color: colors.text3)),
+              Text(
+                '₹0',
+                style: GoogleFonts.dmSans(fontSize: 8, color: colors.text3),
+              ),
+              Text(
+                '₹10,000 target',
+                style: GoogleFonts.dmSans(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  color: colors.gold,
+                ),
+              ),
+              Text(
+                '₹20,000+',
+                style: GoogleFonts.dmSans(fontSize: 8, color: colors.text3),
+              ),
             ],
           ),
         ],
@@ -10490,11 +11361,14 @@ class _IncomeScreenState extends State<IncomeScreen>
     final dailyAvgSpent = daysSoFar > 0 ? (totalSpent / daysSoFar).round() : 0;
 
     final prevRef = DateTime(
-        _selectedMonth == 1 ? _selectedYear - 1 : _selectedYear,
-        _selectedMonth == 1 ? 12 : _selectedMonth - 1, 1);
+      _selectedMonth == 1 ? _selectedYear - 1 : _selectedYear,
+      _selectedMonth == 1 ? 12 : _selectedMonth - 1,
+      1,
+    );
     final prevTotal = _monthTotal(widget.incomeLog, prevRef);
-    final changePct =
-        prevTotal > 0 ? ((totalEarned - prevTotal) / prevTotal * 100) : 0.0;
+    final changePct = prevTotal > 0
+        ? ((totalEarned - prevTotal) / prevTotal * 100)
+        : 0.0;
     final isUp = changePct >= 0;
 
     return Container(
@@ -10503,7 +11377,9 @@ class _IncomeScreenState extends State<IncomeScreen>
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: colors.gold.withValues(alpha: 0.12), width: 1),
+          color: colors.gold.withValues(alpha: 0.12),
+          width: 1,
+        ),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -10517,33 +11393,42 @@ class _IncomeScreenState extends State<IncomeScreen>
       child: Stack(
         children: [
           Positioned(
-            top: -20, right: -20,
+            top: -20,
+            right: -20,
             child: Container(
-              width: 100, height: 100,
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [
-                  colors.gold.withValues(alpha: 0.15),
-                  Colors.transparent,
-                ]),
+                gradient: RadialGradient(
+                  colors: [
+                    colors.gold.withValues(alpha: 0.15),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
           Positioned(
-            bottom: -15, left: -15,
+            bottom: -15,
+            left: -15,
             child: Container(
-              width: 80, height: 80,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [
-                  colors.emerald.withValues(alpha: 0.08),
-                  Colors.transparent,
-                ]),
+                gradient: RadialGradient(
+                  colors: [
+                    colors.emerald.withValues(alpha: 0.08),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
           Positioned(
-            top: 4, right: 4,
+            top: 4,
+            right: 4,
             child: CustomPaint(
               size: const Size(20, 20),
               painter: _IslamicStarPainter(
@@ -10561,18 +11446,29 @@ class _IncomeScreenState extends State<IncomeScreen>
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.account_balance_wallet, size: 10, color: colors.gold),
+                      Icon(
+                        Icons.account_balance_wallet,
+                        size: 10,
+                        color: colors.gold,
+                      ),
                       const SizedBox(width: 6),
-                      Text('NET BALANCE',
-                          style: GoogleFonts.dmSans(
-                              fontSize: 10, fontWeight: FontWeight.w700,
-                              letterSpacing: 1.5, color: colors.text3)),
+                      Text(
+                        'NET BALANCE',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                          color: colors.text3,
+                        ),
+                      ),
                     ],
                   ),
                   if (prevTotal > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: isUp ? colors.emerald2 : colors.red2,
                         borderRadius: BorderRadius.circular(20),
@@ -10580,8 +11476,10 @@ class _IncomeScreenState extends State<IncomeScreen>
                       child: Text(
                         '${isUp ? "↑" : "↓"} ${changePct.abs().toStringAsFixed(0)}%',
                         style: GoogleFonts.dmSans(
-                            fontSize: 11, fontWeight: FontWeight.w700,
-                            color: isUp ? colors.emerald : colors.red),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isUp ? colors.emerald : colors.red,
+                        ),
                       ),
                     ),
                 ],
@@ -10590,37 +11488,47 @@ class _IncomeScreenState extends State<IncomeScreen>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₹',
-                      style: GoogleFonts.syne(
-                          fontSize: 20, fontWeight: FontWeight.w600,
-                          color: colors.text2)),
+                  Text(
+                    '₹',
+                    style: GoogleFonts.syne(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: colors.text2,
+                    ),
+                  ),
                   TweenAnimationBuilder<double>(
                     key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
                     tween: Tween<double>(
-                        begin: 0.0,
-                        end: netBalance.toDouble()),
+                      begin: 0.0,
+                      end: netBalance.toDouble(),
+                    ),
                     duration: const Duration(milliseconds: 1200),
                     curve: Curves.easeOutCubic,
                     builder: (_, value, _) {
-                      final display = value.round().abs().toString()
+                      final display = value
+                          .round()
+                          .abs()
+                          .toString()
                           .replaceAllMapped(
-                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                        (m) => '${m[1]},',
-                      );
+                            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                            (m) => '${m[1]},',
+                          );
                       final isNegative = netBalance < 0;
                       return Text(
                         '${isNegative ? "-" : ""}$display',
                         style: GoogleFonts.syne(
-                            fontSize: 34, fontWeight: FontWeight.w800,
-                            letterSpacing: -1.0,
-                            color: isNegative ? colors.red : colors.text1),
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1.0,
+                          color: isNegative ? colors.red : colors.text1,
+                        ),
                       );
                     },
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              
+
               Row(
                 children: [
                   Expanded(
@@ -10637,19 +11545,32 @@ class _IncomeScreenState extends State<IncomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('INCOME',
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 8, fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.0, color: colors.text3)),
+                          Text(
+                            'INCOME',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.0,
+                              color: colors.text3,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(_money(totalEarned),
-                              style: GoogleFonts.syne(
-                                  fontSize: 16, fontWeight: FontWeight.w700,
-                                  color: colors.emerald)),
+                          Text(
+                            _money(totalEarned),
+                            style: GoogleFonts.syne(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: colors.emerald,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text('Avg: ${_money(dailyAvg)}/day',
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 9, color: colors.text2)),
+                          Text(
+                            'Avg: ${_money(dailyAvg)}/day',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 9,
+                              color: colors.text2,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -10669,19 +11590,32 @@ class _IncomeScreenState extends State<IncomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('EXPENSES',
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 8, fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.0, color: colors.text3)),
+                          Text(
+                            'EXPENSES',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.0,
+                              color: colors.text3,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(_money(totalSpent),
-                              style: GoogleFonts.syne(
-                                  fontSize: 16, fontWeight: FontWeight.w700,
-                                  color: colors.red)),
+                          Text(
+                            _money(totalSpent),
+                            style: GoogleFonts.syne(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: colors.red,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text('Avg: ${_money(dailyAvgSpent)}/day',
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 9, color: colors.text2)),
+                          Text(
+                            'Avg: ${_money(dailyAvgSpent)}/day',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 9,
+                              color: colors.text2,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -10689,16 +11623,256 @@ class _IncomeScreenState extends State<IncomeScreen>
                 ],
               ),
               const SizedBox(height: 10),
-              
+
               Center(
                 child: Text(
                   'Projected income: ${_money(projected)} this month',
                   style: GoogleFonts.dmSans(
-                      fontSize: 11, fontWeight: FontWeight.w600,
-                      color: colors.gold),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: colors.gold,
+                  ),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIncomeAllocationCard(AppColors colors, int totalEarned) {
+    final ref = DateTime(_selectedYear, _selectedMonth, 1);
+    final totalSpent = _monthTotal(widget.expenseLog, ref);
+    final netBalance = totalEarned - totalSpent;
+    final hasBalance = netBalance > 0;
+    final baseAmount = hasBalance ? netBalance : 0;
+    final forUse = (baseAmount * 0.65).round();
+    final forSavings = (baseAmount * 0.35).round();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.cardBorder, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.pie_chart_outline, size: 14, color: colors.gold),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'INCOME ALLOCATION',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                          color: colors.text3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: colors.gold.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: colors.gold.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
+                ),
+                child: Text(
+                  '65% Spend · 35% Save',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: colors.gold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              SizedBox(
+                width: 74,
+                height: 74,
+                child: CustomPaint(
+                  painter: _AllocationDonutPainter(
+                    colors: colors,
+                    hasBalance: hasBalance,
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          hasBalance ? '₹${_money(netBalance)}' : '₹0',
+                          style: GoogleFonts.syne(
+                            fontSize: hasBalance ? 11 : 13,
+                            fontWeight: FontWeight.w800,
+                            color: hasBalance ? colors.text1 : colors.text3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'ALLOCATED',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 7,
+                            fontWeight: FontWeight.w700,
+                            color: colors.text3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: colors.emerald,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'For My Use (65%)',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: colors.text2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '₹${_money(forUse)}',
+                          style: GoogleFonts.syne(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: hasBalance ? colors.emerald : colors.text3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: hasBalance ? 0.65 : 0.0,
+                        minHeight: 4,
+                        backgroundColor: colors.theme.isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.05),
+                        valueColor: AlwaysStoppedAnimation(colors.emerald),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: colors.gold,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'For Savings (35%)',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: colors.text2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '₹${_money(forSavings)}',
+                          style: GoogleFonts.syne(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: hasBalance ? colors.gold : colors.text3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: hasBalance ? 0.35 : 0.0,
+                        minHeight: 4,
+                        backgroundColor: colors.theme.isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.05),
+                        valueColor: AlwaysStoppedAnimation(colors.gold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: colors.theme.isDark
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : Colors.black.withValues(alpha: 0.02),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: colors.cardBorder, width: 0.5),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.lightbulb_outline, size: 14, color: colors.gold),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Example: Every ₹1,000 earned → ₹650 spend / ₹350 save',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: colors.text2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -10723,16 +11897,23 @@ class _IncomeScreenState extends State<IncomeScreen>
           Row(
             children: [
               Container(
-                width: 3, height: 12,
+                width: 3,
+                height: 12,
                 decoration: BoxDecoration(
                   color: colors.gold,
-                  borderRadius: BorderRadius.circular(2)),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
               const SizedBox(width: 8),
-              Text('SAVINGS GOALS',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 10, fontWeight: FontWeight.w700,
-                      letterSpacing: 2, color: colors.text3)),
+              Text(
+                'SAVINGS GOALS',
+                style: GoogleFonts.dmSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2,
+                  color: colors.text3,
+                ),
+              ),
               const Spacer(),
               GestureDetector(
                 onTap: () {
@@ -10743,10 +11924,14 @@ class _IncomeScreenState extends State<IncomeScreen>
                   children: [
                     Icon(Icons.refresh, size: 13, color: colors.red),
                     const SizedBox(width: 4),
-                    Text('Reset',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 10, fontWeight: FontWeight.w600,
-                            color: colors.red)),
+                    Text(
+                      'Reset',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: colors.red,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -10758,12 +11943,20 @@ class _IncomeScreenState extends State<IncomeScreen>
                 },
                 child: Row(
                   children: [
-                    Icon(Icons.add_circle_outline, size: 13, color: colors.emerald),
+                    Icon(
+                      Icons.add_circle_outline,
+                      size: 13,
+                      color: colors.emerald,
+                    ),
                     const SizedBox(width: 4),
-                    Text('Add Goal',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 10, fontWeight: FontWeight.w600,
-                            color: colors.emerald)),
+                    Text(
+                      'Add Goal',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: colors.emerald,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -10789,9 +11982,13 @@ class _IncomeScreenState extends State<IncomeScreen>
               final g = _savingsGoals[i];
               final current = (totalEarned * (g.percentage / 100)).round();
               final target = g.target;
-              final pct = (totalEarned <= 0 || target <= 0) ? 0.0 : (current / target).clamp(0.0, 1.0);
+              final pct = (totalEarned <= 0 || target <= 0)
+                  ? 0.0
+                  : (current / target).clamp(0.0, 1.0);
               final monthsLeft = current > 0
-                  ? ((target - current) / (current > 0 ? current : 1)).ceil().clamp(0, 999)
+                  ? ((target - current) / (current > 0 ? current : 1))
+                        .ceil()
+                        .clamp(0, 999)
                   : 0;
 
               Color colorVal = Color(g.colorValue);
@@ -10813,7 +12010,10 @@ class _IncomeScreenState extends State<IncomeScreen>
               }
 
               final staggerStart = (i * 200.0 / 1800.0).clamp(0.0, 1.0);
-              final staggerEnd = (staggerStart + 1000.0 / 1800.0).clamp(0.0, 1.0);
+              final staggerEnd = (staggerStart + 1000.0 / 1800.0).clamp(
+                0.0,
+                1.0,
+              );
 
               final iconData = iconDataMap[g.iconName] ?? Icons.star;
 
@@ -10835,7 +12035,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                       Row(
                         children: [
                           Container(
-                            width: 34, height: 34,
+                            width: 34,
+                            height: 34,
                             decoration: BoxDecoration(
                               color: colorVal.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
@@ -10848,27 +12049,38 @@ class _IncomeScreenState extends State<IncomeScreen>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(g.name,
-                                    style: GoogleFonts.dmSans(
-                                        fontSize: 13, fontWeight: FontWeight.w600,
-                                        color: colors.text1)),
+                                Text(
+                                  g.name,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.text1,
+                                  ),
+                                ),
                                 const SizedBox(height: 1),
-                                Text('${g.percentage.toStringAsFixed(0)}% of income',
-                                    style: GoogleFonts.dmSans(
-                                        fontSize: 9, fontWeight: FontWeight.w500,
-                                        color: colors.text3)),
+                                Text(
+                                  '${g.percentage.toStringAsFixed(0)}% of income',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.text3,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                           RichText(
                             text: TextSpan(
                               style: GoogleFonts.dmSans(
-                                  fontSize: 12, fontWeight: FontWeight.w700,
-                                  color: colors.text2),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text2,
+                              ),
                               children: [
                                 TextSpan(
-                                    text: _money(current),
-                                    style: TextStyle(color: colors.text1)),
+                                  text: _money(current),
+                                  style: TextStyle(color: colors.text1),
+                                ),
                                 TextSpan(text: ' / ${_money(target)}'),
                               ],
                             ),
@@ -10876,63 +12088,73 @@ class _IncomeScreenState extends State<IncomeScreen>
                         ],
                       ),
                       const SizedBox(height: 10),
-                    // Progress bar
-                    AnimatedBuilder(
-                      animation: _goalBarsController,
-                      builder: (_, _) {
-                        final interval = Interval(
-                            staggerStart, staggerEnd,
-                            curve: Curves.easeOutCubic);
-                        final animPct =
-                            (pct * interval.transform(
-                                _goalBarsController.value)).clamp(0.0, 1.0);
-                        return Stack(
-                          children: [
-                            Container(
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: colors.theme.isDark
-                                    ? Colors.white.withValues(alpha: 0.04)
-                                    : Colors.black.withValues(alpha: 0.04),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                            FractionallySizedBox(
-                              widthFactor: animPct,
-                              child: Container(
+                      // Progress bar
+                      AnimatedBuilder(
+                        animation: _goalBarsController,
+                        builder: (_, _) {
+                          final interval = Interval(
+                            staggerStart,
+                            staggerEnd,
+                            curve: Curves.easeOutCubic,
+                          );
+                          final animPct =
+                              (pct *
+                                      interval.transform(
+                                        _goalBarsController.value,
+                                      ))
+                                  .clamp(0.0, 1.0);
+                          return Stack(
+                            children: [
+                              Container(
                                 height: 6,
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(colors: [
-                                    gradStart,
-                                    gradEnd,
-                                  ]),
+                                  color: colors.theme.isDark
+                                      ? Colors.white.withValues(alpha: 0.04)
+                                      : Colors.black.withValues(alpha: 0.04),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
+                              FractionallySizedBox(
+                                widthFactor: animPct,
+                                child: Container(
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [gradStart, gradEnd],
+                                    ),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
                             '${(pct * 100).toStringAsFixed(0)}% complete',
                             style: GoogleFonts.dmSans(
-                                fontSize: 9, color: colors.text3)),
-                        Text(
+                              fontSize: 9,
+                              color: colors.text3,
+                            ),
+                          ),
+                          Text(
                             '~$monthsLeft months left',
                             style: GoogleFonts.dmSans(
-                                fontSize: 9, color: colors.text3)),
-                      ],
-                    ),
-                  ],
+                              fontSize: 9,
+                              color: colors.text3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
         ],
       ),
     );
@@ -10958,13 +12180,21 @@ class _IncomeScreenState extends State<IncomeScreen>
           children: [
             Row(
               children: [
-                Icon(Icons.rocket_launch, size: 14,
-                    color: const Color(0xFFA78BFA)),
+                Icon(
+                  Icons.rocket_launch,
+                  size: 14,
+                  color: const Color(0xFFA78BFA),
+                ),
                 const SizedBox(width: 6),
-                Text('EARNING POTENTIAL',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 10, fontWeight: FontWeight.w700,
-                        letterSpacing: 1.5, color: colors.text3)),
+                Text(
+                  'EARNING POTENTIAL',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                    color: colors.text3,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -10989,14 +12219,22 @@ class _IncomeScreenState extends State<IncomeScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_earningCurrent,
-                              style: GoogleFonts.syne(
-                                  fontSize: 18, fontWeight: FontWeight.w800,
-                                  color: colors.text2)),
+                          Text(
+                            _earningCurrent,
+                            style: GoogleFonts.syne(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: colors.text2,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text('CURRENT /MONTH',
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 8, color: colors.text3)),
+                          Text(
+                            'CURRENT /MONTH',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 8,
+                              color: colors.text3,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -11016,21 +12254,31 @@ class _IncomeScreenState extends State<IncomeScreen>
                         color: const Color(0xFFA78BFA).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: const Color(0xFFA78BFA)
-                                .withValues(alpha: 0.15),
-                            width: 1),
+                          color: const Color(
+                            0xFFA78BFA,
+                          ).withValues(alpha: 0.15),
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_earningTarget,
-                              style: GoogleFonts.syne(
-                                  fontSize: 18, fontWeight: FontWeight.w800,
-                                  color: const Color(0xFFA78BFA))),
+                          Text(
+                            _earningTarget,
+                            style: GoogleFonts.syne(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFFA78BFA),
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text('FREELANCE POTENTIAL',
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 8, color: colors.text3)),
+                          Text(
+                            'FREELANCE POTENTIAL',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 8,
+                              color: colors.text3,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -11043,15 +12291,18 @@ class _IncomeScreenState extends State<IncomeScreen>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.bolt, size: 8,
-                      color: Color(0xFFA78BFA)),
+                  const Icon(Icons.bolt, size: 8, color: Color(0xFFA78BFA)),
                   const SizedBox(width: 4),
                   Flexible(
-                    child: Text(_earningTip,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 9, fontWeight: FontWeight.w600,
-                            color: const Color(0xFFA78BFA)),
-                        overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      _earningTip,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFA78BFA),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -11092,14 +12343,23 @@ class _IncomeScreenState extends State<IncomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('DAILY EARNINGS',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 10, fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5, color: colors.text3)),
-              Text(_monthNames[_selectedMonth - 1],
-                  style: GoogleFonts.dmSans(
-                      fontSize: 10, fontWeight: FontWeight.w600,
-                      color: colors.emerald)),
+              Text(
+                'DAILY EARNINGS',
+                style: GoogleFonts.dmSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: colors.text3,
+                ),
+              ),
+              Text(
+                _monthNames[_selectedMonth - 1],
+                style: GoogleFonts.dmSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: colors.emerald,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -11112,32 +12372,33 @@ class _IncomeScreenState extends State<IncomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: List.generate(daysInMonth, (i) {
                     final amt = dailyAmounts[i];
-                    final barPct =
-                        maxDaily > 0 ? (amt / maxDaily).clamp(0.0, 1.0) : 0.0;
-                    final barH = amt > 0
-                        ? math.max(3.0, barPct * 60.0)
-                        : 3.0;
+                    final barPct = maxDaily > 0
+                        ? (amt / maxDaily).clamp(0.0, 1.0)
+                        : 0.0;
+                    final barH = amt > 0 ? math.max(3.0, barPct * 60.0) : 3.0;
                     final isToday = (i + 1) == todayDay;
-                    final showLabel =
-                        (i + 1) % 7 == 0; // Day 7, 14, 21, 28
+                    final showLabel = (i + 1) % 7 == 0; // Day 7, 14, 21, 28
 
                     // Stagger: each bar 15ms delay
-                    final staggerStart =
-                        (i * 15.0 / 1300.0).clamp(0.0, 1.0);
-                    final staggerEnd =
-                        (staggerStart + 800.0 / 1300.0).clamp(0.0, 1.0);
+                    final staggerStart = (i * 15.0 / 1300.0).clamp(0.0, 1.0);
+                    final staggerEnd = (staggerStart + 800.0 / 1300.0).clamp(
+                      0.0,
+                      1.0,
+                    );
                     final interval = Interval(
-                        staggerStart, staggerEnd,
-                        curve: Curves.easeOutCubic);
+                      staggerStart,
+                      staggerEnd,
+                      curve: Curves.easeOutCubic,
+                    );
                     final animH =
-                        barH * interval.transform(
-                            _chartBarsController.value);
+                        barH * interval.transform(_chartBarsController.value);
 
                     return Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(
-                            left: i == 0 ? 0 : 1.5,
-                            right: i == daysInMonth - 1 ? 0 : 1.5),
+                          left: i == 0 ? 0 : 1.5,
+                          right: i == daysInMonth - 1 ? 0 : 1.5,
+                        ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
@@ -11156,17 +12417,21 @@ class _IncomeScreenState extends State<IncomeScreen>
                                     : null,
                                 color: amt <= 0
                                     ? (colors.theme.isDark
-                                        ? Colors.white.withValues(alpha: 0.03)
-                                        : Colors.black.withValues(alpha: 0.03))
+                                          ? Colors.white.withValues(alpha: 0.03)
+                                          : Colors.black.withValues(
+                                              alpha: 0.03,
+                                            ))
                                     : null,
                                 borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(3),
-                                    bottom: Radius.circular(1)),
+                                  top: Radius.circular(3),
+                                  bottom: Radius.circular(1),
+                                ),
                                 boxShadow: isToday && amt > 0
                                     ? [
                                         BoxShadow(
-                                            color: colors.gold3,
-                                            blurRadius: 8)
+                                          color: colors.gold3,
+                                          blurRadius: 8,
+                                        ),
                                       ]
                                     : null,
                               ),
@@ -11175,11 +12440,14 @@ class _IncomeScreenState extends State<IncomeScreen>
                             SizedBox(
                               height: 10,
                               child: showLabel
-                                  ? Text('${i + 1}',
+                                  ? Text(
+                                      '${i + 1}',
                                       style: GoogleFonts.dmSans(
-                                          fontSize: 7,
-                                          fontWeight: FontWeight.w500,
-                                          color: colors.text3))
+                                        fontSize: 7,
+                                        fontWeight: FontWeight.w500,
+                                        color: colors.text3,
+                                      ),
+                                    )
                                   : null,
                             ),
                           ],
@@ -11200,8 +12468,7 @@ class _IncomeScreenState extends State<IncomeScreen>
     final now = DateTime.now();
     final isCurrentMonth =
         _selectedMonth == now.month && _selectedYear == now.year;
-    final daysInMonth =
-        DateTime(_selectedYear, _selectedMonth + 1, 0).day;
+    final daysInMonth = DateTime(_selectedYear, _selectedMonth + 1, 0).day;
     final maxDay = isCurrentMonth ? now.day : daysInMonth;
 
     final entries = <_TransactionItem>[];
@@ -11212,18 +12479,26 @@ class _IncomeScreenState extends State<IncomeScreen>
 
       if (_filter == 'All') {
         if (earned > 0) {
-          entries.add(_TransactionItem(date: date, amount: earned, isIncome: true));
+          entries.add(
+            _TransactionItem(date: date, amount: earned, isIncome: true),
+          );
         }
         if (spent > 0) {
-          entries.add(_TransactionItem(date: date, amount: spent, isIncome: false));
+          entries.add(
+            _TransactionItem(date: date, amount: spent, isIncome: false),
+          );
         }
       } else if (_filter == 'Earned') {
         if (earned > 0) {
-          entries.add(_TransactionItem(date: date, amount: earned, isIncome: true));
+          entries.add(
+            _TransactionItem(date: date, amount: earned, isIncome: true),
+          );
         }
       } else if (_filter == 'Spent') {
         if (spent > 0) {
-          entries.add(_TransactionItem(date: date, amount: spent, isIncome: false));
+          entries.add(
+            _TransactionItem(date: date, amount: spent, isIncome: false),
+          );
         }
       }
     }
@@ -11238,21 +12513,32 @@ class _IncomeScreenState extends State<IncomeScreen>
             child: Row(
               children: [
                 Container(
-                  width: 3, height: 12,
+                  width: 3,
+                  height: 12,
                   decoration: BoxDecoration(
                     color: colors.emerald,
-                    borderRadius: BorderRadius.circular(2)),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Text('RECENT',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 10, fontWeight: FontWeight.w700,
-                        letterSpacing: 2, color: colors.text3)),
+                Text(
+                  'RECENT',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                    color: colors.text3,
+                  ),
+                ),
                 const Spacer(),
-                Text('${entries.length} entries',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 10, fontWeight: FontWeight.w500,
-                        color: colors.text3)),
+                Text(
+                  '${entries.length} entries',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: colors.text3,
+                  ),
+                ),
               ],
             ),
           ),
@@ -11274,9 +12560,10 @@ class _IncomeScreenState extends State<IncomeScreen>
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
-                child: Text('No transactions recorded this month',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 13, color: colors.text3)),
+                child: Text(
+                  'No transactions recorded this month',
+                  style: GoogleFonts.dmSans(fontSize: 13, color: colors.text3),
+                ),
               ),
             )
           else
@@ -11286,23 +12573,28 @@ class _IncomeScreenState extends State<IncomeScreen>
                 return Column(
                   children: List.generate(entries.length, (i) {
                     final e = entries[i];
-                    final staggerStart =
-                        (i * 40.0 / 2000.0).clamp(0.0, 1.0);
-                    final staggerEnd =
-                        (staggerStart + 350.0 / 2000.0).clamp(0.0, 1.0);
+                    final staggerStart = (i * 40.0 / 2000.0).clamp(0.0, 1.0);
+                    final staggerEnd = (staggerStart + 350.0 / 2000.0).clamp(
+                      0.0,
+                      1.0,
+                    );
                     final interval = Interval(
-                        staggerStart, staggerEnd,
-                        curve: Curves.easeOutCubic);
-                    final progress =
-                        interval.transform(
-                            _listStaggerController.value);
+                      staggerStart,
+                      staggerEnd,
+                      curve: Curves.easeOutCubic,
+                    );
+                    final progress = interval.transform(
+                      _listStaggerController.value,
+                    );
                     final opacity = progress;
                     final translateY = (1 - progress) * 14;
 
                     final isInc = e.isIncome;
                     final displayColor = isInc ? colors.emerald : colors.red;
                     final iconBgColor = isInc ? colors.emerald2 : colors.red2;
-                    final iconData = isInc ? Icons.south_west : Icons.north_east;
+                    final iconData = isInc
+                        ? Icons.south_west
+                        : Icons.north_east;
                     final prefix = isInc ? '+' : '−';
 
                     return Transform.translate(
@@ -11315,45 +12607,52 @@ class _IncomeScreenState extends State<IncomeScreen>
                           decoration: BoxDecoration(
                             color: i.isOdd
                                 ? (colors.theme.isDark
-                                    ? Colors.white.withValues(alpha: 0.03)
-                                    : Colors.black.withValues(alpha: 0.02))
+                                      ? Colors.white.withValues(alpha: 0.03)
+                                      : Colors.black.withValues(alpha: 0.02))
                                 : colors.card,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: colors.cardBorder, width: 1),
+                              color: colors.cardBorder,
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             children: [
                               Container(
-                                width: 32, height: 32,
+                                width: 32,
+                                height: 32,
                                 decoration: BoxDecoration(
                                   color: iconBgColor,
                                   borderRadius: BorderRadius.circular(9),
                                 ),
                                 alignment: Alignment.center,
-                                child: Icon(iconData,
-                                    size: 11, color: displayColor),
+                                child: Icon(
+                                  iconData,
+                                  size: 11,
+                                  color: displayColor,
+                                ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       getDayName(e.date),
                                       style: GoogleFonts.dmSans(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: colors.text1),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.text1,
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
                                       formatDayRowDate(e.date),
                                       style: GoogleFonts.dmSans(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w500,
-                                          color: colors.text3),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w500,
+                                        color: colors.text3,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -11361,10 +12660,11 @@ class _IncomeScreenState extends State<IncomeScreen>
                               Text(
                                 '$prefix${_money(e.amount)}',
                                 style: GoogleFonts.dmSans(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: -0.3,
-                                    color: displayColor),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.3,
+                                  color: displayColor,
+                                ),
                               ),
                             ],
                           ),
@@ -11390,7 +12690,8 @@ class _IncomeScreenState extends State<IncomeScreen>
           _showAddIncomeSheet();
         },
         child: SizedBox(
-          width: 66, height: 66,
+          width: 66,
+          height: 66,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -11398,20 +12699,18 @@ class _IncomeScreenState extends State<IncomeScreen>
               AnimatedBuilder(
                 animation: _fabPulseController,
                 builder: (_, _) {
-                  final scale = 1.0 +
-                      0.3 * _fabPulseController.value;
-                  final opacity =
-                      0.6 * (1 - _fabPulseController.value);
+                  final scale = 1.0 + 0.3 * _fabPulseController.value;
+                  final opacity = 0.6 * (1 - _fabPulseController.value);
                   return Transform.scale(
                     scale: scale,
                     child: Opacity(
                       opacity: opacity,
                       child: Container(
-                        width: 62, height: 62,
+                        width: 62,
+                        height: 62,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: colors.gold, width: 2),
+                          border: Border.all(color: colors.emerald, width: 2),
                         ),
                       ),
                     ),
@@ -11420,29 +12719,35 @@ class _IncomeScreenState extends State<IncomeScreen>
               ),
               // FAB button
               Container(
-                width: 54, height: 54,
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [
-                    colors.gold,
-                    colors.theme.isDark
-                        ? colors.gold.withValues(alpha: 0.8)
-                        : const Color(0xFFB8860B),
-                  ]),
+                  gradient: LinearGradient(
+                    colors: [
+                      colors.emerald,
+                      colors.theme.isDark
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFF15803D),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.gold3,
-                      blurRadius: 28,
-                      offset: const Offset(0, 6),
+                      color: colors.emerald.withValues(alpha: 0.35),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 alignment: Alignment.center,
-                child: const Text('₹',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white)),
+                child: const Text(
+                  '₹',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ],
           ),
@@ -11460,37 +12765,42 @@ class _IncomeScreenState extends State<IncomeScreen>
     final colors = AppColors(widget.theme);
     final monthRef = DateTime(_selectedYear, _selectedMonth, 1);
     final totalEarned = _monthTotal(widget.incomeLog, monthRef);
-    final daysInMonth =
-        DateTime(_selectedYear, _selectedMonth + 1, 0).day;
-
-
+    final daysInMonth = DateTime(_selectedYear, _selectedMonth + 1, 0).day;
 
     return Stack(
       children: [
         // Background atmosphere orbs
         Positioned(
-          top: 60, right: -40,
+          top: 60,
+          right: -40,
           child: Container(
-            width: 200, height: 200,
+            width: 200,
+            height: 200,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(colors: [
-                colors.gold.withValues(alpha: 0.06),
-                Colors.transparent,
-              ]),
+              gradient: RadialGradient(
+                colors: [
+                  colors.gold.withValues(alpha: 0.06),
+                  Colors.transparent,
+                ],
+              ),
             ),
           ),
         ),
         Positioned(
-          bottom: 200, left: -30,
+          bottom: 200,
+          left: -30,
           child: Container(
-            width: 180, height: 180,
+            width: 180,
+            height: 180,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: RadialGradient(colors: [
-                colors.emerald.withValues(alpha: 0.04),
-                Colors.transparent,
-              ]),
+              gradient: RadialGradient(
+                colors: [
+                  colors.emerald.withValues(alpha: 0.04),
+                  Colors.transparent,
+                ],
+              ),
             ),
           ),
         ),
@@ -11512,7 +12822,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                 const SizedBox(height: 14),
                 _buildHeroCard(colors, totalEarned, daysInMonth),
                 const SizedBox(height: 14),
-                _buildSavingsGoals(colors, totalEarned),
+                _buildIncomeAllocationCard(colors, totalEarned),
                 const SizedBox(height: 14),
                 _buildEarningPotential(colors),
                 const SizedBox(height: 14),
@@ -11542,7 +12852,9 @@ class _IslamicStarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
     final cx = size.width / 2;
     final cy = size.height / 2;
     final r = size.width / 2;
@@ -11595,9 +12907,14 @@ class _CelebrationParticle extends StatefulWidget {
   final VoidCallback onComplete;
 
   const _CelebrationParticle({
-    required this.symbol, required this.startX, required this.startY,
-    required this.fontSize, required this.duration, required this.delay,
-    required this.fallDistance, required this.onComplete,
+    required this.symbol,
+    required this.startX,
+    required this.startY,
+    required this.fontSize,
+    required this.duration,
+    required this.delay,
+    required this.fallDistance,
+    required this.onComplete,
   });
 
   @override
@@ -11645,8 +12962,10 @@ class _CelebrationParticleState extends State<_CelebrationParticle>
               scale: 1 - t * 0.7,
               child: Transform.rotate(
                 angle: t * math.pi,
-                child: Text(widget.symbol,
-                    style: TextStyle(fontSize: widget.fontSize)),
+                child: Text(
+                  widget.symbol,
+                  style: TextStyle(fontSize: widget.fontSize),
+                ),
               ),
             ),
           ),
@@ -11664,8 +12983,12 @@ class _IncomeConfettiDot extends StatefulWidget {
   final VoidCallback onComplete;
 
   const _IncomeConfettiDot({
-    required this.startX, required this.size, required this.color,
-    required this.duration, required this.delay, required this.isCircle,
+    required this.startX,
+    required this.size,
+    required this.color,
+    required this.duration,
+    required this.delay,
+    required this.isCircle,
     required this.onComplete,
   });
 
@@ -11718,7 +13041,8 @@ class _IncomeConfettiDotState extends State<_IncomeConfettiDot>
                 decoration: BoxDecoration(
                   color: widget.color,
                   borderRadius: BorderRadius.circular(
-                      widget.isCircle ? widget.size : 1),
+                    widget.isCircle ? widget.size : 1,
+                  ),
                 ),
               ),
             ),
@@ -11744,12 +13068,14 @@ class _FireFlameOverlayState extends State<_FireFlameOverlay>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..forward().then((_) {
-        if (mounted) widget.onComplete();
-      });
+    _ctrl =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 800),
+          )
+          ..forward().then((_) {
+            if (mounted) widget.onComplete();
+          });
   }
 
   @override
@@ -11768,10 +13094,9 @@ class _FireFlameOverlayState extends State<_FireFlameOverlay>
         final opacity = t < 0.3
             ? t / 0.3
             : t > 0.7
-                ? (1 - t) / 0.3
-                : 1.0;
-        final scale = Curves.easeOutBack.transform(
-            (t * 1.5).clamp(0.0, 1.0));
+            ? (1 - t) / 0.3
+            : 1.0;
+        final scale = Curves.easeOutBack.transform((t * 1.5).clamp(0.0, 1.0));
         return Positioned(
           left: size.width / 2 - 60,
           top: size.height / 2 - 80,
@@ -11779,8 +13104,7 @@ class _FireFlameOverlayState extends State<_FireFlameOverlay>
             opacity: opacity.clamp(0.0, 1.0),
             child: Transform.scale(
               scale: 0.3 + scale * 0.9,
-              child: const Text('🔥',
-                  style: TextStyle(fontSize: 120)),
+              child: const Text('🔥', style: TextStyle(fontSize: 120)),
             ),
           ),
         );
@@ -11794,7 +13118,9 @@ class _GoldToast extends StatefulWidget {
   final Color goldColor;
   final VoidCallback onComplete;
   const _GoldToast({
-    required this.message, required this.goldColor, required this.onComplete,
+    required this.message,
+    required this.goldColor,
+    required this.onComplete,
   });
 
   @override
@@ -11808,12 +13134,14 @@ class _GoldToastState extends State<_GoldToast>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..forward().then((_) {
-        if (mounted) widget.onComplete();
-      });
+    _ctrl =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 2600),
+          )
+          ..forward().then((_) {
+            if (mounted) widget.onComplete();
+          });
   }
 
   @override
@@ -11847,19 +13175,21 @@ class _GoldToastState extends State<_GoldToast>
         }
         return Positioned(
           top: MediaQuery.of(context).padding.top + 16,
-          left: 40, right: 40,
+          left: 40,
+          right: 40,
           child: Transform.translate(
             offset: Offset(0, translateY),
             child: Opacity(
               opacity: opacity.clamp(0.0, 1.0),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 10),
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [
-                    const Color(0xFFB8860B),
-                    widget.goldColor,
-                  ]),
+                  gradient: LinearGradient(
+                    colors: [const Color(0xFFB8860B), widget.goldColor],
+                  ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
@@ -11870,10 +13200,14 @@ class _GoldToastState extends State<_GoldToast>
                   ],
                 ),
                 alignment: Alignment.center,
-                child: Text(widget.message,
-                    style: GoogleFonts.dmSans(
-                        fontSize: 13, fontWeight: FontWeight.w600,
-                        color: Colors.white)),
+                child: Text(
+                  widget.message,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ),
@@ -12313,6 +13647,19 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
     );
   }
 
+  IconData get _categoryIcon {
+    final name = widget.exercise[0].toLowerCase();
+    if (name.contains('row') || name.contains('pull')) return Icons.sports_gymnastics;
+    if (name.contains('plank') || name.contains('raise') || name.contains('crunch')) return Icons.self_improvement;
+    if (name.contains('squat') || name.contains('lunge')) return Icons.directions_run;
+    return Icons.fitness_center_outlined;
+  }
+
+  bool get _isIsometric {
+    final name = widget.exercise[0].toLowerCase();
+    return name.contains('plank') || name.contains('hold') || name.contains('wall sit');
+  }
+
   String get primaryMuscle {
     if (widget.muscle.isNotEmpty) {
       return widget.muscle.toUpperCase();
@@ -12338,17 +13685,21 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
 
   Widget _buildMuscleTag(String muscle) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0x1400C896), // rgba(0,200,150,0.08)
+        color: widget.theme.isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: widget.theme.isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
+          width: 0.5,
+        ),
       ),
       child: Text(
         muscle,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 8,
-          fontWeight: FontWeight.bold,
-          color: Color(0xB300C896), // #00C896 at 70% opacity
+          fontWeight: FontWeight.w600,
+          color: widget.theme.text3,
         ),
       ),
     );
@@ -12474,18 +13825,12 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: widget.isLibrary
-                                  ? const Color(0x1FE67E22)
-                                  : const Color(0x262ECC71),
+                              color: const Color(0x2600C896),
                               borderRadius: BorderRadius.circular(11),
                             ),
                             child: Icon(
-                              widget.isLibrary
-                                  ? Icons.bookmark_added_outlined
-                                  : Icons.fitness_center_outlined,
-                              color: widget.isLibrary
-                                  ? const Color(0xFFE67E22)
-                                  : theme.teal,
+                              _categoryIcon,
+                              color: const Color(0xFF00C896),
                               size: 20,
                             ),
                           ),
@@ -12502,14 +13847,14 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                     color: theme.text1,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3),
                                 Wrap(
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   spacing: 4,
                                   runSpacing: 2,
                                   children: [
                                     Text(
-                                      '${widget.sets} sets × ${widget.reps} reps · ',
+                                      '${widget.sets} sets × ${_isIsometric ? '${widget.reps}s hold' : '${widget.reps} reps'} · ',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 10,
                                         color: theme.text3,
@@ -12521,6 +13866,15 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                     _buildMuscleTag(primaryMuscle),
                                   ],
                                 ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Last: ${widget.reps > 1 ? widget.reps - 1 : widget.reps} ${_isIsometric ? 's' : 'reps'} ↑ · Rest: 90s',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 9,
+                                    color: theme.text3.withValues(alpha: 0.8),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -12530,17 +13884,11 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                '${widget.reps}',
+                                _isIsometric ? '${widget.reps}s' : '${widget.reps}',
                                 style: GoogleFonts.dmSans(
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w800,
-                                  color: widget.completed
-                                      ? theme.teal
-                                      : (theme.isDark
-                                            ? (widget.isLibrary
-                                                  ? const Color(0xFFE67E22)
-                                                  : theme.gold)
-                                            : const Color(0xFFD35400)),
+                                  color: const Color(0xFF00C896),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -14287,7 +15635,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
     final dob = DateTime.tryParse(dobStr) ?? DateTime(2000, 1, 1);
     final now = DateTime.now();
     int age = now.year - dob.year;
-    if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) {
+    if (now.month < dob.month ||
+        (now.month == dob.month && now.day < dob.day)) {
       age--;
     }
     return age;
@@ -14338,7 +15687,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       widget.userGoalDay,
     );
     // FIXED: declared outside builder so it persists across setDialogState() rebuilds
-    DateTime tempDob = DateTime.tryParse(widget.userDob) ?? DateTime(2000, 1, 1);
+    DateTime tempDob =
+        DateTime.tryParse(widget.userDob) ?? DateTime(2000, 1, 1);
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -14346,7 +15696,6 @@ class _SettingsSheetState extends State<_SettingsSheet> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-
             String formatDate(DateTime date) {
               const months = [
                 'January',
@@ -14510,11 +15859,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                                 fontSize: 14,
                               ),
                             ),
-                            Icon(
-                              Icons.cake,
-                              color: theme.gold,
-                              size: 16,
-                            ),
+                            Icon(Icons.cake, color: theme.gold, size: 16),
                           ],
                         ),
                       ),
@@ -14581,7 +15926,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   onPressed: () {
                     if (formKey.currentState?.validate() ?? false) {
                       final name = nameController.text.trim();
-                      final dobStr = "${tempDob.year.toString().padLeft(4, '0')}-${tempDob.month.toString().padLeft(2, '0')}-${tempDob.day.toString().padLeft(2, '0')}";
+                      final dobStr =
+                          "${tempDob.year.toString().padLeft(4, '0')}-${tempDob.month.toString().padLeft(2, '0')}-${tempDob.day.toString().padLeft(2, '0')}";
                       if (widget.onProfileChanged != null) {
                         widget.onProfileChanged!(
                           name,
@@ -14790,6 +16136,38 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ),
                 trailing: Icon(Icons.chevron_right, color: theme.text2),
                 onTap: () => _showEditNameDialog(context, theme),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            Container(
+              decoration: BoxDecoration(
+                color: theme.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.border, width: 0.5),
+              ),
+              child: ListTile(
+                title: Text(
+                  'Replay Setup (Demo Mode)',
+                  style: TextStyle(
+                    color: theme.text1,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  'Re-launch the first-boot guided onboarding tour',
+                  style: TextStyle(color: theme.text3, fontSize: 11),
+                ),
+                trailing: Icon(Icons.play_circle_outline, color: theme.teal),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const OnboardingScreen(),
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 20),
@@ -15192,5 +16570,61 @@ class _SettingsSheetState extends State<_SettingsSheet> {
         ),
       ),
     );
+  }
+}
+
+class _AllocationDonutPainter extends CustomPainter {
+  final AppColors colors;
+  final bool hasBalance;
+
+  const _AllocationDonutPainter({required this.colors, this.hasBalance = true});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 5;
+    const strokeWidth = 7.0;
+
+    final bgPaint = Paint()
+      ..color = colors.theme.isDark
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.black.withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    if (hasBalance) {
+      final spendPaint = Paint()
+        ..color = colors.emerald
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = strokeWidth;
+
+      final savePaint = Paint()
+        ..color = colors.gold
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = strokeWidth;
+
+      const startAngle = -math.pi / 2;
+      const spendSweep = 2 * math.pi * 0.65;
+      const saveSweep = 2 * math.pi * 0.35;
+
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      canvas.drawArc(rect, startAngle, spendSweep - 0.08, false, spendPaint);
+      canvas.drawArc(
+        rect,
+        startAngle + spendSweep,
+        saveSweep - 0.08,
+        false,
+        savePaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AllocationDonutPainter oldDelegate) {
+    return oldDelegate.hasBalance != hasBalance;
   }
 }

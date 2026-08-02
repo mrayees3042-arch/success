@@ -4,8 +4,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:success/main.dart';
 import 'package:success/providers/theme_provider.dart';
+import 'package:success/screens/onboarding_screen.dart';
 import 'package:success/services/audio_service.dart';
 
 class BootScreen extends StatefulWidget {
@@ -35,10 +37,12 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
   late Animation<double> _taglineSlideUp;
   late Animation<double> _progressBarFade;
   late Animation<double> _progressBarFill;
+  String _userName = '';
 
   @override
   void initState() {
     super.initState();
+    _loadUserName();
 
     // 1. App Launch sound (Triggered instantly since native player is pre-warmed)
     AudioService.playLaunch();
@@ -160,12 +164,20 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
     );
 
     // Start sequence
-    _sequenceController.forward().then((_) {
+    _sequenceController.forward().then((_) async {
       if (mounted) {
+        final prefs = await SharedPreferences.getInstance();
+        final firstBootCompleted = prefs.getBool('first_boot_completed') ?? false;
+        // Once set once, never show demo mode/onboarding on boot again
+        final isConfigured = firstBootCompleted;
+
+        if (!mounted) return;
+
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             transitionDuration: const Duration(milliseconds: 800),
-            pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                isConfigured ? const MainScreen() : const OnboardingScreen(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(
                 opacity: animation,
@@ -176,6 +188,16 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
         );
       }
     });
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString('user_name');
+    if (name != null && mounted) {
+      setState(() {
+        _userName = name;
+      });
+    }
   }
 
   @override
@@ -210,65 +232,43 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Perfect Ninja Star wrapper
-                  SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      clipBehavior: Clip.none,
-                      children: [
-                        // Star, Inner Blade, Rings, and Hub
-                        AnimatedBuilder(
-                          animation: Listenable.merge([
-                            _sequenceController,
-                            _rotationController,
-                            _shineController,
-                            _ringController,
-                          ]),
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _starScale.value,
-                              child: Transform.rotate(
-                                angle: _starRotate.value + (_rotationController.value * 2 * math.pi),
-                                child: SizedBox(
-                                  width: 140,
-                                  height: 140,
-                                  child: CustomPaint(
-                                    painter: StarPainter(
-                                      isDark: isDark,
-                                      shineProgress: _shineController.value,
-                                      ringProgress: _ringController.value,
-                                    ),
-                                  ),
-                                ),
+                  // Ultra-Simple M Logo Emblem
+                  AnimatedBuilder(
+                    animation: _sequenceController,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _starScale.value,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF12151E) : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: goldColor.withValues(alpha: 0.5),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: goldColor.withValues(alpha: 0.25),
+                                blurRadius: 24,
+                                spreadRadius: 2,
                               ),
-                            );
-                          },
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            "M",
+                            style: GoogleFonts.syne(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: goldColor,
+                              letterSpacing: -1,
+                            ),
+                          ),
                         ),
-                        // Orbiting Sparkles
-                        AnimatedBuilder(
-                          animation: _orbitController,
-                          builder: (context, child) {
-                            return Transform.rotate(
-                              angle: _orbitController.value * 2 * math.pi,
-                              child: const SizedBox(
-                                width: 200,
-                                height: 200,
-                                child: Stack(
-                                  children: [
-                                    OrbitSparkle(dx: 0, dy: -100, delay: Duration(milliseconds: 2000)),
-                                    OrbitSparkle(dx: 100, dy: 0, delay: Duration(milliseconds: 2500)),
-                                    OrbitSparkle(dx: 0, dy: 100, delay: Duration(milliseconds: 3000)),
-                                    OrbitSparkle(dx: -100, dy: 0, delay: Duration(milliseconds: 3500)),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                   
                   const SizedBox(height: 48),
@@ -342,7 +342,9 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                "RAYEES",
+                                _userName.trim().isNotEmpty
+                                    ? _userName.trim().toUpperCase()
+                                    : "YOU",
                                 style: GoogleFonts.syne(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -568,22 +570,36 @@ class StarPainter extends CustomPainter {
     canvas.drawPath(innerPath, innerEdgePaint);
 
     // 5. Draw Center Hub
-    canvas.drawCircle(center, 10 * scale, hubPaint);
-    canvas.drawCircle(center, 10 * scale, hubEdgePaint);
-
-    // 6. Draw Center Gem (circle cx=70, cy=70, r=6) with drop shadow glow
     final gemColor = isDark ? const Color(0xFFE8B84B) : const Color(0xFFA0720A);
+    canvas.drawCircle(center, 12 * scale, hubPaint);
+    canvas.drawCircle(center, 12 * scale, hubEdgePaint);
+
+    // 6. Draw Center "M" Logo Gem with drop shadow glow
     canvas.drawCircle(
       center,
-      6 * scale,
+      10 * scale,
       Paint()
-        ..color = gemColor.withValues(alpha: 0.5)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 8 * scale),
+        ..color = gemColor.withValues(alpha: 0.4)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 6 * scale),
     );
-    canvas.drawCircle(
-      center,
-      6 * scale,
-      Paint()..color = gemColor,
+
+    // Draw stylized "M" emblem letter in center
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: 'M',
+        style: TextStyle(
+          fontSize: 13 * scale,
+          fontWeight: FontWeight.w900,
+          color: gemColor,
+          letterSpacing: 0,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(center.dx - textPainter.width / 2, center.dy - textPainter.height / 2),
     );
 
     // 7. Gloss Shine Overlay: Animated opacity linear sweep across the star
