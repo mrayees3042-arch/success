@@ -6,6 +6,7 @@ import 'package:success/main.dart';
 import 'package:success/providers/theme_provider.dart';
 import 'package:success/services/haptic_service.dart';
 import 'package:success/services/sound_manager.dart';
+import 'package:success/widgets/pulse_m_logo.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -271,22 +272,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(
-              color: const Color(0xFF00C896).withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: const Color(0xFF00C896).withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            child: const Icon(
-              Icons.auto_awesome,
-              size: 40,
-              color: Color(0xFF00C896),
-            ),
+          AnimatedPulseMLogoWidget(
+            size: 88,
+            isDark: isDark,
           ),
           const SizedBox(height: 28),
           Text(

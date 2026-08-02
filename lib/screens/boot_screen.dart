@@ -232,38 +232,43 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Ultra-Simple M Logo Emblem
+                  // Animated Pulse M Growth Chart Emblem
                   AnimatedBuilder(
-                    animation: _sequenceController,
+                    animation: Listenable.merge([
+                      _sequenceController,
+                      _shineController,
+                    ]),
                     builder: (context, child) {
                       return Transform.scale(
                         scale: _starScale.value,
                         child: Container(
-                          width: 100,
-                          height: 100,
+                          width: 140,
+                          height: 140,
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF12151E) : Colors.white,
-                            shape: BoxShape.circle,
+                            color: isDark
+                                ? const Color(0xFF0F121C)
+                                : const Color(0xFFFFFFFF),
+                            borderRadius: BorderRadius.circular(32),
                             border: Border.all(
-                              color: goldColor.withValues(alpha: 0.5),
-                              width: 2,
+                              color: isDark
+                                  ? const Color(0xFF00C896).withValues(alpha: 0.3)
+                                  : const Color(0xFF00C896).withValues(alpha: 0.2),
+                              width: 1.5,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: goldColor.withValues(alpha: 0.25),
-                                blurRadius: 24,
-                                spreadRadius: 2,
+                                color: const Color(0xFF00C896).withValues(alpha: 0.15),
+                                blurRadius: 32,
+                                spreadRadius: -4,
                               ),
                             ],
                           ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            "M",
-                            style: GoogleFonts.syne(
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                              color: goldColor,
-                              letterSpacing: -1,
+                          child: CustomPaint(
+                            painter: PulseMPainter(
+                              progress: _starScale.value,
+                              pulse: _shineController.value,
+                              isDark: isDark,
                             ),
                           ),
                         ),
@@ -727,5 +732,144 @@ class _OrbitSparkleState extends State<OrbitSparkle> with SingleTickerProviderSt
         );
       },
     );
+  }
+}
+
+class PulseMPainter extends CustomPainter {
+  PulseMPainter({
+    required this.progress,
+    required this.pulse,
+    required this.isDark,
+  });
+
+  final double progress;
+  final double pulse;
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Define 5 key vertices matching Pulse M growth chart geometry
+    final p0 = Offset(w * 0.10, h * 0.85); // Start bottom-left
+    final p1 = Offset(w * 0.32, h * 0.30); // Top-left peak
+    final p2 = Offset(w * 0.50, h * 0.65); // Valley dip
+    final p3 = Offset(w * 0.68, h * 0.15); // Highest surge peak
+    final p4 = Offset(w * 0.90, h * 0.85); // End bottom-right
+
+    final points = [p0, p1, p2, p3, p4];
+
+    final colorTeal = const Color(0xFF00C896);
+    final colorGold = const Color(0xFFE8B84B);
+    final colorPurple = const Color(0xFFEC4899);
+    final colorBlue = const Color(0xFF3B82F6);
+
+    // 1. Draw glowing ambient line shadow
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+
+    final linePath = Path()
+      ..moveTo(p0.dx, p0.dy)
+      ..lineTo(p1.dx, p1.dy)
+      ..lineTo(p2.dx, p2.dy)
+      ..lineTo(p3.dx, p3.dy)
+      ..lineTo(p4.dx, p4.dy);
+
+    glowPaint.shader = ui.Gradient.linear(
+      p0,
+      p4,
+      [
+        colorTeal.withValues(alpha: 0.4),
+        colorGold.withValues(alpha: 0.4),
+        colorPurple.withValues(alpha: 0.4),
+        colorBlue.withValues(alpha: 0.4),
+      ],
+      [0.0, 0.35, 0.70, 1.0],
+    );
+    canvas.drawPath(linePath, glowPaint);
+
+    // 2. Draw Main Solid Gradient Stroke
+    final mainPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..shader = ui.Gradient.linear(
+        p0,
+        p4,
+        [colorTeal, colorGold, colorPurple, colorBlue],
+        [0.0, 0.35, 0.70, 1.0],
+      );
+
+    canvas.drawPath(linePath, mainPaint);
+
+    // 3. Draw Vertex Nodes (Glowing Dots)
+    final nodeColors = [colorTeal, colorTeal, colorGold, colorPurple, colorBlue];
+    final nodeSizes = [4.0, 6.0, 5.0, 8.0, 5.0];
+
+    for (int i = 0; i < points.length; i++) {
+      final p = points[i];
+      final col = nodeColors[i];
+      final r = nodeSizes[i];
+
+      // Outer node glow
+      canvas.drawCircle(
+        p,
+        r + 4,
+        Paint()
+          ..color = col.withValues(alpha: 0.4)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
+
+      // Inner node dot
+      canvas.drawCircle(p, r, Paint()..color = Colors.white);
+      canvas.drawCircle(p, r * 0.6, Paint()..color = col);
+    }
+
+    // 4. Draw Animated Pulsing Aura Ring around Highest Peak (p3)
+    final pulseScale = 1.0 + (pulse * 0.8);
+    final pulseOpacity = (1.0 - pulse) * 0.6;
+    canvas.drawCircle(
+      p3,
+      12.0 * pulseScale,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..color = colorPurple.withValues(alpha: pulseOpacity),
+    );
+
+    // 5. Draw Energy Wave Dot traveling along the M path
+    final pm = linePath.computeMetrics().first;
+    final totalLen = pm.length;
+    final currentDist = (pulse * totalLen) % totalLen;
+    final tangent = pm.getTangentForOffset(currentDist);
+
+    if (tangent != null) {
+      final wavePos = tangent.position;
+      canvas.drawCircle(
+        wavePos,
+        7.0,
+        Paint()
+          ..color = Colors.white
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
+      canvas.drawCircle(
+        wavePos,
+        4.0,
+        Paint()..color = Colors.white,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant PulseMPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.pulse != pulse ||
+        oldDelegate.isDark != isDark;
   }
 }
