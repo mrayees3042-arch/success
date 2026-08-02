@@ -2931,44 +2931,35 @@ class _TodayScreenState extends State<TodayScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                AnimatedPulseMLogoWidget(
-                  size: 44,
-                  isDark: widget.theme.isDark,
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFFE8B84B), Color(0xFFF5D78E)],
-                      ).createShader(bounds),
-                      child: Text(
-                        firstName,
-                        style: GoogleFonts.syne(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFFE8B84B), Color(0xFFF5D78E)],
+                  ).createShader(bounds),
+                  child: Text(
+                    firstName,
+                    style: GoogleFonts.syne(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
-                    if (lastName.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        lastName.toUpperCase(),
-                        style: GoogleFonts.dmSans(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 4,
-                          color: const Color(0x80E8B84B),
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
+                if (lastName.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    lastName.toUpperCase(),
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 6,
+                      color: const Color(0x80E8B84B),
+                    ),
+                  ),
+                ],
               ],
             ),
             Row(
