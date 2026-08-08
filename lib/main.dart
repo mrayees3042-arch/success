@@ -2295,6 +2295,17 @@ class _TodayScreenState extends State<TodayScreen>
               ),
             ],
           ),
+          const SizedBox(height: 4),
+          Center(
+            child: Text(
+              '${ageData['years']} years given. Use them well.',
+              style: GoogleFonts.dmSans(
+                fontSize: 10,
+                color: widget.theme.text3,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -2512,8 +2523,8 @@ class _TodayScreenState extends State<TodayScreen>
             habitKey: 'hab_no_fastfood',
           ),
           subHabitRow(
-            label: 'No Fap',
-            emoji: '🚫',
+            label: 'Pure Mind',
+            emoji: '🌱',
             color: fapColor,
             checked: _habNoFap,
             habitKey: 'hab_no_fap',
@@ -2787,14 +2798,16 @@ class _TodayScreenState extends State<TodayScreen>
       borderColor = const Color(0x99E8B84B); // current border
       timeColor = const Color(0xFFE8B84B);
     } else if (missed) {
-      borderColor = const Color(0x4DFF4444); // missed border
-      timeColor = const Color(0xFFFF4444);
-      iconWidget = const Text(
-        ' ✗',
-        style: TextStyle(
-          color: Color(0x99FF4444),
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
+      borderColor = widget.theme.isDark
+          ? Colors.white.withValues(alpha: 0.12)
+          : widget.theme.border;
+      timeColor = widget.theme.text3;
+      iconWidget = Text(
+        ' Qada',
+        style: GoogleFonts.dmSans(
+          color: widget.theme.text3,
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
         ),
       );
     } else {
@@ -3643,27 +3656,37 @@ class _TodayScreenState extends State<TodayScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 3.5,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8B84B),
-                      borderRadius: BorderRadius.circular(2),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 3.5,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8B84B),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Daily Prayers',
-                    style: GoogleFonts.syne(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: widget.theme.text1,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Daily Prayers',
+                          style: GoogleFonts.syne(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            color: widget.theme.text1,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -3869,15 +3892,18 @@ class _TodayScreenState extends State<TodayScreen>
                     ),
                     const SizedBox(width: 8),
                     Flexible(
-                      child: Text(
-                        'DAILY TASKS',
-                        style: GoogleFonts.syne(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          letterSpacing: 1.0,
-                          color: widget.theme.text1,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'DAILY TASKS',
+                          style: GoogleFonts.syne(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            letterSpacing: 1.0,
+                            color: widget.theme.text1,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -5196,7 +5222,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     style: GoogleFonts.syne(
                       fontSize: 48,
                       fontWeight: FontWeight.w800,
-                      color: appColors.emerald,
+                      color: record.percent >= 50
+                          ? appColors.emerald
+                          : (record.percent > 0 ? appColors.gold : appColors.text3),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -5346,7 +5374,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             // 7. WORKOUT MODULE
             _buildSection(
               title: 'Workout',
-              rightText: workoutStatus,
+              rightText: workoutStatus == 'Not started' ? 'Ready to start' : workoutStatus,
               rightColor: workoutStatus == 'Completed'
                   ? appColors.emerald
                   : appColors.gold,
@@ -5391,7 +5419,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          workoutName,
+                          workoutTotalSets == 0 ? 'No workout scheduled' : workoutName,
                           style: GoogleFonts.syne(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -5400,7 +5428,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '$workoutSetsCompleted of $workoutTotalSets sets completed',
+                          workoutTotalSets == 0
+                              ? 'Tap to select routine'
+                              : '$workoutSetsCompleted of $workoutTotalSets sets completed',
                           style: GoogleFonts.dmSans(
                             fontSize: 12,
                             color: appColors.text2,
@@ -5417,28 +5447,30 @@ class _HabitsScreenState extends State<HabitsScreen> {
             _buildSection(
               title: 'Income',
               rightText: 'Net: ${netIncome >= 0 ? '+' : ''}₹$netIncome',
-              rightColor: netIncome >= 0 ? appColors.emerald : appColors.red,
+              rightColor: netIncome > 0
+                  ? appColors.emerald
+                  : (netIncome < 0 ? appColors.red : appColors.text3),
               appColors: appColors,
               child: Row(
                 children: [
                   _buildMiniCard(
                     label: 'Earned',
                     value: '₹$earned',
-                    valueColor: appColors.emerald,
+                    valueColor: earned > 0 ? appColors.emerald : appColors.text3,
                     appColors: appColors,
                   ),
                   const SizedBox(width: 8),
                   _buildMiniCard(
                     label: 'Spent',
                     value: '₹$spent',
-                    valueColor: appColors.red,
+                    valueColor: spent > 0 ? appColors.red : appColors.text3,
                     appColors: appColors,
                   ),
                   const SizedBox(width: 8),
                   _buildMiniCard(
                     label: 'Net',
                     value: '${netIncome >= 0 ? '+' : ''}₹$netIncome',
-                    valueColor: appColors.gold,
+                    valueColor: netIncome != 0 ? appColors.gold : appColors.text3,
                     appColors: appColors,
                   ),
                 ],
@@ -5448,7 +5480,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             // 9. WATER MODULE
             _buildSection(
               title: 'Water',
-              rightText: '${waterVolume.toStringAsFixed(1)} / 2.6 L',
+              rightText: '${waterVolume.toStringAsFixed(1)} / 2.5 L',
               rightColor: theme.blue,
               appColors: appColors,
               child: Row(
@@ -5472,7 +5504,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
             _buildSection(
               title: 'Fasting',
-              rightText: fastingHeaderStatus,
+              rightText: fastingHeaderStatus == 'Not logged' ? 'Tap to log' : fastingHeaderStatus,
               rightColor: fastingHeaderStatus == 'Logged'
                   ? appColors.emerald
                   : appColors.gold,
@@ -5481,7 +5513,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 children: [
                   _buildMiniCard(
                     label: 'Status',
-                    value: fastingCardStatus,
+                    value: fastingCardStatus == '-' ? 'Not Fasting Today' : fastingCardStatus,
                     valueColor: fastingCardStatus == 'Completed'
                         ? appColors.emerald
                         : appColors.gold,
@@ -5610,10 +5642,19 @@ class _HabitsScreenState extends State<HabitsScreen> {
         color: appColors.emerald,
       );
     } else if (missed) {
-      bgColor = appColors.red2;
-      borderColor = appColors.red.withValues(alpha: 0.5);
-      textColor = appColors.red;
-      statusIcon = Icon(Icons.close_rounded, size: 14, color: appColors.red);
+      bgColor = appColors.theme.isDark
+          ? const Color(0x06FFFFFF)
+          : appColors.theme.bg;
+      borderColor = appColors.cardBorder;
+      textColor = appColors.text3;
+      statusIcon = Text(
+        'Qada',
+        style: GoogleFonts.dmSans(
+          fontSize: 9,
+          color: appColors.text3,
+          fontWeight: FontWeight.w600,
+        ),
+      );
     } else {
       bgColor = appColors.theme.isDark
           ? const Color(0x06FFFFFF)
@@ -5668,32 +5709,27 @@ class _HabitsScreenState extends State<HabitsScreen> {
       ).subtract(Duration(days: 6 - i)),
     );
 
-    return SizedBox(
-      height: 90,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 7,
-        physics: const BouncingScrollPhysics(),
-        itemBuilder: (context, index) {
-          final date = days[index];
-          final isSelected = dayKey(date) == dayKey(_selectedDate);
-          final record = recordFor(widget.history, date);
-          final percent = record.percent;
+    return Row(
+      children: List.generate(7, (index) {
+        final date = days[index];
+        final isSelected = dayKey(date) == dayKey(_selectedDate);
+        final record = recordFor(widget.history, date);
+        final percent = record.percent;
 
-          final shortDayName = [
-            'Mon',
-            'Tue',
-            'Wed',
-            'Thu',
-            'Fri',
-            'Sat',
-            'Sun',
-          ][date.weekday - 1];
-          final dayNumber = date.day.toString();
+        final shortDayName = [
+          'Mon',
+          'Tue',
+          'Wed',
+          'Thu',
+          'Fri',
+          'Sat',
+          'Sun',
+        ][date.weekday - 1];
+        final dayNumber = date.day.toString();
+        final scoreColor = percent >= 50 ? appColors.emerald : appColors.red;
 
-          final scoreColor = percent >= 50 ? appColors.emerald : appColors.red;
-
-          return GestureDetector(
+        return Expanded(
+          child: GestureDetector(
             onTap: () {
               setState(() {
                 _selectedDate = date;
@@ -5701,8 +5737,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
               _loadDayData(date);
             },
             child: Container(
-              width: 50,
-              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected ? appColors.card : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
@@ -5715,40 +5751,49 @@ class _HabitsScreenState extends State<HabitsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    shortDayName,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.normal,
-                      color: appColors.text3,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      shortDayName,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.normal,
+                        color: appColors.text3,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    dayNumber,
-                    style: GoogleFonts.syne(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: isSelected ? appColors.text1 : appColors.text2,
+                  const SizedBox(height: 3),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      dayNumber,
+                      style: GoogleFonts.syne(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected ? appColors.text1 : appColors.text2,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$percent%',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: scoreColor,
+                  const SizedBox(height: 3),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$percent%',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: scoreColor,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      }),
     );
   }
 }
