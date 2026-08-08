@@ -280,40 +280,41 @@ final darkTheme = _appTheme(Brightness.dark);
 
 ThemeData _appTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
+  final baseTextTheme = TextTheme(
+    bodyLarge: TextStyle(
+      fontSize: 15,
+      color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
+    ),
+    bodyMedium: TextStyle(
+      fontSize: 13,
+      color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
+    ),
+    bodySmall: TextStyle(
+      fontSize: 12,
+      color: isDark ? const Color(0xFF9090BB) : const Color(0xFF8A8580),
+    ),
+    titleMedium: TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
+    ),
+    titleLarge: TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.w700,
+      color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
+    ),
+  );
+
   return ThemeData(
     brightness: brightness,
-    fontFamily: 'NotoNaskhArabic',
+    textTheme: GoogleFonts.plusJakartaSansTextTheme(
+      _withArabicFallback(baseTextTheme),
+    ),
     scaffoldBackgroundColor: isDark
         ? const Color(0xFF1C1C2E)
         : const Color(0xFFF5F0E8),
     cardColor: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFFFFFFF),
     primaryColor: const Color(0xFF1D9E75),
-    textTheme: _withArabicFallback(
-      TextTheme(
-        bodyLarge: TextStyle(
-          fontSize: 15,
-          color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 13,
-          color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
-        ),
-        bodySmall: TextStyle(
-          fontSize: 12,
-          color: isDark ? const Color(0xFF9090BB) : const Color(0xFF8A8580),
-        ),
-        titleMedium: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
-        ),
-        titleLarge: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
-        ),
-      ),
-    ),
     colorScheme: isDark
         ? const ColorScheme.dark(
             primary: Color(0xFF1D9E75),
