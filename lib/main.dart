@@ -211,11 +211,12 @@ class WorkoutProgressSnapshot {
 }
 
 class DayRecord {
-  DayRecord({required this.tasks, required this.prayers, this.workoutSummary});
+  DayRecord({required List<bool> tasks, required this.prayers, this.workoutSummary})
+      : tasks = List<bool>.from(tasks, growable: true);
 
   factory DayRecord.empty() {
     return DayRecord(
-      tasks: List<bool>.filled(kTodayTasks.length, false),
+      tasks: List<bool>.filled(kTodayTasks.length, false, growable: true),
       prayers: {for (final name in kPrayerNames) name: false},
       workoutSummary: null,
     );
@@ -229,6 +230,7 @@ class DayRecord {
       tasks: List<bool>.generate(
         kTodayTasks.length,
         (index) => index < rawTasks.length && rawTasks[index] == true,
+        growable: true,
       ),
       prayers: {
         for (final name in kPrayerNames) name: rawPrayers[name] == true,
@@ -242,6 +244,15 @@ class DayRecord {
   final List<bool> tasks;
   final Map<String, bool> prayers;
   WorkoutSummary? workoutSummary;
+
+  void syncTaskCount() {
+    if (tasks.length < kTodayTasks.length) {
+      final needed = kTodayTasks.length - tasks.length;
+      tasks.addAll(List<bool>.filled(needed, false, growable: true));
+    } else if (tasks.length > kTodayTasks.length) {
+      tasks.removeRange(kTodayTasks.length, tasks.length);
+    }
+  }
 
   int get taskDone => tasks.where((done) => done).length;
   int get prayerDone => prayers.values.where((done) => done).length;
@@ -567,13 +578,18 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       }
     } catch (_) {}
     _history.putIfAbsent(dayKey(DateTime.now()), DayRecord.empty);
+    for (final record in _history.values) {
+      record.syncTaskCount();
+    }
     if (mounted) {
       setState(() => _loaded = true);
     }
   }
 
   DayRecord _recordFor(DateTime date) {
-    return _history.putIfAbsent(dayKey(date), DayRecord.empty);
+    final record = _history.putIfAbsent(dayKey(date), DayRecord.empty);
+    record.syncTaskCount();
+    return record;
   }
 
   Future<void> _saveHistory() async {
@@ -732,8 +748,13 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   void _toggleTask(int index) {
     if (!mounted) return;
+    _today.syncTaskCount();
+    if (index < 0 || index >= _today.tasks.length) return;
     final isChecked = !_today.tasks[index];
-    setState(() => _today.tasks[index] = isChecked);
+    setState(() {
+      _today.syncTaskCount();
+      _today.tasks[index] = isChecked;
+    });
     _saveHistory();
 
     if (isChecked) {
@@ -1029,9 +1050,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       );
       lines.add('Tasks: ${record.taskDone}/${kTodayTasks.length}');
       for (var t = 0; t < kTodayTasks.length; t++) {
-        lines.add(
-          '  ${record.tasks[t] ? '[x]' : '[ ]'} ${kTodayTasks[t].title}',
-        );
+        final done = t < record.tasks.length && record.tasks[t];
+        lines.add('  ${done ? '[x]' : '[ ]'} ${kTodayTasks[t].title}');
       }
       if (record.workoutSummary != null) {
         final workout = record.workoutSummary!;
@@ -1580,8 +1600,13 @@ class _TodayScreenState extends State<TodayScreen>
         .toList();
   }
 
+  bool _isTaskDone(int index) =>
+      index >= 0 &&
+      index < widget.record.tasks.length &&
+      widget.record.tasks[index];
+
   int get _visibleTaskDone =>
-      _visibleTasks.where((entry) => widget.record.tasks[entry.key]).length;
+      _visibleTasks.where((entry) => _isTaskDone(entry.key)).length;
 
   int get _workoutIndex {
     return kTodayTasks.indexWhere(
@@ -1794,7 +1819,7 @@ class _TodayScreenState extends State<TodayScreen>
 
   Widget _taskRow(MapEntry<int, TodayTask> entry) {
     final task = entry.value;
-    final done = widget.record.tasks[entry.key];
+    final done = _isTaskDone(entry.key);
     const taskAccent = Color(0xFFFF9500);
 
     Widget card = Container(
@@ -1829,7 +1854,9 @@ class _TodayScreenState extends State<TodayScreen>
                   boxShadow: done
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF00C896).withValues(alpha: 0.45),
+                            color: const Color(
+                              0xFF00C896,
+                            ).withValues(alpha: 0.45),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
@@ -1842,7 +1869,11 @@ class _TodayScreenState extends State<TodayScreen>
                         ],
                 ),
                 child: done
-                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 17)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 17,
+                      )
                     : null,
               ),
             ),
@@ -1856,9 +1887,7 @@ class _TodayScreenState extends State<TodayScreen>
                     style: GoogleFonts.syne(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: done
-                          ? widget.theme.text3
-                          : widget.theme.text1,
+                      color: done ? widget.theme.text3 : widget.theme.text1,
                       decoration: done ? TextDecoration.lineThrough : null,
                     ),
                   ),
@@ -1867,9 +1896,7 @@ class _TodayScreenState extends State<TodayScreen>
                     _taskSubtitle(entry),
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: done
-                          ? widget.theme.text4
-                          : widget.theme.text2,
+                      color: done ? widget.theme.text4 : widget.theme.text2,
                     ),
                   ),
                 ],
@@ -1991,15 +2018,42 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
+  /// Approximate Hijri day of month for the current date.
+  int _hijriDayOfMonth() {
+    final now = DateTime.now();
+    final jd = (now.millisecondsSinceEpoch / 86400000.0 + 2440587.5).floor();
+    final l = jd - 1948440 + 10632;
+    final n = (l - 1) ~/ 10631;
+    final rem = l - 10631 * n + 354;
+    final j =
+        ((10985 - rem) ~/ 5316) * ((50 * rem) ~/ 17719) +
+        (rem ~/ 5670) * ((43 * rem) ~/ 15238);
+    final lp =
+        rem -
+        ((30 - j) ~/ 15) * ((17719 * j) ~/ 50) -
+        (j ~/ 16) * ((15238 * j) ~/ 43) +
+        29;
+    final m = (24 * lp) ~/ 709;
+    final day = lp - ((709 * m) ~/ 24);
+    return day.clamp(1, 30);
+  }
+
+  /// Returns true if today is a Sunnah fasting day:
+  /// Monday, Thursday, or Ayyam al-Bid (13th, 14th, 15th of Hijri month).
   bool _isSunnahDay() {
     final d = DateTime.now().weekday;
-    return d == DateTime.monday || d == DateTime.thursday;
+    if (d == DateTime.monday || d == DateTime.thursday) return true;
+    // Ayyam al-Bid — the three white days of the lunar month
+    final hijriDay = _hijriDayOfMonth();
+    return hijriDay >= 13 && hijriDay <= 15;
   }
 
   String _fastingDayName() {
     final d = DateTime.now().weekday;
     if (d == DateTime.monday) return 'Monday Fast';
     if (d == DateTime.thursday) return 'Thursday Fast';
+    final hijriDay = _hijriDayOfMonth();
+    if (hijriDay >= 13 && hijriDay <= 15) return 'Ayyām al-Bīḍ (Day $hijriDay)';
     return 'No Sunnah Fast Today';
   }
 
@@ -2280,34 +2334,7 @@ class _TodayScreenState extends State<TodayScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('⏳', style: TextStyle(fontSize: 16)),
-              const SizedBox(width: 8),
-              Text(
-                'LIFE ODOMETER',
-                style: GoogleFonts.syne(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                  color: widget.theme.text2,
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 4),
-          Center(
-            child: Text(
-              '${ageData['years']} years given. Use them well.',
-              style: GoogleFonts.dmSans(
-                fontSize: 10,
-                color: widget.theme.text3,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -3739,7 +3766,10 @@ class _TodayScreenState extends State<TodayScreen>
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8B84B).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
@@ -3763,21 +3793,31 @@ class _TodayScreenState extends State<TodayScreen>
         const SizedBox(height: 4),
         // 5 Obligatory Prayers Grid: Top 3 (Fajr, Dhuhr, Asr), Bottom 2 (Maghrib, Isha)
         Row(
-          children: fardPrayers.take(3).map((p) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
-            ),
-          )).toList(),
+          children: fardPrayers
+              .take(3)
+              .map(
+                (p) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+                  ),
+                ),
+              )
+              .toList(),
         ),
         const SizedBox(height: 6),
         Row(
-          children: fardPrayers.skip(3).map((p) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
-            ),
-          )).toList(),
+          children: fardPrayers
+              .skip(3)
+              .map(
+                (p) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+                  ),
+                ),
+              )
+              .toList(),
         ),
         const SizedBox(height: 10),
         // Optional Night Prayer (Tahajjud) Tile
@@ -3790,7 +3830,9 @@ class _TodayScreenState extends State<TodayScreen>
     const prayer = 'Tahajjud';
     final done = widget.record.prayers[prayer] ?? false;
     final tod = _prayerTimes[prayer] ?? const TimeOfDay(hour: 3, minute: 2);
-    final hour12 = tod.hour == 0 ? 12 : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
+    final hour12 = tod.hour == 0
+        ? 12
+        : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
     final ampm = tod.hour < 12 ? 'AM' : 'PM';
     final timeStr = '$hour12:${tod.minute.toString().padLeft(2, '0')} $ampm';
 
@@ -3812,8 +3854,8 @@ class _TodayScreenState extends State<TodayScreen>
               color: done
                   ? const Color(0xFF00C896).withValues(alpha: 0.5)
                   : widget.theme.isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : widget.theme.border,
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : widget.theme.border,
               width: 0.8,
             ),
           ),
@@ -3822,7 +3864,10 @@ class _TodayScreenState extends State<TodayScreen>
             children: [
               Row(
                 children: [
-                  Text(done ? '🌙' : '🌌', style: const TextStyle(fontSize: 14)),
+                  Text(
+                    done ? '🌙' : '🌑',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                   const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -3839,7 +3884,10 @@ class _TodayScreenState extends State<TodayScreen>
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: widget.theme.isDark
                                   ? Colors.white.withValues(alpha: 0.08)
@@ -3965,7 +4013,10 @@ class _TodayScreenState extends State<TodayScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: allDone
                           ? const Color(0xFF00C896).withValues(alpha: 0.18)
@@ -4020,7 +4071,10 @@ class _TodayScreenState extends State<TodayScreen>
               onTap: () => _showTaskSheet(),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 22,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
                   color: amberColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
@@ -4470,7 +4524,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
           widget.onPrayerToggle(prayer);
         }
       }
-    } else if (!recordFor(widget.history, DateTime.now()).tasks[taskIndex]) {
+    } else if (taskIndex >= 0 &&
+        taskIndex < kTodayTasks.length &&
+        !recordFor(widget.history, DateTime.now()).tasks[taskIndex]) {
       widget.onTaskToggle(taskIndex);
     }
     setState(() => _markedIndex = taskIndex);
@@ -4665,7 +4721,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
         _markedIndex == taskIndex ||
         (taskIndex == -1
             ? (recordFor(widget.history, DateTime.now()).prayerDone == 7)
-            : recordFor(widget.history, DateTime.now()).tasks[taskIndex]);
+            : taskIndex >= 0 &&
+                  taskIndex < kTodayTasks.length &&
+                  recordFor(widget.history, DateTime.now()).tasks[taskIndex]);
     // The task.color is not used in the new TodayTask definition.
     final goalColor = _getGoalColor(task.title);
 
@@ -5275,7 +5333,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       fontWeight: FontWeight.w800,
                       color: record.percent >= 50
                           ? appColors.emerald
-                          : (record.percent > 0 ? appColors.gold : appColors.text3),
+                          : (record.percent > 0
+                                ? appColors.gold
+                                : appColors.text3),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -5365,7 +5425,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       runSpacing: 8,
                       children: List.generate(kTodayTasks.length, (i) {
                         final task = kTodayTasks[i];
-                        final done = record.tasks[i] == true;
+                        final done =
+                            i < record.tasks.length && record.tasks[i] == true;
                         return Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -5425,7 +5486,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
             // 7. WORKOUT MODULE
             _buildSection(
               title: 'Workout',
-              rightText: workoutStatus == 'Not started' ? 'Ready to start' : workoutStatus,
+              rightText: workoutStatus == 'Not started'
+                  ? 'Ready to start'
+                  : workoutStatus,
               rightColor: workoutStatus == 'Completed'
                   ? appColors.emerald
                   : appColors.gold,
@@ -5470,7 +5533,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          workoutTotalSets == 0 ? 'No workout scheduled' : workoutName,
+                          workoutTotalSets == 0
+                              ? 'No workout scheduled'
+                              : workoutName,
                           style: GoogleFonts.syne(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -5507,7 +5572,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   _buildMiniCard(
                     label: 'Earned',
                     value: '₹$earned',
-                    valueColor: earned > 0 ? appColors.emerald : appColors.text3,
+                    valueColor: earned > 0
+                        ? appColors.emerald
+                        : appColors.text3,
                     appColors: appColors,
                   ),
                   const SizedBox(width: 8),
@@ -5521,7 +5588,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   _buildMiniCard(
                     label: 'Net',
                     value: '${netIncome >= 0 ? '+' : ''}₹$netIncome',
-                    valueColor: netIncome != 0 ? appColors.gold : appColors.text3,
+                    valueColor: netIncome != 0
+                        ? appColors.gold
+                        : appColors.text3,
                     appColors: appColors,
                   ),
                 ],
@@ -5555,7 +5624,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
             _buildSection(
               title: 'Fasting',
-              rightText: fastingHeaderStatus == 'Not logged' ? 'Tap to log' : fastingHeaderStatus,
+              rightText: fastingHeaderStatus == 'Not logged'
+                  ? 'Tap to log'
+                  : fastingHeaderStatus,
               rightColor: fastingHeaderStatus == 'Logged'
                   ? appColors.emerald
                   : appColors.gold,
@@ -5564,7 +5635,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 children: [
                   _buildMiniCard(
                     label: 'Status',
-                    value: fastingCardStatus == '-' ? 'Not Fasting Today' : fastingCardStatus,
+                    value: fastingCardStatus == '-'
+                        ? 'Not Fasting Today'
+                        : fastingCardStatus,
                     valueColor: fastingCardStatus == 'Completed'
                         ? appColors.emerald
                         : appColors.gold,
@@ -6188,7 +6261,7 @@ class DayHistoryCard extends StatelessWidget {
                   theme: theme,
                   label: kTodayTasks[i].title,
                   subtitle: kTodayTasks[i].tag,
-                  done: record.tasks[i], // No color in TodayTask
+                  done: i < record.tasks.length && record.tasks[i],
                   color: cEmerald, // Default color for tasks
                 ),
               for (final prayer in kPrayerNames)
@@ -6532,7 +6605,9 @@ class MonitorRow extends StatelessWidget {
 }
 
 DayRecord recordFor(Map<String, DayRecord> history, DateTime date) {
-  return history[dayKey(date)] ?? DayRecord.empty();
+  final record = history[dayKey(date)] ?? DayRecord.empty();
+  record.syncTaskCount();
+  return record;
 }
 
 Map<String, TimeOfDay> _prayerTimes = {
@@ -6720,7 +6795,7 @@ bool isTodayWorkout(String freq) {
 
 IconData prayerIcon(String p) {
   const map = {
-    'Tahajjud': Icons.nights_stay,
+    'Tahajjud': Icons.auto_awesome,
     'Fajr': Icons.dark_mode,
     'Dhuhr': Icons.light_mode,
     'Asr': Icons.sunny,
@@ -8144,7 +8219,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         Icon(Icons.access_time, size: 14, color: theme.text2),
                         const SizedBox(width: 4),
                         _animatedValueText(
-                          hoursThisWeek > 0 ? hoursThisWeek.toStringAsFixed(1) : '~25m',
+                          hoursThisWeek > 0
+                              ? hoursThisWeek.toStringAsFixed(1)
+                              : '~25m',
                           theme.text1,
                           15,
                         ),
@@ -8297,7 +8374,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         : '$percent% · $_completedExercises/${_selectedSplit.exercises.length} exercises',
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
-                      color: percent == 0 ? const Color(0xFF00C896) : theme.text2,
+                      color: percent == 0
+                          ? const Color(0xFF00C896)
+                          : theme.text2,
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -8384,7 +8463,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
-                      color: _exerciseTab == 0 ? theme.teal : Colors.transparent,
+                      color: _exerciseTab == 0
+                          ? theme.teal
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     alignment: Alignment.center,
@@ -8409,7 +8490,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
-                      color: _exerciseTab == 1 ? const Color(0xFFE67E22) : Colors.transparent,
+                      color: _exerciseTab == 1
+                          ? const Color(0xFFE67E22)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     alignment: Alignment.center,
@@ -8548,7 +8631,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     if (lower.contains('incline')) return 'Table edge';
     if (lower.contains('pike')) return 'Bodyweight';
     if (lower.contains('door')) return 'Doorframe';
-    if (lower.contains('bottle') || lower.contains('water')) return '2×1L bottles';
+    if (lower.contains('bottle') || lower.contains('water'))
+      return '2×1L bottles';
     if (lower.contains('towel')) return 'Thick towel';
     if (lower.contains('wall') || lower.contains('handstand')) return 'Wall';
     if (lower.contains('plank')) return 'Floor';
@@ -8558,20 +8642,30 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   String _getFormCueForExercise(String name) {
     final lower = name.toLowerCase();
     if (lower.contains('incline')) return 'Hands on table, lower chest to edge';
-    if (lower.contains('pike')) return 'Hips high, lower crown of head toward floor';
-    if (lower.contains('push')) return 'Keep core tight — body straight as a plank';
-    if (lower.contains('door')) return 'Grip doorframe firmly, pull chest to door';
-    if (lower.contains('circle')) return 'Keep arms horizontal, make controlled circles';
-    if (lower.contains('plank')) return 'Squeeze glutes & core, don\'t let hips sag';
-    if (lower.contains('squat')) return 'Keep chest up, knees tracking over toes';
-    if (lower.contains('lunge')) return 'Step long, drop back knee close to floor';
+    if (lower.contains('pike'))
+      return 'Hips high, lower crown of head toward floor';
+    if (lower.contains('push'))
+      return 'Keep core tight — body straight as a plank';
+    if (lower.contains('door'))
+      return 'Grip doorframe firmly, pull chest to door';
+    if (lower.contains('circle'))
+      return 'Keep arms horizontal, make controlled circles';
+    if (lower.contains('plank'))
+      return 'Squeeze glutes & core, don\'t let hips sag';
+    if (lower.contains('squat'))
+      return 'Keep chest up, knees tracking over toes';
+    if (lower.contains('lunge'))
+      return 'Step long, drop back knee close to floor';
     return 'Maintain controlled movement & steady breathing';
   }
 
   int _getPrescribedRestSeconds(String name) {
     final lower = name.toLowerCase();
     if (lower.contains('pike')) return 120;
-    if (lower.contains('push') || lower.contains('row') || lower.contains('squat')) return 90;
+    if (lower.contains('push') ||
+        lower.contains('row') ||
+        lower.contains('squat'))
+      return 90;
     return 60;
   }
 
@@ -8581,12 +8675,24 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF181B21),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('End workout?', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text('Progress for completed sets will be saved.', style: GoogleFonts.dmSans(color: const Color(0xFF8B929D))),
+        title: Text(
+          'End workout?',
+          style: GoogleFonts.dmSans(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Progress for completed sets will be saved.',
+          style: GoogleFonts.dmSans(color: const Color(0xFF8B929D)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: GoogleFonts.dmSans(color: const Color(0xFF6B7280))),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.dmSans(color: const Color(0xFF6B7280)),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -8597,7 +8703,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               });
               _MainScreenState.hideBottomNavNotifier.value = false;
             },
-            child: Text('End Workout', style: GoogleFonts.dmSans(color: const Color(0xFFEF4444), fontWeight: FontWeight.bold)),
+            child: Text(
+              'End Workout',
+              style: GoogleFonts.dmSans(
+                color: const Color(0xFFEF4444),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -8619,9 +8731,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFF2C94C).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFF2C94C).withValues(alpha: 0.3), width: 2),
+                  border: Border.all(
+                    color: const Color(0xFFF2C94C).withValues(alpha: 0.3),
+                    width: 2,
+                  ),
                 ),
-                child: const Icon(Icons.pause_rounded, size: 36, color: Color(0xFFF2C94C)),
+                child: const Icon(
+                  Icons.pause_rounded,
+                  size: 36,
+                  color: Color(0xFFF2C94C),
+                ),
               ),
               const SizedBox(height: 20),
               Text(
@@ -8653,7 +8772,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   backgroundColor: const Color(0xFF2ECC71),
                   foregroundColor: const Color(0xFF0A0C10),
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   elevation: 4,
                 ),
                 child: Text(
@@ -8673,7 +8794,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   foregroundColor: const Color(0xFFEF4444),
                   minimumSize: const Size(double.infinity, 48),
                   side: const BorderSide(color: Color(0xFF23262D), width: 1),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: Text(
                   'End Workout',
@@ -8690,7 +8813,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     );
   }
 
-  Widget _buildRpeRatingOverlay(ThemeColors theme, WorkoutExerciseState state, bool isLastSet) {
+  Widget _buildRpeRatingOverlay(
+    ThemeColors theme,
+    WorkoutExerciseState state,
+    bool isLastSet,
+  ) {
     return Container(
       color: const Color(0xFF0A0C10).withValues(alpha: 0.94),
       child: Center(
@@ -8734,15 +8861,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       height: 48,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isSelected ? const Color(0xFF2ECC71) : const Color(0xFF181B21),
+                        color: isSelected
+                            ? const Color(0xFF2ECC71)
+                            : const Color(0xFF181B21),
                         border: Border.all(
-                          color: isSelected ? const Color(0xFF2ECC71) : const Color(0xFF23262D),
+                          color: isSelected
+                              ? const Color(0xFF2ECC71)
+                              : const Color(0xFF23262D),
                           width: 2,
                         ),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: const Color(0xFF2ECC71).withValues(alpha: 0.3),
+                                  color: const Color(
+                                    0xFF2ECC71,
+                                  ).withValues(alpha: 0.3),
                                   blurRadius: 16,
                                 ),
                               ]
@@ -8754,7 +8887,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         style: GoogleFonts.dmSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? const Color(0xFF0A0C10) : Colors.white,
+                          color: isSelected
+                              ? const Color(0xFF0A0C10)
+                              : Colors.white,
                         ),
                       ),
                     ),
@@ -8765,9 +8900,27 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Easy', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF6B7280))),
-                  Text('Hard', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF6B7280))),
-                  Text('Max effort', style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF6B7280))),
+                  Text(
+                    'Easy',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                  Text(
+                    'Hard',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
+                  Text(
+                    'Max effort',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 28),
@@ -8787,7 +8940,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             state.currentSet = state.currentSet + 1;
                             state.repsRemaining = state.maxReps;
                             _repsRemaining = state.maxReps;
-                            _restSeconds = _getPrescribedRestSeconds(_activeExerciseName!);
+                            _restSeconds = _getPrescribedRestSeconds(
+                              _activeExerciseName!,
+                            );
                             _restExerciseKey = state.exerciseKey;
                             _isResting = true;
                             _startRestTimer();
@@ -8798,15 +8953,22 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2ECC71),
                   disabledBackgroundColor: const Color(0xFF23262D),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: Text(
                   'Start rest timer',
                   style: GoogleFonts.dmSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: _selectedRpe == null ? const Color(0xFF6B7280) : const Color(0xFF0A0C10),
+                    color: _selectedRpe == null
+                        ? const Color(0xFF6B7280)
+                        : const Color(0xFF0A0C10),
                   ),
                 ),
               ),
@@ -8840,8 +9002,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         : null;
 
     // Realistic time calculation: (Work 45s + Rest 90s) * remaining sets
-    final remainingSetsCount = (totalExCount - currentExIndex) * totalSets + (totalSets - currentSet + 1);
-    final minutesLeft = ((remainingSetsCount * (45 + _getPrescribedRestSeconds(_activeExerciseName!))) / 60).round();
+    final remainingSetsCount =
+        (totalExCount - currentExIndex) * totalSets +
+        (totalSets - currentSet + 1);
+    final minutesLeft =
+        ((remainingSetsCount *
+                    (45 + _getPrescribedRestSeconds(_activeExerciseName!))) /
+                60)
+            .round();
 
     return Stack(
       children: [
@@ -8853,7 +9021,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               children: [
                 // Top Navigation Bar (Instrument Panel)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -8870,9 +9041,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           decoration: BoxDecoration(
                             color: const Color(0xFF181B21),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFF23262D), width: 1),
+                            border: Border.all(
+                              color: const Color(0xFF23262D),
+                              width: 1,
+                            ),
                           ),
-                          child: const Icon(Icons.arrow_back, size: 18, color: Color(0xFFE8EAED)),
+                          child: const Icon(
+                            Icons.arrow_back,
+                            size: 18,
+                            color: Color(0xFFE8EAED),
+                          ),
                         ),
                       ),
 
@@ -8881,12 +9059,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2ECC71).withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFF2ECC71,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: const Color(0xFF2ECC71).withValues(alpha: 0.25),
+                                color: const Color(
+                                  0xFF2ECC71,
+                                ).withValues(alpha: 0.25),
                                 width: 1,
                               ),
                             ),
@@ -8908,9 +9093,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                     return Container(
                                       width: 12,
                                       height: 6,
-                                      margin: EdgeInsets.only(left: i > 0 ? 3 : 0),
+                                      margin: EdgeInsets.only(
+                                        left: i > 0 ? 3 : 0,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: filled ? const Color(0xFF2ECC71) : const Color(0xFF23262D),
+                                        color: filled
+                                            ? const Color(0xFF2ECC71)
+                                            : const Color(0xFF23262D),
                                         borderRadius: BorderRadius.circular(3),
                                       ),
                                     );
@@ -8941,12 +9130,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFF181B21),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFF23262D), width: 1),
+                                border: Border.all(
+                                  color: const Color(0xFF23262D),
+                                  width: 1,
+                                ),
                               ),
                               child: Icon(
-                                _voiceCuesEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+                                _voiceCuesEnabled
+                                    ? Icons.volume_up_rounded
+                                    : Icons.volume_off_rounded,
                                 size: 18,
-                                color: _voiceCuesEnabled ? const Color(0xFF2ECC71) : const Color(0xFF6B7280),
+                                color: _voiceCuesEnabled
+                                    ? const Color(0xFF2ECC71)
+                                    : const Color(0xFF6B7280),
                               ),
                             ),
                           ),
@@ -8962,9 +9158,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFF181B21),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFF23262D), width: 1),
+                                border: Border.all(
+                                  color: const Color(0xFF23262D),
+                                  width: 1,
+                                ),
                               ),
-                              child: const Icon(Icons.pause_rounded, size: 20, color: Color(0xFFF2C94C)),
+                              child: const Icon(
+                                Icons.pause_rounded,
+                                size: 20,
+                                color: Color(0xFFF2C94C),
+                              ),
                             ),
                           ),
                         ],
@@ -9016,20 +9219,33 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
                         // Last Session Performance & RPE Context Pill (Issue 10)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF181B21),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFF23262D), width: 1),
+                            border: Border.all(
+                              color: const Color(0xFF23262D),
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.trending_up_rounded, size: 14, color: Color(0xFF6B7280)),
+                              const Icon(
+                                Icons.trending_up_rounded,
+                                size: 14,
+                                color: Color(0xFF6B7280),
+                              ),
                               const SizedBox(width: 6),
                               RichText(
                                 text: TextSpan(
-                                  style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF8B929D)),
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: const Color(0xFF8B929D),
+                                  ),
                                   children: [
                                     const TextSpan(text: 'Last: '),
                                     TextSpan(
@@ -9061,12 +9277,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           decoration: BoxDecoration(
                             color: const Color(0xFF181B21),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFF23262D), width: 1),
+                            border: Border.all(
+                              color: const Color(0xFF23262D),
+                              width: 1,
+                            ),
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(20),
                             child: StickFigureWidget(
-                              exerciseName: _isCelebrating ? 'celebrate' : _activeExerciseName!,
+                              exerciseName: _isCelebrating
+                                  ? 'celebrate'
+                                  : _activeExerciseName!,
                               accentColor: const Color(0xFF2ECC71),
                               size: 140,
                             ),
@@ -9076,20 +9297,39 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
                         // Form Cue Banner with Left Accent Border (Issue 9)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF181B21),
                             borderRadius: BorderRadius.circular(10),
                             border: const Border(
-                              left: BorderSide(color: Color(0xFFF2C94C), width: 3),
-                              top: BorderSide(color: Color(0xFF23262D), width: 1),
-                              right: BorderSide(color: Color(0xFF23262D), width: 1),
-                              bottom: BorderSide(color: Color(0xFF23262D), width: 1),
+                              left: BorderSide(
+                                color: Color(0xFFF2C94C),
+                                width: 3,
+                              ),
+                              top: BorderSide(
+                                color: Color(0xFF23262D),
+                                width: 1,
+                              ),
+                              right: BorderSide(
+                                color: Color(0xFF23262D),
+                                width: 1,
+                              ),
+                              bottom: BorderSide(
+                                color: Color(0xFF23262D),
+                                width: 1,
+                              ),
                             ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFF2C94C)),
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                size: 16,
+                                color: Color(0xFFF2C94C),
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -9116,12 +9356,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                       fontSize: 64,
                                       fontWeight: FontWeight.w500,
                                       color: const Color(0xFFF2C94C),
-                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures(),
+                                      ],
                                     ),
                                   ),
                                   Text(
                                     'Resting... breathe & recover',
-                                    style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF6B7280)),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 13,
+                                      color: const Color(0xFF6B7280),
+                                    ),
                                   ),
                                 ],
                               )
@@ -9138,29 +9383,41 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                           width: 150,
                                           height: 150,
                                           child: CustomPaint(
-                                            painter: _CircularProgressRingPainter(
-                                              progress: targetReps > 0
-                                                  ? (currentRepsLogged / targetReps).clamp(0.0, 1.0)
-                                                  : 0.0,
-                                              trackColor: const Color(0xFF23262D),
-                                              color: currentRepsLogged >= targetReps
-                                                  ? const Color(0xFF2ECC71)
-                                                  : const Color(0xFF2ECC71),
-                                            ),
+                                            painter:
+                                                _CircularProgressRingPainter(
+                                                  progress: targetReps > 0
+                                                      ? (currentRepsLogged /
+                                                                targetReps)
+                                                            .clamp(0.0, 1.0)
+                                                      : 0.0,
+                                                  trackColor: const Color(
+                                                    0xFF23262D,
+                                                  ),
+                                                  color:
+                                                      currentRepsLogged >=
+                                                          targetReps
+                                                      ? const Color(0xFF2ECC71)
+                                                      : const Color(0xFF2ECC71),
+                                                ),
                                           ),
                                         ),
                                         Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
                                             Text(
                                               '$currentRepsLogged',
                                               style: GoogleFonts.dmSans(
                                                 fontSize: 56,
                                                 fontWeight: FontWeight.w500,
-                                                color: currentRepsLogged >= targetReps
+                                                color:
+                                                    currentRepsLogged >=
+                                                        targetReps
                                                     ? const Color(0xFF2ECC71)
                                                     : Colors.white,
-                                                fontFeatures: const [FontFeature.tabularFigures()],
+                                                fontFeatures: const [
+                                                  FontFeature.tabularFigures(),
+                                                ],
                                               ),
                                             ),
                                             Text(
@@ -9225,7 +9482,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF2ECC71).withValues(alpha: 0.15),
+                                        color: const Color(
+                                          0xFF2ECC71,
+                                        ).withValues(alpha: 0.15),
                                         blurRadius: 24,
                                       ),
                                     ],
@@ -9234,7 +9493,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(
-                                        currentRepsLogged >= targetReps ? Icons.check : Icons.add_rounded,
+                                        currentRepsLogged >= targetReps
+                                            ? Icons.check
+                                            : Icons.add_rounded,
                                         size: 32,
                                         color: currentRepsLogged >= targetReps
                                             ? const Color(0xFF0A0C10)
@@ -9242,7 +9503,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        currentRepsLogged >= targetReps ? 'FINISH SET' : 'LOG REP',
+                                        currentRepsLogged >= targetReps
+                                            ? 'FINISH SET'
+                                            : 'LOG REP',
                                         style: GoogleFonts.dmSans(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
@@ -9270,7 +9533,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                       }
                                     });
                                   },
-                                  icon: const Icon(Icons.undo_rounded, size: 14, color: Color(0xFF6B7280)),
+                                  icon: const Icon(
+                                    Icons.undo_rounded,
+                                    size: 14,
+                                    color: Color(0xFF6B7280),
+                                  ),
                                   label: Text(
                                     'Undo last rep (−1)',
                                     style: GoogleFonts.dmSans(
@@ -9293,7 +9560,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 _restSeconds = 0;
                               });
                             },
-                            icon: const Icon(Icons.fast_forward_rounded, color: Color(0xFF0A0C10)),
+                            icon: const Icon(
+                              Icons.fast_forward_rounded,
+                              color: Color(0xFF0A0C10),
+                            ),
                             label: Text(
                               'SKIP REST',
                               style: GoogleFonts.dmSans(
@@ -9305,8 +9575,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFF2C94C),
-                              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         const SizedBox(height: 20),
@@ -9317,21 +9592,26 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             HapticService.selection();
                             _skipHoldProgress = 0.0;
                             _skipHoldTimer?.cancel();
-                            _skipHoldTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-                              setState(() {
-                                _skipHoldProgress += 0.033; // 1.5 seconds total
-                              });
-                              if (_skipHoldProgress >= 1.0) {
-                                timer.cancel();
-                                HapticService.medium();
+                            _skipHoldTimer = Timer.periodic(
+                              const Duration(milliseconds: 50),
+                              (timer) {
                                 setState(() {
-                                  _activeExerciseState?.completed = true;
-                                  _showRepCounter = false;
-                                  _skipHoldProgress = 0.0;
+                                  _skipHoldProgress +=
+                                      0.033; // 1.5 seconds total
                                 });
-                                _MainScreenState.hideBottomNavNotifier.value = false;
-                              }
-                            });
+                                if (_skipHoldProgress >= 1.0) {
+                                  timer.cancel();
+                                  HapticService.medium();
+                                  setState(() {
+                                    _activeExerciseState?.completed = true;
+                                    _showRepCounter = false;
+                                    _skipHoldProgress = 0.0;
+                                  });
+                                  _MainScreenState.hideBottomNavNotifier.value =
+                                      false;
+                                }
+                              },
+                            );
                           },
                           onLongPressEnd: (_) {
                             _skipHoldTimer?.cancel();
@@ -9339,11 +9619,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           },
                           child: Container(
                             width: 220,
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 16,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFF181B21),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFF23262D), width: 1),
+                              border: Border.all(
+                                color: const Color(0xFF23262D),
+                                width: 1,
+                              ),
                             ),
                             child: Stack(
                               alignment: Alignment.centerLeft,
@@ -9351,21 +9637,30 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 // Fill progress bar during long press
                                 if (_skipHoldProgress > 0)
                                   FractionallySizedBox(
-                                    widthFactor: _skipHoldProgress.clamp(0.0, 1.0),
+                                    widthFactor: _skipHoldProgress.clamp(
+                                      0.0,
+                                      1.0,
+                                    ),
                                     child: Container(
                                       height: 24,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+                                        color: const Color(
+                                          0xFFEF4444,
+                                        ).withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                     ),
                                   ),
                                 Center(
                                   child: Text(
-                                    _skipHoldProgress > 0 ? 'Hold to skip...' : 'Hold 1.5s to Skip Exercise',
+                                    _skipHoldProgress > 0
+                                        ? 'Hold to skip...'
+                                        : 'Hold 1.5s to Skip Exercise',
                                     style: GoogleFonts.dmSans(
                                       fontSize: 11,
-                                      color: _skipHoldProgress > 0 ? const Color(0xFFEF4444) : const Color(0xFF6B7280),
+                                      color: _skipHoldProgress > 0
+                                          ? const Color(0xFFEF4444)
+                                          : const Color(0xFF6B7280),
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -9382,7 +9677,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
                 // Next Exercise Preview Bar (Fixed at bottom)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                   decoration: const BoxDecoration(
                     color: Color(0xFF181B21),
                     border: Border(
@@ -9399,9 +9697,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
-                          nextExName != null ? Icons.fitness_center : Icons.check_circle,
+                          nextExName != null
+                              ? Icons.fitness_center
+                              : Icons.check_circle,
                           size: 20,
-                          color: nextExName != null ? const Color(0xFF8B929D) : const Color(0xFF2ECC71),
+                          color: nextExName != null
+                              ? const Color(0xFF8B929D)
+                              : const Color(0xFF2ECC71),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -9411,7 +9713,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              nextExName != null ? 'UP NEXT' : 'WORKOUT COMPLETE',
+                              nextExName != null
+                                  ? 'UP NEXT'
+                                  : 'WORKOUT COMPLETE',
                               style: GoogleFonts.dmSans(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
@@ -9420,7 +9724,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               ),
                             ),
                             Text(
-                              nextExName ?? 'Great job completing all exercises!',
+                              nextExName ??
+                                  'Great job completing all exercises!',
                               style: GoogleFonts.dmSans(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -9440,7 +9745,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right, size: 20, color: Color(0xFF6B7280)),
+                      const Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Color(0xFF6B7280),
+                      ),
                     ],
                   ),
                 ),
@@ -9450,10 +9759,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ),
 
         // Pause Overlay (Issue 3)
-        if (_isPaused)
-          Positioned.fill(
-            child: _buildPauseOverlay(theme),
-          ),
+        if (_isPaused) Positioned.fill(child: _buildPauseOverlay(theme)),
 
         // RPE Rating Overlay
         if (_showRpeOverlay)
@@ -11480,7 +11786,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                     Text(
                       streak >= 3
                           ? '$streak day streak'
-                          : (streak > 0 ? '$streak day streak' : 'Start your streak'),
+                          : (streak > 0
+                                ? '$streak day streak'
+                                : 'Start your streak'),
                       style: GoogleFonts.dmSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -12754,23 +13062,27 @@ class _IncomeScreenState extends State<IncomeScreen>
                         final barPct = maxDaily > 0
                             ? (amt / maxDaily).clamp(0.0, 1.0)
                             : 0.0;
-                        final barH = amt > 0 ? math.max(3.0, barPct * 60.0) : 3.0;
+                        final barH = amt > 0
+                            ? math.max(3.0, barPct * 60.0)
+                            : 3.0;
                         final isToday = (i + 1) == todayDay;
                         final showLabel = (i + 1) % 7 == 0; // Day 7, 14, 21, 28
 
                         // Stagger: each bar 15ms delay
-                        final staggerStart = (i * 15.0 / 1300.0).clamp(0.0, 1.0);
-                        final staggerEnd = (staggerStart + 800.0 / 1300.0).clamp(
+                        final staggerStart = (i * 15.0 / 1300.0).clamp(
                           0.0,
                           1.0,
                         );
+                        final staggerEnd = (staggerStart + 800.0 / 1300.0)
+                            .clamp(0.0, 1.0);
                         final interval = Interval(
                           staggerStart,
                           staggerEnd,
                           curve: Curves.easeOutCubic,
                         );
                         final animH =
-                            barH * interval.transform(_chartBarsController.value);
+                            barH *
+                            interval.transform(_chartBarsController.value);
 
                         return Expanded(
                           child: Padding(
@@ -12790,13 +13102,17 @@ class _IncomeScreenState extends State<IncomeScreen>
                                             end: Alignment.bottomCenter,
                                             colors: [
                                               colors.gold,
-                                              colors.gold.withValues(alpha: 0.3),
+                                              colors.gold.withValues(
+                                                alpha: 0.3,
+                                              ),
                                             ],
                                           )
                                         : null,
                                     color: amt <= 0
                                         ? (colors.theme.isDark
-                                              ? Colors.white.withValues(alpha: 0.03)
+                                              ? Colors.white.withValues(
+                                                  alpha: 0.03,
+                                                )
                                               : Colors.black.withValues(
                                                   alpha: 0.03,
                                                 ))
@@ -14060,15 +14376,22 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
 
   IconData get _categoryIcon {
     final name = widget.exercise[0].toLowerCase();
-    if (name.contains('row') || name.contains('pull')) return Icons.sports_gymnastics;
-    if (name.contains('plank') || name.contains('raise') || name.contains('crunch')) return Icons.self_improvement;
-    if (name.contains('squat') || name.contains('lunge')) return Icons.directions_run;
+    if (name.contains('row') || name.contains('pull'))
+      return Icons.sports_gymnastics;
+    if (name.contains('plank') ||
+        name.contains('raise') ||
+        name.contains('crunch'))
+      return Icons.self_improvement;
+    if (name.contains('squat') || name.contains('lunge'))
+      return Icons.directions_run;
     return Icons.fitness_center_outlined;
   }
 
   bool get _isIsometric {
     final name = widget.exercise[0].toLowerCase();
-    return name.contains('plank') || name.contains('hold') || name.contains('wall sit');
+    return name.contains('plank') ||
+        name.contains('hold') ||
+        name.contains('wall sit');
   }
 
   String get primaryMuscle {
@@ -14098,10 +14421,14 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
-        color: widget.theme.isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
+        color: widget.theme.isDark
+            ? Colors.white.withValues(alpha: 0.04)
+            : Colors.black.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: widget.theme.isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08),
+          color: widget.theme.isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.08),
           width: 0.5,
         ),
       ),
@@ -14295,7 +14622,9 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                _isIsometric ? '${widget.reps}s' : '${widget.reps}',
+                                _isIsometric
+                                    ? '${widget.reps}s'
+                                    : '${widget.reps}',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
