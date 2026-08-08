@@ -2332,6 +2332,56 @@ class _TodayScreenState extends State<TodayScreen>
               _buildDigitalMeterGroup('days', ageData['days']!),
             ],
           ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: widget.theme.isDark
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : Colors.black.withValues(alpha: 0.02),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFE8B84B).withValues(alpha: 0.25),
+                width: 0.8,
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'اغْتَنِمْ خَمْسًا قَبْلَ خَمْسٍ',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.amiri(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFE8B84B),
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '"Take advantage of five before five: your youth before your old age, your health before your sickness, your wealth before your poverty, your free time before your busyness, and your life before your death."',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w400,
+                    fontStyle: FontStyle.italic,
+                    color: widget.theme.text2,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '— Al-Hakim, Sahih',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: widget.theme.text3,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
