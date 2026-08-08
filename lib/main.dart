@@ -1744,17 +1744,34 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   bool isPrayerPassed(String prayer) {
-    final time = _prayerTimes[prayer];
-    if (time == null) return false;
+    if (prayer == 'Tahajjud') return false;
+
+    const nextPrayerMap = {
+      'Fajr': 'Dhuhr',
+      'Dhuhr': 'Asr',
+      'Asr': 'Maghrib',
+      'Maghrib': 'Isha',
+      'Isha': null,
+    };
+
+    final nextPrayer = nextPrayerMap[prayer];
     final now = DateTime.now();
-    final prayerTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      time.hour,
-      time.minute,
-    );
-    return now.isAfter(prayerTime);
+
+    if (nextPrayer != null) {
+      final nextTime = _prayerTimes[nextPrayer];
+      if (nextTime == null) return false;
+      final nextPrayerDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        nextTime.hour,
+        nextTime.minute,
+      );
+      return now.isAfter(nextPrayerDateTime);
+    } else {
+      // Isha window remains active until midnight/end of day
+      return false;
+    }
   }
 
   void _scrollTo(GlobalKey targetKey) {
@@ -5013,6 +5030,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
   }
 
   bool _isPrayerPassed(String prayer, DateTime selectedDate) {
+    if (prayer == 'Tahajjud') return false;
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selDate = DateTime(
@@ -5028,16 +5047,29 @@ class _HabitsScreenState extends State<HabitsScreen> {
       return false;
     }
 
-    final time = _prayerTimes[prayer];
-    if (time == null) return false;
-    final prayerTime = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      time.hour,
-      time.minute,
-    );
-    return now.isAfter(prayerTime);
+    const nextPrayerMap = {
+      'Fajr': 'Dhuhr',
+      'Dhuhr': 'Asr',
+      'Asr': 'Maghrib',
+      'Maghrib': 'Isha',
+      'Isha': null,
+    };
+
+    final nextPrayer = nextPrayerMap[prayer];
+    if (nextPrayer != null) {
+      final nextTime = _prayerTimes[nextPrayer];
+      if (nextTime == null) return false;
+      final nextPrayerDateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        nextTime.hour,
+        nextTime.minute,
+      );
+      return now.isAfter(nextPrayerDateTime);
+    } else {
+      return false;
+    }
   }
 
   String _formatSelectedDate(DateTime date) {
