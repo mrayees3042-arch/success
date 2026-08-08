@@ -12047,11 +12047,8 @@ class _IncomeScreenState extends State<IncomeScreen>
   }
 
   Widget _buildIncomeAllocationCard(AppColors colors, int totalEarned) {
-    final ref = DateTime(_selectedYear, _selectedMonth, 1);
-    final totalSpent = _monthTotal(widget.expenseLog, ref);
-    final netBalance = totalEarned - totalSpent;
-    final hasBalance = netBalance > 0;
-    final baseAmount = hasBalance ? netBalance : 0;
+    final hasIncome = totalEarned > 0;
+    final baseAmount = hasIncome ? totalEarned : 0;
     final forUse = (baseAmount * 0.65).round();
     final forSavings = (baseAmount * 0.35).round();
 
@@ -12121,18 +12118,18 @@ class _IncomeScreenState extends State<IncomeScreen>
                 child: CustomPaint(
                   painter: _AllocationDonutPainter(
                     colors: colors,
-                    hasBalance: hasBalance,
+                    hasBalance: hasIncome,
                   ),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          hasBalance ? '₹${_money(netBalance)}' : '₹0',
+                          hasIncome ? '₹${_money(totalEarned)}' : '₹0',
                           style: GoogleFonts.syne(
-                            fontSize: hasBalance ? 11 : 13,
+                            fontSize: hasIncome ? 11 : 13,
                             fontWeight: FontWeight.w800,
-                            color: hasBalance ? colors.text1 : colors.text3,
+                            color: hasIncome ? colors.text1 : colors.text3,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -12163,7 +12160,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: colors.emerald,
+                                color: colors.gold,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -12183,7 +12180,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           style: GoogleFonts.syne(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: hasBalance ? colors.emerald : colors.text3,
+                            color: hasIncome ? colors.gold : colors.text3,
                           ),
                         ),
                       ],
@@ -12192,12 +12189,12 @@ class _IncomeScreenState extends State<IncomeScreen>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
-                        value: hasBalance ? 0.65 : 0.0,
+                        value: hasIncome ? 0.65 : 0.0,
                         minHeight: 4,
                         backgroundColor: colors.theme.isDark
                             ? Colors.white.withValues(alpha: 0.05)
                             : Colors.black.withValues(alpha: 0.05),
-                        valueColor: AlwaysStoppedAnimation(colors.emerald),
+                        valueColor: AlwaysStoppedAnimation(colors.gold),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -12210,7 +12207,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: colors.gold,
+                                color: colors.emerald,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -12230,7 +12227,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           style: GoogleFonts.syne(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: hasBalance ? colors.gold : colors.text3,
+                            color: hasIncome ? colors.emerald : colors.text3,
                           ),
                         ),
                       ],
@@ -12239,47 +12236,18 @@ class _IncomeScreenState extends State<IncomeScreen>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
-                        value: hasBalance ? 0.35 : 0.0,
+                        value: hasIncome ? 0.35 : 0.0,
                         minHeight: 4,
                         backgroundColor: colors.theme.isDark
                             ? Colors.white.withValues(alpha: 0.05)
                             : Colors.black.withValues(alpha: 0.05),
-                        valueColor: AlwaysStoppedAnimation(colors.gold),
+                        valueColor: AlwaysStoppedAnimation(colors.emerald),
                       ),
                     ),
                   ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: colors.theme.isDark
-                  ? Colors.white.withValues(alpha: 0.03)
-                  : Colors.black.withValues(alpha: 0.02),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: colors.cardBorder, width: 0.5),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.lightbulb_outline, size: 14, color: colors.gold),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    hasBalance
-                        ? 'Example: Every ₹1,000 earned → ₹650 spend / ₹350 save'
-                        : 'When you earn, your income splits 65% for use / 35% for savings',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: colors.text2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -17039,13 +17007,13 @@ class _AllocationDonutPainter extends CustomPainter {
 
     if (hasBalance) {
       final spendPaint = Paint()
-        ..color = colors.emerald
+        ..color = colors.gold
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeWidth = strokeWidth;
 
       final savePaint = Paint()
-        ..color = colors.gold
+        ..color = colors.emerald
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeWidth = strokeWidth;
