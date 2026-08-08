@@ -167,8 +167,8 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
     _sequenceController.forward().then((_) async {
       if (mounted) {
         final prefs = await SharedPreferences.getInstance();
-        final firstBootCompleted = prefs.getBool('first_boot_completed') ?? false;
-        // Once set once, never show demo mode/onboarding on boot again
+        final name = prefs.getString('user_name');
+        final firstBootCompleted = prefs.getBool('first_boot_completed') ?? (name != null && name.trim().isNotEmpty);
         final isConfigured = firstBootCompleted;
 
         if (!mounted) return;
@@ -232,178 +232,230 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Animated Pulse M Growth Chart Emblem
-                  AnimatedBuilder(
-                    animation: Listenable.merge([
-                      _sequenceController,
-                      _shineController,
-                    ]),
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _starScale.value,
-                        child: Container(
-                          width: 140,
-                          height: 140,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF0F121C)
-                                : const Color(0xFFFFFFFF),
-                            borderRadius: BorderRadius.circular(32),
-                            border: Border.all(
+                    // Animated Pulse M Growth Chart Emblem
+                    AnimatedBuilder(
+                      animation: Listenable.merge([
+                        _sequenceController,
+                        _shineController,
+                        _ringController,
+                      ]),
+                      builder: (context, child) {
+                        final strokeDrawProgress = (_sequenceController.value * 2.0).clamp(0.0, 1.0);
+                        return Transform.scale(
+                          scale: _starScale.value,
+                          child: Container(
+                            width: 144,
+                            height: 144,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
                               color: isDark
-                                  ? const Color(0xFF00C896).withValues(alpha: 0.3)
-                                  : const Color(0xFF00C896).withValues(alpha: 0.2),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF00C896).withValues(alpha: 0.15),
-                                blurRadius: 32,
-                                spreadRadius: -4,
+                                  ? const Color(0xFF0C0F19)
+                                  : const Color(0xFFFFFFFF),
+                              borderRadius: BorderRadius.circular(34),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF00C896).withValues(alpha: 0.35 + 0.15 * math.sin(_ringController.value * math.pi * 2))
+                                    : const Color(0xFF00C896).withValues(alpha: 0.25),
+                                width: 1.8,
                               ),
-                            ],
-                          ),
-                          child: CustomPaint(
-                            painter: PulseMPainter(
-                              progress: _starScale.value,
-                              pulse: _shineController.value,
-                              isDark: isDark,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  
-                  const SizedBox(height: 48),
-
-                  // Arabic Text: "مُتَّقِين"
-                  AnimatedBuilder(
-                    animation: _sequenceController,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: _arabicFadeUp.value,
-                        child: Transform.translate(
-                          offset: Offset(0, _arabicSlideUp.value),
-                          child: Text(
-                            "مُتَّقِين",
-                            style: GoogleFonts.amiri(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: goldColor,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // English Text: "Muttaqin"
-                  AnimatedBuilder(
-                    animation: _sequenceController,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: _englishFadeUp.value,
-                        child: Transform.translate(
-                          offset: Offset(0, _englishSlideUp.value),
-                          child: Text(
-                            "Muttaqin",
-                            style: GoogleFonts.syne(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: goldColor.withValues(alpha: 0.35),
-                              letterSpacing: 10,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Built For & RAYEES
-                  AnimatedBuilder(
-                    animation: _sequenceController,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: _builtForFadeUp.value,
-                        child: Transform.translate(
-                          offset: Offset(0, _builtForSlideUp.value),
-                          child: Column(
-                            children: [
-                              Text(
-                                "BUILT FOR",
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w500,
-                                  color: text3Color,
-                                  letterSpacing: 3,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF00C896).withValues(alpha: 0.20 + 0.10 * math.sin(_ringController.value * math.pi * 2)),
+                                  blurRadius: 36,
+                                  spreadRadius: -2,
                                 ),
+                                BoxShadow(
+                                  color: goldColor.withValues(alpha: 0.10),
+                                  blurRadius: 20,
+                                  spreadRadius: -4,
+                                ),
+                              ],
+                            ),
+                            child: CustomPaint(
+                              painter: PulseMPainter(
+                                progress: strokeDrawProgress,
+                                pulse: _shineController.value,
+                                isDark: isDark,
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                _userName.trim().isNotEmpty
-                                    ? _userName.trim().toUpperCase()
-                                    : "YOU",
-                                style: GoogleFonts.syne(
-                                  fontSize: 18,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    
+                    const SizedBox(height: 48),
+
+                    // Arabic Text: "مُتَّقِين"
+                    AnimatedBuilder(
+                      animation: _sequenceController,
+                      builder: (context, child) {
+                        return Opacity(
+                          opacity: _arabicFadeUp.value,
+                          child: Transform.translate(
+                            offset: Offset(0, _arabicSlideUp.value),
+                            child: ShaderMask(
+                              shaderCallback: (bounds) => LinearGradient(
+                                colors: [
+                                  goldColor,
+                                  const Color(0xFFF5D78E),
+                                  goldColor,
+                                ],
+                                stops: const [0.0, 0.5, 1.0],
+                              ).createShader(bounds),
+                              child: Text(
+                                "مُتَّقِين",
+                                style: GoogleFonts.amiri(
+                                  fontSize: 34,
                                   fontWeight: FontWeight.bold,
-                                  color: text4Color,
-                                  letterSpacing: 6,
+                                  color: Colors.white,
+                                  letterSpacing: 2,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
 
-                  const SizedBox(height: 48),
+                    const SizedBox(height: 6),
 
-                  // Progress Bar
-                  AnimatedBuilder(
-                    animation: _sequenceController,
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: _progressBarFade.value,
-                        child: Container(
-                          width: 100,
-                          height: 3,
-                          decoration: BoxDecoration(
-                            color: isDark 
-                                ? Colors.white.withValues(alpha: 0.06) 
-                                : Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(2),
+                    // English Text: "Muttaqin"
+                    AnimatedBuilder(
+                      animation: _sequenceController,
+                      builder: (context, child) {
+                        return Opacity(
+                          opacity: _englishFadeUp.value,
+                          child: Transform.translate(
+                            offset: Offset(0, _englishSlideUp.value),
+                            child: Text(
+                              "MUTTAQIN",
+                              style: GoogleFonts.syne(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: goldColor.withValues(alpha: 0.65),
+                                letterSpacing: 10,
+                              ),
+                            ),
                           ),
-                          alignment: Alignment.centerLeft,
-                          child: FractionallySizedBox(
-                            widthFactor: _progressBarFill.value,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    goldColor,
-                                    isDark ? const Color(0xFF00C896) : const Color(0xFF0A7A5A),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Built For & RAYEES
+                    AnimatedBuilder(
+                      animation: _sequenceController,
+                      builder: (context, child) {
+                        return Opacity(
+                          opacity: _builtForFadeUp.value,
+                          child: Transform.translate(
+                            offset: Offset(0, _builtForSlideUp.value),
+                            child: Column(
+                              children: [
+                                Text(
+                                  "BUILT FOR",
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: text3Color,
+                                    letterSpacing: 3,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  _userName.trim().isNotEmpty
+                                      ? _userName.trim().toUpperCase()
+                                      : "YOU",
+                                  style: GoogleFonts.syne(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: text4Color,
+                                    letterSpacing: 6,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 44),
+
+                    // Premium Glowing Progress Bar
+                    AnimatedBuilder(
+                      animation: _sequenceController,
+                      builder: (context, child) {
+                        final fillVal = _progressBarFill.value;
+                        return Opacity(
+                          opacity: _progressBarFade.value,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 140,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: isDark 
+                                      ? Colors.white.withValues(alpha: 0.08) 
+                                      : Colors.black.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(3),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.transparent,
+                                    width: 0.5,
+                                  ),
+                                ),
+                                alignment: Alignment.centerLeft,
+                                child: Stack(
+                                  children: [
+                                    FractionallySizedBox(
+                                      widthFactor: fillVal.clamp(0.01, 1.0),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              goldColor,
+                                              const Color(0xFF00C896),
+                                              const Color(0xFF38BDF8),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(3),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFF00C896).withValues(alpha: 0.6),
+                                              blurRadius: 8,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(2),
                               ),
-                            ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '${(fillVal * 100).round()}%',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark
+                                      ? const Color(0xFF00C896).withValues(alpha: 0.8)
+                                      : const Color(0xFF0A7A5A),
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
-
             // Tagline at bottom
             Positioned(
               bottom: 90,
@@ -765,6 +817,18 @@ class PulseMPainter extends CustomPainter {
     final colorPurple = const Color(0xFFEC4899);
     final colorBlue = const Color(0xFF3B82F6);
 
+    final fullPath = Path()
+      ..moveTo(p0.dx, p0.dy)
+      ..lineTo(p1.dx, p1.dy)
+      ..lineTo(p2.dx, p2.dy)
+      ..lineTo(p3.dx, p3.dy)
+      ..lineTo(p4.dx, p4.dy);
+
+    final pm = fullPath.computeMetrics().first;
+    final totalLen = pm.length;
+    final drawLen = (progress.clamp(0.0, 1.0)) * totalLen;
+    final linePath = pm.extractPath(0.0, drawLen);
+
     // 1. Draw glowing ambient line shadow
     final glowPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -772,13 +836,6 @@ class PulseMPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-
-    final linePath = Path()
-      ..moveTo(p0.dx, p0.dy)
-      ..lineTo(p1.dx, p1.dy)
-      ..lineTo(p2.dx, p2.dy)
-      ..lineTo(p3.dx, p3.dy)
-      ..lineTo(p4.dx, p4.dy);
 
     glowPaint.shader = ui.Gradient.linear(
       p0,
@@ -796,7 +853,7 @@ class PulseMPainter extends CustomPainter {
     // 2. Draw Main Solid Gradient Stroke
     final mainPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 5.0
+      ..strokeWidth = 5.5
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..shader = ui.Gradient.linear(
@@ -808,11 +865,14 @@ class PulseMPainter extends CustomPainter {
 
     canvas.drawPath(linePath, mainPaint);
 
-    // 3. Draw Vertex Nodes (Glowing Dots)
+    // 3. Draw Vertex Nodes (Glowing Dots pop in as line reaches them)
     final nodeColors = [colorTeal, colorTeal, colorGold, colorPurple, colorBlue];
-    final nodeSizes = [4.0, 6.0, 5.0, 8.0, 5.0];
+    final nodeSizes = [4.5, 6.5, 5.5, 8.5, 5.5];
+    final nodeDistances = [0.0, 0.25 * totalLen, 0.5 * totalLen, 0.75 * totalLen, totalLen];
 
     for (int i = 0; i < points.length; i++) {
+      if (drawLen < nodeDistances[i] * 0.9) continue; // Only show nodes when path reaches them
+
       final p = points[i];
       final col = nodeColors[i];
       final r = nodeSizes[i];
@@ -820,9 +880,9 @@ class PulseMPainter extends CustomPainter {
       // Outer node glow
       canvas.drawCircle(
         p,
-        r + 4,
+        r + 5,
         Paint()
-          ..color = col.withValues(alpha: 0.4)
+          ..color = col.withValues(alpha: 0.45)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
       );
 
@@ -832,35 +892,33 @@ class PulseMPainter extends CustomPainter {
     }
 
     // 4. Draw Animated Pulsing Aura Ring around Highest Peak (p3)
-    final pulseScale = 1.0 + (pulse * 0.8);
-    final pulseOpacity = (1.0 - pulse) * 0.6;
-    canvas.drawCircle(
-      p3,
-      12.0 * pulseScale,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0
-        ..color = colorPurple.withValues(alpha: pulseOpacity),
-    );
+    if (drawLen >= nodeDistances[3] * 0.9) {
+      final pulseScale = 1.0 + (pulse * 0.8);
+      final pulseOpacity = (1.0 - pulse) * 0.6;
+      canvas.drawCircle(
+        p3,
+        14.0 * pulseScale,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0
+          ..color = colorPurple.withValues(alpha: pulseOpacity),
+      );
+    }
 
-    // 5. Draw Energy Wave Dot traveling along the M path
-    final pm = linePath.computeMetrics().first;
-    final totalLen = pm.length;
-    final currentDist = (pulse * totalLen) % totalLen;
-    final tangent = pm.getTangentForOffset(currentDist);
-
-    if (tangent != null) {
+    // 5. Draw Laser Energy Tip traveling at the head of the drawn line
+    final tangent = pm.getTangentForOffset(drawLen > 0 ? drawLen : 0.1);
+    if (tangent != null && drawLen < totalLen) {
       final wavePos = tangent.position;
       canvas.drawCircle(
         wavePos,
-        7.0,
+        9.0,
         Paint()
-          ..color = Colors.white
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+          ..color = Colors.white.withValues(alpha: 0.9)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
       );
       canvas.drawCircle(
         wavePos,
-        4.0,
+        5.0,
         Paint()..color = Colors.white,
       );
     }

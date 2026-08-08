@@ -1786,48 +1786,66 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
+  int get _fardPrayerDone {
+    const fardPrayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    return fardPrayers.where((p) => widget.record.prayers[p] == true).length;
+  }
+
   Widget _taskRow(MapEntry<int, TodayTask> entry) {
     final task = entry.value;
     final done = widget.record.tasks[entry.key];
+    const taskAccent = Color(0xFFFF9500);
 
     Widget card = Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       child: _GlassCard(
         theme: widget.theme,
-        border: Border.all(color: widget.theme.border, width: 0.5),
-        radius: 18,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: Border.all(
+          color: done
+              ? const Color(0xFF00C896).withValues(alpha: 0.35)
+              : taskAccent.withValues(alpha: 0.3),
+          width: 0.8,
+        ),
+        radius: 16,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
             GestureDetector(
-              onTap: () => widget.onTaskToggle(entry.key),
-              child: Container(
-                width: 24,
-                height: 24,
+              onTap: () {
+                HapticService.tapFeedback();
+                widget.onTaskToggle(entry.key);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
-                  color: done ? const Color(0xFFFF007F) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  color: done ? const Color(0xFF00C896) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(13),
                   border: done
                       ? null
-                      : Border.all(color: widget.theme.border, width: 1.5),
+                      : Border.all(color: taskAccent, width: 2.0),
                   boxShadow: done
                       ? [
                           BoxShadow(
-                            color: const Color(
-                              0xFFFF007F,
-                            ).withValues(alpha: 0.4),
+                            color: const Color(0xFF00C896).withValues(alpha: 0.45),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
                         ]
-                      : null,
+                      : [
+                          BoxShadow(
+                            color: taskAccent.withValues(alpha: 0.2),
+                            blurRadius: 6,
+                          ),
+                        ],
                 ),
                 child: done
-                    ? Icon(Icons.check, color: widget.theme.bg, size: 16)
+                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 17)
                     : null,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1836,18 +1854,21 @@ class _TodayScreenState extends State<TodayScreen>
                     task.title,
                     style: GoogleFonts.syne(
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: done
-                          ? const Color(0xFFFF007F).withValues(alpha: 0.6)
+                          ? widget.theme.text3
                           : widget.theme.text1,
                       decoration: done ? TextDecoration.lineThrough : null,
                     ),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     _taskSubtitle(entry),
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
-                      color: widget.theme.text3,
+                      color: done
+                          ? widget.theme.text4
+                          : widget.theme.text2,
                     ),
                   ),
                 ],
@@ -1858,7 +1879,7 @@ class _TodayScreenState extends State<TodayScreen>
               icon: Icon(
                 Icons.edit_outlined,
                 size: 18,
-                color: widget.theme.text4,
+                color: widget.theme.text3,
               ),
             ),
           ],
@@ -1866,7 +1887,7 @@ class _TodayScreenState extends State<TodayScreen>
       ),
     );
 
-    return done ? Opacity(opacity: 0.6, child: card) : card;
+    return done ? Opacity(opacity: 0.65, child: card) : card;
   }
 
   Widget _waterTracker() {
@@ -3470,8 +3491,8 @@ class _TodayScreenState extends State<TodayScreen>
       children: [
         _metricRingCard(
           'Prayers',
-          widget.record.prayerDone,
-          7,
+          _fardPrayerDone,
+          5,
           const Color(0xFFE8B84B),
           _prayersKey,
         ),
@@ -3610,85 +3631,361 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   Widget _buildPrayerGrid() {
+    const fardPrayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    final fardDone = _fardPrayerDone;
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: kPrayerNames
-              .take(4)
-              .map(
-                (p) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+        // Header for 5 Main Daily Prayers
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 3.5,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8B84B),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Daily Prayers',
+                    style: GoogleFonts.syne(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: widget.theme.text1,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8B84B).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFE8B84B).withValues(alpha: 0.3),
+                    width: 0.5,
                   ),
                 ),
-              )
-              .toList(),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: kPrayerNames
-              .skip(4)
-              .map(
-                (p) => SizedBox(
-                  width: (MediaQuery.of(context).size.width - 56) / 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+                child: Text(
+                  '$fardDone / 5 Obligatory',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFE8B84B),
                   ),
                 ),
-              )
-              .toList(),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(height: 4),
+        // 5 Obligatory Prayers Grid: Top 3 (Fajr, Dhuhr, Asr), Bottom 2 (Maghrib, Isha)
+        Row(
+          children: fardPrayers.take(3).map((p) => Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+            ),
+          )).toList(),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: fardPrayers.skip(3).map((p) => Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+            ),
+          )).toList(),
+        ),
+        const SizedBox(height: 10),
+        // Optional Night Prayer (Tahajjud) Tile
+        _buildTahajjudOptionalTile(),
       ],
     );
   }
 
-  Widget _buildTasksList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader("Daily Tasks", onAdd: () => _showTaskSheet()),
-        if (_visibleTasks.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-              decoration: BoxDecoration(
-                color: widget.theme.isDark
-                    ? Colors.white.withValues(alpha: 0.02)
-                    : Colors.black.withValues(alpha: 0.015),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: widget.theme.border, width: 0.5),
-              ),
-              child: Row(
+  Widget _buildTahajjudOptionalTile() {
+    const prayer = 'Tahajjud';
+    final done = widget.record.prayers[prayer] ?? false;
+    final tod = _prayerTimes[prayer] ?? const TimeOfDay(hour: 3, minute: 2);
+    final hour12 = tod.hour == 0 ? 12 : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
+    final ampm = tod.hour < 12 ? 'AM' : 'PM';
+    final timeStr = '$hour12:${tod.minute.toString().padLeft(2, '0')} $ampm';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: GestureDetector(
+        onTap: () {
+          HapticService.tapFeedback();
+          widget.onPrayerToggle(prayer);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
+            color: widget.theme.isDark
+                ? const Color(0x1F2A2A3E)
+                : widget.theme.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: done
+                  ? const Color(0xFF00C896).withValues(alpha: 0.5)
+                  : widget.theme.isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : widget.theme.border,
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
                 children: [
-                  Icon(
-                    Icons.assignment_turned_in_outlined,
-                    color: widget.theme.gold.withValues(alpha: 0.6),
-                    size: 20,
+                  Text(done ? '🌙' : '🌌', style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Tahajjud',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: widget.theme.text1,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: widget.theme.isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'OPTIONAL / SUNNAH',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: widget.theme.text3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'Night prayer • $timeStr',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: widget.theme.text3,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                ],
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: done ? const Color(0xFF00C896) : Colors.transparent,
+                  border: Border.all(
+                    color: done ? const Color(0xFF00C896) : widget.theme.border,
+                    width: 1.5,
+                  ),
+                ),
+                child: done
+                    ? const Icon(Icons.check, color: Colors.white, size: 14)
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTasksList() {
+    const amberColor = Color(0xFFFF9500);
+    final totalTasks = _visibleTasks.length;
+    final doneTasks = _visibleTaskDone;
+    final allDone = totalTasks > 0 && doneTasks == totalTasks;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: widget.theme.isDark
+            ? const Color(0xFF1B1D28)
+            : const Color(0xFFFFFFFF),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: amberColor.withValues(alpha: 0.45),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: amberColor.withValues(alpha: 0.12),
+            blurRadius: 20,
+            spreadRadius: -2,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Highlighted Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: amberColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.task_alt_rounded,
+                        color: amberColor,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'DAILY TASKS',
+                        style: GoogleFonts.syne(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: 1.0,
+                          color: widget.theme.text1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: allDone
+                          ? const Color(0xFF00C896).withValues(alpha: 0.18)
+                          : amberColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: allDone
+                            ? const Color(0xFF00C896).withValues(alpha: 0.4)
+                            : amberColor.withValues(alpha: 0.35),
+                        width: 0.8,
+                      ),
+                    ),
                     child: Text(
-                      "No tasks for today. Tap '+' to add one.",
+                      '$doneTasks / $totalTasks DONE',
                       style: GoogleFonts.dmSans(
-                        color: widget.theme.text3,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: allDone ? const Color(0xFF00C896) : amberColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => _showTaskSheet(),
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: amberColor,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: amberColor.withValues(alpha: 0.4),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.black,
+                        size: 16,
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
-        ..._visibleTasks.map(
-          (entry) => RepaintBoundary(child: _taskRow(entry)),
-        ),
-      ],
+          const SizedBox(height: 12),
+          // Empty State Callout when no tasks
+          if (_visibleTasks.isEmpty)
+            GestureDetector(
+              onTap: () => _showTaskSheet(),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: amberColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: amberColor.withValues(alpha: 0.3),
+                    width: 1.0,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.add_task_rounded,
+                      color: amberColor,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "No daily tasks set",
+                      style: GoogleFonts.syne(
+                        color: widget.theme.text1,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Tap '+' to add your first goal for today",
+                      style: GoogleFonts.dmSans(
+                        color: widget.theme.text3,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          // Task Rows
+          ..._visibleTasks.map(
+            (entry) => RepaintBoundary(child: _taskRow(entry)),
+          ),
+        ],
+      ),
     );
   }
 
