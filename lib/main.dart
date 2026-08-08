@@ -9797,9 +9797,9 @@ class _IncomeScreenState extends State<IncomeScreen>
 
   // --- Editable goals (persisted) ---
   List<SavingsGoal> _savingsGoals = [];
-  String _earningCurrent = '₹1.5L';
-  String _earningTarget = '₹3L';
-  String _earningTip = 'Aim: ₹3L/month · ₹10,000 a day';
+  String _earningCurrent = '₹1,50,000';
+  String _earningTarget = '₹3,00,000';
+  String _earningTip = 'Aim: ₹3,00,000/month · ₹10,000 a day';
 
   // --- Animation controllers ---
   late AnimationController _fireController;
@@ -10064,11 +10064,12 @@ class _IncomeScreenState extends State<IncomeScreen>
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _earningCurrent = prefs.getString('income_earning_current') ?? '₹1.5L';
-      _earningTarget = prefs.getString('income_earning_target') ?? '₹3L';
+      _earningCurrent =
+          prefs.getString('income_earning_current') ?? '₹1,50,000';
+      _earningTarget = prefs.getString('income_earning_target') ?? '₹3,00,000';
       _earningTip =
           prefs.getString('income_earning_tip') ??
-          'Aim: ₹3L/month · ₹10,000 a day';
+          'Aim: ₹3,00,000/month · ₹10,000 a day';
 
       final rawGoals = prefs.getString('income_savings_goals_list');
       if (rawGoals != null && rawGoals.isNotEmpty) {
@@ -11409,36 +11410,31 @@ class _IncomeScreenState extends State<IncomeScreen>
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: colors.gold3,
+                  color: streak >= 3 ? colors.gold3 : colors.card,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: colors.gold.withValues(alpha: 0.2),
+                    color: streak >= 3
+                        ? colors.gold.withValues(alpha: 0.2)
+                        : colors.cardBorder,
                     width: 1,
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AnimatedBuilder(
-                      animation: _fireController,
-                      builder: (_, child) {
-                        final scale =
-                            1.0 +
-                            0.2 *
-                                Curves.easeInOut.transform(
-                                  _fireController.value,
-                                );
-                        return Transform.scale(scale: scale, child: child);
-                      },
-                      child: const Text('🔥', style: TextStyle(fontSize: 10)),
+                    Text(
+                      streak >= 3 ? '🔥' : '🌱',
+                      style: const TextStyle(fontSize: 10),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '$streak day streak',
+                      streak >= 3
+                          ? '$streak day streak'
+                          : (streak > 0 ? '$streak day streak' : 'Start your streak'),
                       style: GoogleFonts.dmSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: colors.gold,
+                        color: streak >= 3 ? colors.gold : colors.text3,
                       ),
                     ),
                   ],
@@ -11538,9 +11534,12 @@ class _IncomeScreenState extends State<IncomeScreen>
     } else if (dailyAvg >= 5000) {
       statusColor = colors.gold;
       statusText = '${_money(dailyAvg.round())}/day — Below target';
+    } else if (dailyAvg > 0) {
+      statusColor = colors.gold;
+      statusText = '${_money(dailyAvg.round())}/day — Getting started';
     } else {
-      statusColor = colors.red;
-      statusText = '${_money(dailyAvg.round())}/day — Keep going! 💪';
+      statusColor = colors.text3;
+      statusText = 'Ready to log • Target: ₹10,000/day';
     }
 
     return Container(
@@ -11864,7 +11863,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -1.0,
-                          color: isNegative ? colors.red : colors.text1,
+                          color: isNegative
+                              ? colors.red
+                              : (netBalance == 0 ? colors.text3 : colors.text1),
                         ),
                       );
                     },
@@ -11879,10 +11880,12 @@ class _IncomeScreenState extends State<IncomeScreen>
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: colors.emerald2,
+                        color: totalEarned > 0 ? colors.emerald2 : colors.card,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: colors.emerald.withValues(alpha: 0.1),
+                          color: totalEarned > 0
+                              ? colors.emerald.withValues(alpha: 0.1)
+                              : colors.cardBorder,
                           width: 1,
                         ),
                       ),
@@ -11904,17 +11907,21 @@ class _IncomeScreenState extends State<IncomeScreen>
                             style: GoogleFonts.syne(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: colors.emerald,
+                              color: totalEarned > 0
+                                  ? colors.emerald
+                                  : colors.text3,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Avg: ${_money(dailyAvg)}/day',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 9,
-                              color: colors.text2,
+                          if (totalEarned > 0) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Avg: ${_money(dailyAvg)}/day',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 9,
+                                color: colors.text2,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -11924,10 +11931,12 @@ class _IncomeScreenState extends State<IncomeScreen>
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: colors.red2,
+                        color: totalSpent > 0 ? colors.red2 : colors.card,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: colors.red.withValues(alpha: 0.1),
+                          color: totalSpent > 0
+                              ? colors.red.withValues(alpha: 0.1)
+                              : colors.cardBorder,
                           width: 1,
                         ),
                       ),
@@ -11949,17 +11958,19 @@ class _IncomeScreenState extends State<IncomeScreen>
                             style: GoogleFonts.syne(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: colors.red,
+                              color: totalSpent > 0 ? colors.red : colors.text3,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Avg: ${_money(dailyAvgSpent)}/day',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 9,
-                              color: colors.text2,
+                          if (totalSpent > 0) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Avg: ${_money(dailyAvgSpent)}/day',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 9,
+                                color: colors.text2,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -11974,7 +11985,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                   style: GoogleFonts.dmSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: colors.gold,
+                    color: projected > 0 ? colors.gold : colors.text3,
                   ),
                 ),
               ),
@@ -12207,7 +12218,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Example: Every ₹1,000 earned → ₹650 spend / ₹350 save',
+                    hasBalance
+                        ? 'Example: Every ₹1,000 earned → ₹650 spend / ₹350 save'
+                        : 'When you earn, your income splits 65% for use / 35% for savings',
                     style: GoogleFonts.dmSans(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -12673,6 +12686,8 @@ class _IncomeScreenState extends State<IncomeScreen>
         _selectedMonth == now.month && _selectedYear == now.year;
     final todayDay = isCurrentMonth ? now.day : -1;
 
+    final hasEarnings = dailyAmounts.any((amt) => amt > 0);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 14),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -12701,7 +12716,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                 style: GoogleFonts.dmSans(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: colors.emerald,
+                  color: hasEarnings ? colors.emerald : colors.text3,
                 ),
               ),
             ],
@@ -12709,98 +12724,127 @@ class _IncomeScreenState extends State<IncomeScreen>
           const SizedBox(height: 10),
           SizedBox(
             height: 80,
-            child: AnimatedBuilder(
-              animation: _chartBarsController,
-              builder: (_, _) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: List.generate(daysInMonth, (i) {
-                    final amt = dailyAmounts[i];
-                    final barPct = maxDaily > 0
-                        ? (amt / maxDaily).clamp(0.0, 1.0)
-                        : 0.0;
-                    final barH = amt > 0 ? math.max(3.0, barPct * 60.0) : 3.0;
-                    final isToday = (i + 1) == todayDay;
-                    final showLabel = (i + 1) % 7 == 0; // Day 7, 14, 21, 28
+            child: Stack(
+              children: [
+                AnimatedBuilder(
+                  animation: _chartBarsController,
+                  builder: (_, _) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(daysInMonth, (i) {
+                        final amt = dailyAmounts[i];
+                        final barPct = maxDaily > 0
+                            ? (amt / maxDaily).clamp(0.0, 1.0)
+                            : 0.0;
+                        final barH = amt > 0 ? math.max(3.0, barPct * 60.0) : 3.0;
+                        final isToday = (i + 1) == todayDay;
+                        final showLabel = (i + 1) % 7 == 0; // Day 7, 14, 21, 28
 
-                    // Stagger: each bar 15ms delay
-                    final staggerStart = (i * 15.0 / 1300.0).clamp(0.0, 1.0);
-                    final staggerEnd = (staggerStart + 800.0 / 1300.0).clamp(
-                      0.0,
-                      1.0,
-                    );
-                    final interval = Interval(
-                      staggerStart,
-                      staggerEnd,
-                      curve: Curves.easeOutCubic,
-                    );
-                    final animH =
-                        barH * interval.transform(_chartBarsController.value);
+                        // Stagger: each bar 15ms delay
+                        final staggerStart = (i * 15.0 / 1300.0).clamp(0.0, 1.0);
+                        final staggerEnd = (staggerStart + 800.0 / 1300.0).clamp(
+                          0.0,
+                          1.0,
+                        );
+                        final interval = Interval(
+                          staggerStart,
+                          staggerEnd,
+                          curve: Curves.easeOutCubic,
+                        );
+                        final animH =
+                            barH * interval.transform(_chartBarsController.value);
 
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                          left: i == 0 ? 0 : 1.5,
-                          right: i == daysInMonth - 1 ? 0 : 1.5,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Container(
-                              height: animH,
-                              decoration: BoxDecoration(
-                                gradient: amt > 0
-                                    ? LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          colors.gold,
-                                          colors.gold.withValues(alpha: 0.3),
-                                        ],
-                                      )
-                                    : null,
-                                color: amt <= 0
-                                    ? (colors.theme.isDark
-                                          ? Colors.white.withValues(alpha: 0.03)
-                                          : Colors.black.withValues(
-                                              alpha: 0.03,
-                                            ))
-                                    : null,
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(3),
-                                  bottom: Radius.circular(1),
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              left: i == 0 ? 0 : 1.5,
+                              right: i == daysInMonth - 1 ? 0 : 1.5,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Container(
+                                  height: animH,
+                                  decoration: BoxDecoration(
+                                    gradient: amt > 0
+                                        ? LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              colors.gold,
+                                              colors.gold.withValues(alpha: 0.3),
+                                            ],
+                                          )
+                                        : null,
+                                    color: amt <= 0
+                                        ? (colors.theme.isDark
+                                              ? Colors.white.withValues(alpha: 0.03)
+                                              : Colors.black.withValues(
+                                                  alpha: 0.03,
+                                                ))
+                                        : null,
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(3),
+                                      bottom: Radius.circular(1),
+                                    ),
+                                    boxShadow: isToday && amt > 0
+                                        ? [
+                                            BoxShadow(
+                                              color: colors.gold3,
+                                              blurRadius: 8,
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
                                 ),
-                                boxShadow: isToday && amt > 0
-                                    ? [
-                                        BoxShadow(
-                                          color: colors.gold3,
-                                          blurRadius: 8,
-                                        ),
-                                      ]
-                                    : null,
-                              ),
+                                const SizedBox(height: 4),
+                                SizedBox(
+                                  height: 10,
+                                  child: showLabel
+                                      ? Text(
+                                          '${i + 1}',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 7,
+                                            fontWeight: FontWeight.w500,
+                                            color: colors.text3,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            SizedBox(
-                              height: 10,
-                              child: showLabel
-                                  ? Text(
-                                      '${i + 1}',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 7,
-                                        fontWeight: FontWeight.w500,
-                                        color: colors.text3,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                          ],
+                          ),
+                        );
+                      }),
+                    );
+                  },
+                ),
+                if (!hasEarnings)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.card.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: colors.cardBorder,
+                          width: 0.5,
                         ),
                       ),
-                    );
-                  }),
-                );
-              },
+                      child: Text(
+                        'Earnings chart will appear here once logged',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: colors.text3,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -12875,14 +12919,15 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  '${entries.length} entries',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: colors.text3,
+                if (entries.isNotEmpty)
+                  Text(
+                    '${entries.length} entries',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: colors.text3,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -12902,11 +12947,15 @@ class _IncomeScreenState extends State<IncomeScreen>
           const SizedBox(height: 10),
           if (entries.isEmpty)
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
               child: Center(
                 child: Text(
-                  'No transactions recorded this month',
-                  style: GoogleFonts.dmSans(fontSize: 13, color: colors.text3),
+                  'Tap + to log your first transaction',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: colors.text3,
+                  ),
                 ),
               ),
             )
