@@ -7931,9 +7931,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                     ),
                                   ),
                                   alignment: Alignment.center,
-                                  child: Text(
-                                    theme.isDark ? '☀️' : '🌙',
-                                    style: const TextStyle(fontSize: 16),
+                                  child: const Text(
+                                    '💪',
+                                    style: TextStyle(fontSize: 16),
                                   ),
                                 ),
                               ),
@@ -7985,17 +7985,22 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-
-                      // 9. START BUTTON
-                      _buildStartButton(theme),
-                      const SizedBox(height: 140),
+                      const SizedBox(height: 180),
                     ],
                   ),
                 ),
               ),
             ),
           ),
+
+          // 9. STICKY FLOATING START WORKOUT BUTTON (Fix #5)
+          if (!_showRepCounter)
+            Positioned(
+              left: 20,
+              right: 20,
+              bottom: 90,
+              child: _buildStartButton(theme),
+            ),
 
           // 6. REP COUNTER OVERLAY (slides in from right with parallax scale)
           AnimatedPositioned(
@@ -8121,12 +8126,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _StreakFireIcon(isActive: true),
-                        const SizedBox(width: 6),
+                        if (currentStreak > 0)
+                          _StreakFireIcon(isActive: true)
+                        else
+                          const Icon(
+                            Icons.bolt_rounded,
+                            size: 16,
+                            color: Color(0xFFE8B84B),
+                          ),
+                        const SizedBox(width: 4),
                         _animatedValueText(
-                          currentStreak > 0 ? '${currentStreak}d' : 'Ready',
+                          currentStreak > 0
+                              ? '$currentStreak Day Streak'
+                              : 'Ready to Start',
                           const Color(0xFFE8B84B),
-                          18,
+                          currentStreak > 0 ? 15 : 12,
                         ),
                       ],
                     ),
@@ -8135,7 +8149,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Streak',
+                      currentStreak > 0 ? 'Daily Momentum' : '1st Session Ahead',
                       style: TextStyle(
                         fontSize: 10,
                         color: theme.text3,
@@ -8174,15 +8188,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.bolt,
-                          size: 16,
+                          Icons.fitness_center_rounded,
+                          size: 14,
                           color: Color(0xFF00C896),
                         ),
                         const SizedBox(width: 4),
                         _animatedValueText(
-                          monthSessions > 0 ? '$monthSessions' : 'Start 1st',
+                          monthSessions > 0 ? '$monthSessions' : '1 Planned',
                           const Color(0xFF00C896),
-                          monthSessions > 0 ? 18 : 11,
+                          monthSessions > 0 ? 15 : 11,
                         ),
                       ],
                     ),
@@ -8191,9 +8205,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Sessions',
+                      'Session 1 of 1',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         color: theme.text3,
                         fontWeight: FontWeight.w700,
                       ),
@@ -8345,99 +8359,68 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Widget _splitSelector(ThemeColors theme) {
-    final activeIndex = _selectedSplit.title == _plan[0].title ? 0 : 1;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tabWidth = (constraints.maxWidth - 4) / 2;
-        return Container(
-          margin: const EdgeInsets.only(top: 20),
-          height: 48,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: theme.card,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: theme.border, width: 0.5),
-          ),
-          child: Stack(
+    final otherSplit = _selectedSplit.title == _plan[0].title ? _plan[1] : _plan[0];
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: theme.border, width: 0.5),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
             children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut, // smooth slide
-                left: activeIndex * tabWidth,
-                width: tabWidth,
-                height: 44,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.teal,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.teal.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF00C896),
+                  shape: BoxShape.circle,
                 ),
               ),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        HapticService.tapFeedback();
-                        SoundManager.playTapClick();
-                        setState(() {
-                          _selectedSplit = _plan[0];
-                          _recalculateStats();
-                        });
-                      },
-                      child: Center(
-                        child: Text(
-                          _plan[0].title,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: activeIndex == 0
-                                ? Colors.white
-                                : theme.text3,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        HapticService.tapFeedback();
-                        SoundManager.playTapClick();
-                        setState(() {
-                          _selectedSplit = _plan[1];
-                          _recalculateStats();
-                        });
-                      },
-                      child: Center(
-                        child: Text(
-                          _plan[1].title,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: activeIndex == 1
-                                ? Colors.white
-                                : theme.text3,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Text(
+                'Today: ${_selectedSplit.title}',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: theme.text1,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '· Bodyweight',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: theme.text3,
+                ),
               ),
             ],
           ),
-        );
-      },
+          GestureDetector(
+            onTap: () {
+              HapticService.tapFeedback();
+              SoundManager.playTapClick();
+              setState(() {
+                _selectedSplit = otherSplit;
+                _recalculateStats();
+              });
+            },
+            child: Text(
+              'Switch to ${otherSplit.title} →',
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: theme.teal,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -8592,7 +8575,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      'LIBRARY (${_libraryExercises.length})',
+                      'LIBRARY (24)',
                       style: GoogleFonts.dmSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -14503,30 +14486,31 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
 
   String get primaryMuscle {
     if (widget.muscle.isNotEmpty) {
-      return widget.muscle.toUpperCase();
+      final m = widget.muscle;
+      return m[0].toUpperCase() + m.substring(1);
     }
     final name = widget.exercise[0].toLowerCase();
     if (name.contains('push-up') ||
         name.contains('push up') ||
         name.contains('bench')) {
-      return 'CHEST';
+      return 'Chest';
     }
-    if (name.contains('squat') || name.contains('lunge')) return 'QUADS';
-    if (name.contains('bridge')) return 'GLUTES';
+    if (name.contains('squat') || name.contains('lunge')) return 'Quads';
+    if (name.contains('bridge')) return 'Glutes';
     if (name.contains('row') ||
         name.contains('pull-up') ||
         name.contains('pull up')) {
-      return 'LATS';
+      return 'Lats';
     }
-    if (name.contains('press')) return 'SHOULDERS';
-    if (name.contains('leg raise') || name.contains('plank')) return 'CORE';
-    if (name.contains('curl')) return 'BICEPS';
-    return 'FULL BODY';
+    if (name.contains('press')) return 'Shoulders';
+    if (name.contains('leg raise') || name.contains('plank')) return 'Core';
+    if (name.contains('curl')) return 'Biceps';
+    return 'Full Body';
   }
 
   Widget _buildMuscleTag(String muscle) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: widget.theme.isDark
             ? Colors.white.withValues(alpha: 0.04)
@@ -14559,27 +14543,14 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
     return 1; // Easy
   }
 
-  Widget _buildDifficultyDots(int diff) {
-    final activeColor = diff == 3
-        ? const Color(0xFFEF4444)
-        : diff == 2
-        ? const Color(0xFFE8B84B)
-        : const Color(0xFF00C896);
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(3, (i) {
-        final isActive = i < diff;
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          width: 5,
-          height: 5,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isActive ? activeColor : const Color(0xFF5A5A6A),
-          ),
-        );
-      }),
+  Widget _buildSetIndicator() {
+    return Text(
+      '${widget.sets} sets',
+      style: TextStyle(
+        fontSize: 9,
+        fontWeight: FontWeight.w600,
+        color: widget.theme.text3,
+      ),
     );
   }
 
@@ -14587,20 +14558,27 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final tag = _getEquipmentTag();
+    final isFirstNextUp = widget.index == 0 && !widget.completed && !widget.isLibrary;
 
-    // Alternating card backgrounds
+    // Alternating card backgrounds with Next Up highlight
     final isEven = widget.index % 2 == 0;
-    final baseBg = theme.isDark
-        ? (isEven
-              ? Colors.white.withValues(alpha: 0.03)
-              : Colors.white.withValues(alpha: 0.06))
-        : (isEven
-              ? Colors.white.withValues(alpha: 0.82)
-              : Colors.white.withValues(alpha: 0.92));
+    final baseBg = isFirstNextUp
+        ? (theme.isDark
+            ? const Color(0x1C00C896)
+            : const Color(0x1800C896))
+        : (theme.isDark
+            ? (isEven
+                ? Colors.white.withValues(alpha: 0.03)
+                : Colors.white.withValues(alpha: 0.06))
+            : (isEven
+                ? Colors.white.withValues(alpha: 0.82)
+                : Colors.white.withValues(alpha: 0.92)));
 
-    final borderCol = theme.isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.black.withValues(alpha: 0.06);
+    final borderCol = isFirstNextUp
+        ? const Color(0xFF00C896).withValues(alpha: 0.4)
+        : (theme.isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.black.withValues(alpha: 0.06));
 
     return GestureDetector(
       onTapDown: (_) => _pressController.forward(),
@@ -14632,10 +14610,12 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                 decoration: BoxDecoration(
                   color: baseBg,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: borderCol, width: 1),
+                  border: Border.all(color: borderCol, width: isFirstNextUp ? 1.5 : 1),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: shadowOp),
+                      color: isFirstNextUp
+                          ? const Color(0xFF00C896).withValues(alpha: 0.15)
+                          : Colors.black.withValues(alpha: shadowOp),
                       blurRadius: blur,
                       offset: Offset(0.0, offY),
                     ),
@@ -14643,15 +14623,15 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                 ),
                 child: Stack(
                   children: [
-                    if (widget.completed)
+                    if (widget.completed || isFirstNextUp)
                       Positioned(
                         left: 0,
                         top: 0,
                         bottom: 0,
-                        width: 3,
+                        width: 3.5,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: theme.teal,
+                            color: const Color(0xFF00C896),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(14),
                               bottomLeft: Radius.circular(14),
@@ -14670,7 +14650,9 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: const Color(0x2600C896),
+                              color: isFirstNextUp
+                                  ? const Color(0xFF00C896).withValues(alpha: 0.25)
+                                  : const Color(0x2600C896),
                               borderRadius: BorderRadius.circular(11),
                             ),
                             child: Icon(
@@ -14684,13 +14666,38 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  normalizeExerciseName(widget.exercise[0]),
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.text1,
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        normalizeExerciseName(widget.exercise[0]),
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: theme.text1,
+                                        ),
+                                      ),
+                                    ),
+                                    if (isFirstNextUp)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 1.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF00C896).withValues(alpha: 0.18),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'Start Here',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF00C896),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 3),
                                 Wrap(
@@ -14699,21 +14706,21 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                   runSpacing: 2,
                                   children: [
                                     Text(
-                                      '${widget.sets} sets × ${_isIsometric ? '${widget.reps}s hold' : '${widget.reps} reps'} · ',
+                                      '${widget.sets} × ${_isIsometric ? '${widget.reps}s hold' : '${widget.reps} reps'} · ',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 10,
                                         color: theme.text3,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    _buildEquipmentTag(tag),
-                                    const SizedBox(width: 2),
+                                    if (tag != 'BW') _buildEquipmentTag(tag),
+                                    if (tag != 'BW') const SizedBox(width: 2),
                                     _buildMuscleTag(primaryMuscle),
                                   ],
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  'Last: ${widget.reps > 1 ? widget.reps - 1 : widget.reps} ${_isIsometric ? 's' : 'reps'} ↑ · Rest: 90s',
+                                  'Prev: ${widget.reps > 1 ? widget.reps - 1 : widget.reps} ${_isIsometric ? 's' : 'reps'}',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 9,
                                     color: theme.text3.withValues(alpha: 0.8),
@@ -14734,24 +14741,33 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                     : '${widget.reps}',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF00C896),
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.text1,
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              _buildDifficultyDots(difficulty),
+                              _buildSetIndicator(),
                             ],
                           ),
                           const SizedBox(width: 12),
-                          _CompletionCheckWidget(
-                            completed: widget.completed,
-                            onTap: () {
-                              HapticService.tapFeedback();
-                              SoundManager.playTapClick();
-                              widget.onToggle();
-                            },
-                            theme: theme,
-                          ),
+                          if (widget.completed)
+                            _CompletionCheckWidget(
+                              completed: widget.completed,
+                              onTap: () {
+                                HapticService.tapFeedback();
+                                SoundManager.playTapClick();
+                                widget.onToggle();
+                              },
+                              theme: theme,
+                            )
+                          else
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: isFirstNextUp
+                                  ? const Color(0xFF00C896)
+                                  : theme.text3.withValues(alpha: 0.6),
+                              size: 22,
+                            ),
                         ],
                       ),
                     ),
