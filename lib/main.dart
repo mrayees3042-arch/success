@@ -1144,19 +1144,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         ),
       ),
       SizedBox.expand(
-        child: WorkoutScreen(
-          theme: _theme,
-          onWorkoutCompleted: _markWorkoutCompleted,
-          onWorkoutProgressChanged: _updateWorkoutProgress,
-          onScreenshot: _takeScreenshot,
-          userName: _userName,
-          onNameChanged: _updateProfileFromNameChanged,
-          userGoalYear: _userGoalYear,
-          userGoalMonth: _userGoalMonth,
-          userGoalDay: _userGoalDay,
-        ),
-      ),
-      SizedBox.expand(
         child: IncomeScreen(
           theme: _theme,
           incomeLog: _incomeLog,
@@ -1175,6 +1162,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       ),
     ];
 
+    final currentTab = _tab.clamp(0, screens.length - 1);
+
     return RepaintBoundary(
       key: _screenshotKey,
       child: Container(
@@ -1183,7 +1172,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           backgroundColor: Colors.transparent,
           body: Stack(
             children: List.generate(screens.length, (index) {
-              final isCurrent = index == _tab;
+              final isCurrent = index == currentTab;
               return AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
                 opacity: isCurrent ? 1.0 : 0.0,
@@ -1199,7 +1188,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             builder: (context, hideNav, child) {
               if (hideNav) return const SizedBox.shrink();
               return _BottomNavBar(
-                selectedIndex: _tab,
+                selectedIndex: currentTab,
                 onTap: (i) {
                   if (_tab != i) {
                     HapticService.selection();
@@ -1235,12 +1224,11 @@ class _BottomNavBarState extends State<_BottomNavBar>
   static const _icons = [
     Icons.home_outlined,
     Icons.check_circle_outline,
-    Icons.fitness_center_outlined,
     Icons.account_balance_wallet_outlined,
     Icons.flag_outlined,
   ];
 
-  static const _labels = ['Today', 'Habits', 'Workout', 'Income', 'To Do'];
+  static const _labels = ['Today', 'Habits', 'Income', 'Goals'];
 
   @override
   Widget build(BuildContext context) {
@@ -1267,7 +1255,7 @@ class _BottomNavBarState extends State<_BottomNavBar>
               ),
             ),
             child: Row(
-              children: List.generate(5, (i) {
+              children: List.generate(_icons.length, (i) {
                 final isSelected = widget.selectedIndex == i;
                 return Expanded(
                   child: InkWell(
@@ -1865,36 +1853,36 @@ class _TodayScreenState extends State<TodayScreen>
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 26,
-                height: 26,
+                width: 22,
+                height: 22,
                 decoration: BoxDecoration(
                   color: done ? const Color(0xFF00C896) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(6),
                   border: done
                       ? null
-                      : Border.all(color: taskAccent, width: 2.0),
+                      : Border.all(
+                          color: widget.theme.isDark
+                              ? Colors.white38
+                              : Colors.black38,
+                          width: 1.8,
+                        ),
                   boxShadow: done
                       ? [
                           BoxShadow(
                             color: const Color(
                               0xFF00C896,
-                            ).withValues(alpha: 0.45),
-                            blurRadius: 8,
-                            spreadRadius: 1,
+                            ).withValues(alpha: 0.35),
+                            blurRadius: 6,
+                            spreadRadius: 0,
                           ),
                         ]
-                      : [
-                          BoxShadow(
-                            color: taskAccent.withValues(alpha: 0.2),
-                            blurRadius: 6,
-                          ),
-                        ],
+                      : null,
                 ),
                 child: done
                     ? const Icon(
                         Icons.check_rounded,
                         color: Colors.white,
-                        size: 17,
+                        size: 16,
                       )
                     : null,
               ),
@@ -4018,7 +4006,6 @@ class _TodayScreenState extends State<TodayScreen>
     const amberColor = Color(0xFFFF9500);
     final totalTasks = _visibleTasks.length;
     final doneTasks = _visibleTaskDone;
-    final allDone = totalTasks > 0 && doneTasks == totalTasks;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -4069,11 +4056,10 @@ class _TodayScreenState extends State<TodayScreen>
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'DAILY TASKS',
+                          'Daily Tasks',
                           style: GoogleFonts.syne(
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             fontSize: 14,
-                            letterSpacing: 1.0,
                             color: widget.theme.text1,
                           ),
                         ),
@@ -4092,14 +4078,18 @@ class _TodayScreenState extends State<TodayScreen>
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: allDone
+                      color: doneTasks > 0
                           ? const Color(0xFF00C896).withValues(alpha: 0.18)
-                          : amberColor.withValues(alpha: 0.15),
+                          : widget.theme.isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.black.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: allDone
+                        color: doneTasks > 0
                             ? const Color(0xFF00C896).withValues(alpha: 0.4)
-                            : amberColor.withValues(alpha: 0.35),
+                            : widget.theme.isDark
+                                ? Colors.white24
+                                : Colors.black26,
                         width: 0.8,
                       ),
                     ),
@@ -4108,7 +4098,9 @@ class _TodayScreenState extends State<TodayScreen>
                       style: GoogleFonts.dmSans(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
-                        color: allDone ? const Color(0xFF00C896) : amberColor,
+                        color: doneTasks > 0
+                            ? const Color(0xFF00C896)
+                            : widget.theme.text3,
                       ),
                     ),
                   ),
@@ -12115,7 +12107,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '₹0',
+                'Ready',
                 style: GoogleFonts.dmSans(fontSize: 8, color: colors.text3),
               ),
               Text(
@@ -12283,7 +12275,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     style: GoogleFonts.syne(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: colors.text2,
+                      color: netBalance == 0 ? colors.text3.withValues(alpha: 0.5) : colors.text2,
                     ),
                   ),
                   TweenAnimationBuilder<double>(
@@ -12305,14 +12297,14 @@ class _IncomeScreenState extends State<IncomeScreen>
                           );
                       final isNegative = netBalance < 0;
                       return Text(
-                        '${isNegative ? "-" : ""}$display',
+                        '${isNegative ? "-" : ""}${netBalance == 0 ? "—" : display}',
                         style: GoogleFonts.syne(
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -1.0,
                           color: isNegative
                               ? colors.red
-                              : (netBalance == 0 ? colors.text3 : colors.text1),
+                              : (netBalance == 0 ? colors.text3.withValues(alpha: 0.4) : colors.text1),
                         ),
                       );
                     },
@@ -12350,7 +12342,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _money(totalEarned),
+                            totalEarned > 0 ? _money(totalEarned) : '—',
                             style: GoogleFonts.syne(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -12401,7 +12393,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _money(totalSpent),
+                            totalSpent > 0 ? _money(totalSpent) : '—',
                             style: GoogleFonts.syne(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -12428,11 +12420,13 @@ class _IncomeScreenState extends State<IncomeScreen>
 
               Center(
                 child: Text(
-                  'Projected income: ${_money(projected)} this month',
+                  daysSoFar >= 3 && totalEarned > 0
+                      ? 'Projected income: ${_money(projected)} this month'
+                      : 'Projected income: — (log 3 days to calculate)',
                   style: GoogleFonts.dmSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: projected > 0 ? colors.gold : colors.text3,
+                    color: daysSoFar >= 3 && totalEarned > 0 ? colors.gold : colors.text3,
                   ),
                 ),
               ),
@@ -12446,8 +12440,8 @@ class _IncomeScreenState extends State<IncomeScreen>
   Widget _buildIncomeAllocationCard(AppColors colors, int totalEarned) {
     final hasIncome = totalEarned > 0;
     final baseAmount = hasIncome ? totalEarned : 0;
-    final forUse = (baseAmount * 0.65).round();
-    final forSavings = (baseAmount * 0.35).round();
+    final forUse = (baseAmount * 0.70).round();
+    final forSavings = (baseAmount * 0.30).round();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 14),
@@ -12488,19 +12482,27 @@ class _IncomeScreenState extends State<IncomeScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: colors.gold.withValues(alpha: 0.12),
+                  color: hasIncome
+                      ? colors.gold.withValues(alpha: 0.12)
+                      : (colors.theme.isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.04)),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: colors.gold.withValues(alpha: 0.3),
+                    color: hasIncome
+                        ? colors.gold.withValues(alpha: 0.3)
+                        : colors.cardBorder,
                     width: 0.5,
                   ),
                 ),
                 child: Text(
-                  '65% Spend · 35% Save',
+                  hasIncome
+                      ? '70% Spend · 30% Save'
+                      : 'Split activates after first income',
                   style: GoogleFonts.dmSans(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: colors.gold,
+                    color: hasIncome ? colors.gold : colors.text3,
                   ),
                 ),
               ),
@@ -12522,9 +12524,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          hasIncome ? '₹${_money(totalEarned)}' : '₹0',
+                          hasIncome ? '₹${_money(totalEarned)}' : '—',
                           style: GoogleFonts.syne(
-                            fontSize: hasIncome ? 11 : 13,
+                            fontSize: hasIncome ? 11 : 14,
                             fontWeight: FontWeight.w800,
                             color: hasIncome ? colors.text1 : colors.text3,
                           ),
@@ -12557,23 +12559,23 @@ class _IncomeScreenState extends State<IncomeScreen>
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: colors.gold,
+                                color: hasIncome ? colors.gold : colors.text3,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'For My Use (65%)',
+                              'For My Use (70%)',
                               style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: colors.text2,
+                                color: hasIncome ? colors.text2 : colors.text3,
                               ),
                             ),
                           ],
                         ),
                         Text(
-                          '₹${_money(forUse)}',
+                          hasIncome ? '₹${_money(forUse)}' : '—',
                           style: GoogleFonts.syne(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -12586,7 +12588,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
-                        value: hasIncome ? 0.65 : 0.0,
+                        value: hasIncome ? 0.70 : 0.0,
                         minHeight: 4,
                         backgroundColor: colors.theme.isDark
                             ? Colors.white.withValues(alpha: 0.05)
@@ -12604,23 +12606,23 @@ class _IncomeScreenState extends State<IncomeScreen>
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: colors.emerald,
+                                color: hasIncome ? colors.emerald : colors.text3,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'For Savings (35%)',
+                              'For Savings (30%)',
                               style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: colors.text2,
+                                color: hasIncome ? colors.text2 : colors.text3,
                               ),
                             ),
                           ],
                         ),
                         Text(
-                          '₹${_money(forSavings)}',
+                          hasIncome ? '₹${_money(forSavings)}' : '—',
                           style: GoogleFonts.syne(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -12633,7 +12635,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
-                        value: hasIncome ? 0.35 : 0.0,
+                        value: hasIncome ? 0.30 : 0.0,
                         minHeight: 4,
                         backgroundColor: colors.theme.isDark
                             ? Colors.white.withValues(alpha: 0.05)
@@ -17437,8 +17439,8 @@ class _AllocationDonutPainter extends CustomPainter {
         ..strokeWidth = strokeWidth;
 
       const startAngle = -math.pi / 2;
-      const spendSweep = 2 * math.pi * 0.65;
-      const saveSweep = 2 * math.pi * 0.35;
+      const spendSweep = 2 * math.pi * 0.70;
+      const saveSweep = 2 * math.pi * 0.30;
 
       final rect = Rect.fromCircle(center: center, radius: radius);
       canvas.drawArc(rect, startAngle, spendSweep - 0.08, false, spendPaint);
