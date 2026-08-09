@@ -12451,9 +12451,9 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
-  Widget _buildIncomeAllocationCard(AppColors colors, int totalEarned) {
-    final hasIncome = totalEarned > 0;
-    final baseAmount = hasIncome ? totalEarned : 0;
+  Widget _buildIncomeAllocationCard(AppColors colors, int netBalance) {
+    final hasBalance = netBalance > 0;
+    final baseAmount = hasBalance ? netBalance : 0;
     final forUse = (baseAmount * 0.70).round();
     final forSavings = (baseAmount * 0.30).round();
 
@@ -12496,27 +12496,27 @@ class _IncomeScreenState extends State<IncomeScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: hasIncome
+                  color: hasBalance
                       ? colors.gold.withValues(alpha: 0.12)
                       : (colors.theme.isDark
                             ? Colors.white.withValues(alpha: 0.05)
                             : Colors.black.withValues(alpha: 0.04)),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: hasIncome
+                    color: hasBalance
                         ? colors.gold.withValues(alpha: 0.3)
                         : colors.cardBorder,
                     width: 0.5,
                   ),
                 ),
                 child: Text(
-                  hasIncome
+                  hasBalance
                       ? '70% Spend · 30% Save'
-                      : 'Split activates after first income',
+                      : 'Split activates when Net Balance > 0',
                   style: GoogleFonts.dmSans(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: hasIncome ? colors.gold : colors.text3,
+                    color: hasBalance ? colors.gold : colors.text3,
                   ),
                 ),
               ),
@@ -12531,23 +12531,23 @@ class _IncomeScreenState extends State<IncomeScreen>
                 child: CustomPaint(
                   painter: _AllocationDonutPainter(
                     colors: colors,
-                    hasBalance: hasIncome,
+                    hasBalance: hasBalance,
                   ),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          hasIncome ? '₹${_money(totalEarned)}' : '—',
+                          hasBalance ? '₹${_money(netBalance)}' : '—',
                           style: GoogleFonts.syne(
-                            fontSize: hasIncome ? 11 : 14,
+                            fontSize: hasBalance ? 11 : 14,
                             fontWeight: FontWeight.w800,
-                            color: hasIncome ? colors.text1 : colors.text3,
+                            color: hasBalance ? colors.text1 : colors.text3,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          'ALLOCATED',
+                          'NET BAL',
                           style: GoogleFonts.dmSans(
                             fontSize: 7,
                             fontWeight: FontWeight.w700,
@@ -12573,7 +12573,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: hasIncome ? colors.gold : colors.text3,
+                                color: hasBalance ? colors.gold : colors.text3,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -12583,17 +12583,17 @@ class _IncomeScreenState extends State<IncomeScreen>
                               style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: hasIncome ? colors.text2 : colors.text3,
+                                color: hasBalance ? colors.text2 : colors.text3,
                               ),
                             ),
                           ],
                         ),
                         Text(
-                          hasIncome ? '₹${_money(forUse)}' : '—',
+                          hasBalance ? '₹${_money(forUse)}' : '—',
                           style: GoogleFonts.syne(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: hasIncome ? colors.gold : colors.text3,
+                            color: hasBalance ? colors.gold : colors.text3,
                           ),
                         ),
                       ],
@@ -12602,7 +12602,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
-                        value: hasIncome ? 0.70 : 0.0,
+                        value: hasBalance ? 0.70 : 0.0,
                         minHeight: 4,
                         backgroundColor: colors.theme.isDark
                             ? Colors.white.withValues(alpha: 0.05)
@@ -12620,7 +12620,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: hasIncome ? colors.emerald : colors.text3,
+                                color: hasBalance ? colors.emerald : colors.text3,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -12630,17 +12630,17 @@ class _IncomeScreenState extends State<IncomeScreen>
                               style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: hasIncome ? colors.text2 : colors.text3,
+                                color: hasBalance ? colors.text2 : colors.text3,
                               ),
                             ),
                           ],
                         ),
                         Text(
-                          hasIncome ? '₹${_money(forSavings)}' : '—',
+                          hasBalance ? '₹${_money(forSavings)}' : '—',
                           style: GoogleFonts.syne(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: hasIncome ? colors.emerald : colors.text3,
+                            color: hasBalance ? colors.emerald : colors.text3,
                           ),
                         ),
                       ],
@@ -12649,7 +12649,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
-                        value: hasIncome ? 0.30 : 0.0,
+                        value: hasBalance ? 0.30 : 0.0,
                         minHeight: 4,
                         backgroundColor: colors.theme.isDark
                             ? Colors.white.withValues(alpha: 0.05)
@@ -13597,6 +13597,8 @@ class _IncomeScreenState extends State<IncomeScreen>
     final colors = AppColors(widget.theme);
     final monthRef = DateTime(_selectedYear, _selectedMonth, 1);
     final totalEarned = _monthTotal(widget.incomeLog, monthRef);
+    final totalSpent = _monthTotal(widget.expenseLog, monthRef);
+    final netBalance = totalEarned - totalSpent;
     final daysInMonth = DateTime(_selectedYear, _selectedMonth + 1, 0).day;
 
     return Stack(
@@ -13654,7 +13656,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                 const SizedBox(height: 14),
                 _buildHeroCard(colors, totalEarned, daysInMonth),
                 const SizedBox(height: 14),
-                _buildIncomeAllocationCard(colors, totalEarned),
+                _buildIncomeAllocationCard(colors, netBalance),
                 const SizedBox(height: 14),
                 _buildEarningPotential(colors),
                 const SizedBox(height: 14),
