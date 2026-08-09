@@ -1728,7 +1728,7 @@ class _TodayScreenState extends State<TodayScreen>
       'Friday',
       'Saturday',
     ];
-    final nextDate = '${now.day} ${months[now.month - 1]} ${now.year}';
+    final nextDate = '${now.day} ${months[now.month - 1]}';
     final nextDay = days[now.weekday % 7];
     final goalDate = DateTime(
       widget.userGoalYear,
@@ -3198,7 +3198,7 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                     ),
                     Text(
-                      'Days to ${widget.userGoalYear}',
+                      'Target Days Remaining',
                       style: GoogleFonts.dmSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -7814,14 +7814,208 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     }
   }
 
+  Widget _buildSessionHeroCard(ThemeColors theme) {
+    final exercisesCount = _selectedSplit.exercises.length;
+    final firstEx = _selectedSplit.exercises.first;
+    final sets = parseSets(firstEx[1]);
+    final reps = parseReps(firstEx[1]);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: theme.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.border, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: theme.isDark ? 0.2 : 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row 1 — Progress Path (6 micro-dots)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: List.generate(exercisesCount, (idx) {
+                      final isFirst = idx == 0;
+                      return Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isFirst
+                              ? const Color(0xFF2A9D8F)
+                              : theme.border,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    List.generate(exercisesCount, (i) => '${i + 1}').join('  —  '),
+                    style: GoogleFonts.dmSans(
+                      fontSize: 9,
+                      color: theme.text3,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '~25 min',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: theme.text3,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Row 2 — The Mission
+          Text(
+            '${normalizeExerciseName(firstEx[0])} First',
+            style: GoogleFonts.dmSans(
+              fontSize: 28,
+              fontWeight: FontWeight.w300,
+              color: theme.text1,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$sets sets of $reps reps · 90s rest between sets',
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              color: theme.text3,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Row 3 — The CTA Inside Hero
+          GestureDetector(
+            onTap: _startTodayWorkout,
+            child: Container(
+              height: 48,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2A9D8F),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2A9D8F).withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Start First Set',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoutineConfirmationBar(ThemeColors theme) {
+    final otherSplit = _selectedSplit.title == _plan[0].title ? _plan[1] : _plan[0];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2A9D8F),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${_selectedSplit.title} · Bodyweight',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: theme.text1,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              HapticService.tapFeedback();
+              SoundManager.playTapClick();
+              setState(() {
+                _selectedSplit = otherSplit;
+                _recalculateStats();
+              });
+            },
+            child: Text(
+              'Tomorrow: ${otherSplit.title} ›',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: theme.text3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildWorkoutContent(BuildContext context) {
     final theme = widget.theme;
-    final cardBorder = theme.border;
+    final todayCompleted = _dayCompletedExercises(_selectedSplit) == _selectedSplit.exercises.length;
+    final currentStreak = todayCompleted ? 1 : 0;
+    final exercisesCount = _selectedSplit.exercises.length;
 
     return SafeArea(
       child: Stack(
         children: [
-          // Background Atmosphere Glow (soft emerald glow)
+          // Atmosphere Glow
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -7829,7 +8023,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   center: const Alignment(0.0, -0.4),
                   radius: 0.8,
                   colors: [
-                    const Color(0xFF00C896).withValues(alpha: 0.04),
+                    const Color(0xFF2A9D8F).withValues(alpha: 0.04),
                     Colors.transparent,
                   ],
                 ),
@@ -7837,7 +8031,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             ),
           ),
 
-          // Main screen shifting and opacity fade during rep counting (Brilliant Parallax style)
+          // Main screen view
           AnimatedPositioned(
             duration: Duration(milliseconds: _showRepCounter ? 450 : 350),
             curve: _showRepCounter ? Curves.easeOutCubic : Curves.easeInCubic,
@@ -7855,9 +8049,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               curve: _showRepCounter ? Curves.easeOutCubic : Curves.easeInCubic,
               child: AnimatedOpacity(
                 duration: Duration(milliseconds: _showRepCounter ? 450 : 350),
-                curve: _showRepCounter
-                    ? Curves.easeOutCubic
-                    : Curves.easeInCubic,
+                curve: _showRepCounter ? Curves.easeOutCubic : Curves.easeInCubic,
                 opacity: _showRepCounter ? 0.3 : 1.0,
                 child: SingleChildScrollView(
                   controller: _scrollController,
@@ -7865,11 +8057,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
                   clipBehavior: Clip.none,
-                  padding: const EdgeInsets.fromLTRB(20, 30, 20, 140),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. HEADER
+                      // 1. HEADER BAR
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -7878,114 +8070,130 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'TRAINING WORKOUT',
+                                  'TRAINING',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 3.0,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 2.0,
                                     color: theme.text3,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 2),
                                 Text(
                                   _weekdayName(DateTime.now()),
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
                                     color: theme.text1,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 2),
                                 Text(
-                                  _selectedSplit.title,
+                                  '${_selectedSplit.title} · $exercisesCount Exercises · ~25 Min',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 13,
-                                    color: theme.text2,
-                                    fontWeight: FontWeight.w600,
+                                    color: theme.text3,
+                                    fontWeight: FontWeight.w400,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          // Dark/light toggle and Settings cog
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  final themeNotifier =
-                                      Provider.of<ThemeNotifier>(
-                                        context,
-                                        listen: false,
-                                      );
-                                  themeNotifier.toggle();
-                                },
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: theme.card,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: theme.border,
-                                      width: 0.5,
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: const Text(
-                                    '💪',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
+                          if (currentStreak > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFDF8E8),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFFE9D5A3),
+                                  width: 1,
                                 ),
                               ),
-                            ],
-                          ),
+                              child: Text(
+                                '👍 $currentStreak',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFD4A843),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 18),
 
-                      // 2. STATS ROW
-                      _workoutStatsGrid(theme, theme.teal),
-                      const SizedBox(height: 18),
+                      // 2. SESSION HERO CARD
+                      _buildSessionHeroCard(theme),
+                      const SizedBox(height: 14),
 
-                      // 4. SPLIT SELECTOR
-                      _splitSelector(theme),
-                      const SizedBox(height: 20),
+                      // 3. ROUTINE CONFIRMATION BAR
+                      _buildRoutineConfirmationBar(theme),
+                      const SizedBox(height: 14),
 
-                      // 3. PROGRESS BAR SECTION
-                      _buildLinearProgress(theme),
-                      const SizedBox(height: 20),
-
-                      // 5. EXERCISE LIST (with animated cross-fade and slide on switch)
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (child, animation) {
-                          return AnimatedBuilder(
-                            animation: animation,
-                            builder: (context, Widget? builderChild) {
-                              final val = animation.value;
-                              final double yOffset = (1.0 - val) * 10.0;
-                              return Opacity(
-                                opacity: val,
-                                child: Transform.translate(
-                                  offset: Offset(0.0, yOffset),
-                                  child: builderChild,
-                                ),
-                              );
-                            },
-                            child: child,
-                          );
-                        },
-                        child: KeyedSubtree(
-                          key: ValueKey(_selectedSplit.title),
-                          child: _exerciseLogSection(
-                            theme,
-                            _selectedSplit,
-                            theme.teal,
-                            cardBorder,
+                      // 4. EXERCISE ROADMAP (UP NEXT)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
+                        child: Text(
+                          'UP NEXT',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 2.0,
+                            color: theme.text3,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 180),
+
+                      // EXERCISE LIST
+                      KeyedSubtree(
+                        key: ValueKey(_selectedSplit.title),
+                        child: Column(
+                          children: List.generate(_selectedSplit.exercises.length, (index) {
+                            final exercise = _selectedSplit.exercises[index];
+                            final key = '${_selectedSplit.title}|${exercise[0]}';
+                            final state = _exerciseStates[key];
+                            final completed = state?.completed == true;
+                            final sets = parseSets(exercise[1]);
+                            final reps = state != null ? state.maxReps : parseReps(exercise[1]);
+                            final muscle = exercise.length > 2 ? exercise[2] : '';
+                            return _ScrollRevealWidget(
+                              index: index,
+                              scrollController: _scrollController,
+                              child: ExerciseLogRowWidget(
+                                index: index,
+                                theme: theme,
+                                exercise: exercise,
+                                isLibrary: false,
+                                completed: completed,
+                                sets: sets,
+                                reps: reps,
+                                muscle: muscle,
+                                onToggle: () => _toggleExercise(key),
+                                onTapReps: () {
+                                  if (state != null) {
+                                    setState(() {
+                                      _selectNewPhrase();
+                                      _activeExerciseState = state;
+                                      _activeExerciseName = exercise[0];
+                                      _repsRemaining = state.repsRemaining;
+                                      if (_repsRemaining <= 0) {
+                                        _repsRemaining = state.maxReps;
+                                      }
+                                      _showRepCounter = true;
+                                    });
+                                    _MainScreenState.hideBottomNavNotifier.value = true;
+                                  }
+                                },
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: 140),
                     ],
                   ),
                 ),
@@ -7993,7 +8201,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             ),
           ),
 
-          // 9. STICKY FLOATING START WORKOUT BUTTON (Fix #5)
+          // 5. STICKY BOTTOM ACTION BAR
           if (!_showRepCounter)
             Positioned(
               left: 20,
@@ -8498,13 +8706,24 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             ],
           ),
           alignment: Alignment.center,
-          child: Text(
-            _buttonLabel,
-            style: GoogleFonts.dmSans(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.white,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.play_arrow_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Start Workout',
+                style: GoogleFonts.dmSans(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -14557,15 +14776,12 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
-    final tag = _getEquipmentTag();
     final isFirstNextUp = widget.index == 0 && !widget.completed && !widget.isLibrary;
 
-    // Alternating card backgrounds with Next Up highlight
+    // Card background and border styling according to spec
     final isEven = widget.index % 2 == 0;
     final baseBg = isFirstNextUp
-        ? (theme.isDark
-            ? const Color(0x1C00C896)
-            : const Color(0x1800C896))
+        ? (theme.isDark ? const Color(0x1C2A9D8F) : const Color(0xFFFAFDFC))
         : (theme.isDark
             ? (isEven
                 ? Colors.white.withValues(alpha: 0.03)
@@ -14575,209 +14791,192 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                 : Colors.white.withValues(alpha: 0.92)));
 
     final borderCol = isFirstNextUp
-        ? const Color(0xFF00C896).withValues(alpha: 0.4)
+        ? const Color(0xFF2A9D8F).withValues(alpha: 0.3)
         : (theme.isDark
             ? Colors.white.withValues(alpha: 0.08)
-            : Colors.black.withValues(alpha: 0.06));
+            : const Color(0xFFEAE5D9));
 
-    return GestureDetector(
-      onTapDown: (_) => _pressController.forward(),
-      onTapUp: (_) {
-        _pressController.reverse();
-        HapticService.tapFeedback();
-        SoundManager.playTapClick();
-        widget.onTapReps();
-      },
-      onTapCancel: () => _pressController.reverse(),
-      child: AnimatedBuilder(
-        animation: _pressController,
-        builder: (context, child) {
-          final pressVal = _pressController.value;
-          final scale = 1.0 - (0.02 * pressVal);
-          final blur = 32.0 - (16.0 * pressVal);
-          final shadowOp = theme.isDark
-              ? (0.3 + (0.1 * pressVal))
-              : (0.06 + (0.02 * pressVal));
-          final offY = 8.0 - (6.0 * pressVal);
-
-          return Transform.scale(
-            scale: scale,
-            child: AnimatedOpacity(
-              opacity: widget.completed ? 0.5 : 1.0,
-              duration: const Duration(milliseconds: 300),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: baseBg,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: borderCol, width: isFirstNextUp ? 1.5 : 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isFirstNextUp
-                          ? const Color(0xFF00C896).withValues(alpha: 0.15)
-                          : Colors.black.withValues(alpha: shadowOp),
-                      blurRadius: blur,
-                      offset: Offset(0.0, offY),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    if (widget.completed || isFirstNextUp)
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: 3.5,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF00C896),
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(14),
-                              bottomLeft: Radius.circular(14),
-                            ),
-                          ),
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: isFirstNextUp
-                                  ? const Color(0xFF00C896).withValues(alpha: 0.25)
-                                  : const Color(0x2600C896),
-                              borderRadius: BorderRadius.circular(11),
-                            ),
-                            child: Icon(
-                              _categoryIcon,
-                              color: const Color(0xFF00C896),
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        normalizeExerciseName(widget.exercise[0]),
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: theme.text1,
-                                        ),
-                                      ),
-                                    ),
-                                    if (isFirstNextUp)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 1.5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF00C896).withValues(alpha: 0.18),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          'Start Here',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.w700,
-                                            color: const Color(0xFF00C896),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Wrap(
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  spacing: 4,
-                                  runSpacing: 2,
-                                  children: [
-                                    Text(
-                                      '${widget.sets} × ${_isIsometric ? '${widget.reps}s hold' : '${widget.reps} reps'} · ',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 10,
-                                        color: theme.text3,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    if (tag != 'BW') _buildEquipmentTag(tag),
-                                    if (tag != 'BW') const SizedBox(width: 2),
-                                    _buildMuscleTag(primaryMuscle),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  'Prev: ${widget.reps > 1 ? widget.reps - 1 : widget.reps} ${_isIsometric ? 's' : 'reps'}',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 9,
-                                    color: theme.text3.withValues(alpha: 0.8),
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                _isIsometric
-                                    ? '${widget.reps}s'
-                                    : '${widget.reps}',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: theme.text1,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              _buildSetIndicator(),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                          if (widget.completed)
-                            _CompletionCheckWidget(
-                              completed: widget.completed,
-                              onTap: () {
-                                HapticService.tapFeedback();
-                                SoundManager.playTapClick();
-                                widget.onToggle();
-                              },
-                              theme: theme,
-                            )
-                          else
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              color: isFirstNextUp
-                                  ? const Color(0xFF00C896)
-                                  : theme.text3.withValues(alpha: 0.6),
-                              size: 22,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isFirstNextUp)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 4),
+            child: Text(
+              'START HERE',
+              style: GoogleFonts.dmSans(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: const Color(0xFF2A9D8F),
               ),
             ),
-          );
-        },
-      ),
+          ),
+        GestureDetector(
+          onTapDown: (_) => _pressController.forward(),
+          onTapUp: (_) {
+            _pressController.reverse();
+            HapticService.tapFeedback();
+            SoundManager.playTapClick();
+            widget.onTapReps();
+          },
+          onTapCancel: () => _pressController.reverse(),
+          child: AnimatedBuilder(
+            animation: _pressController,
+            builder: (context, child) {
+              final pressVal = _pressController.value;
+              final scale = 1.0 - (0.02 * pressVal);
+
+              return Transform.scale(
+                scale: scale,
+                child: AnimatedOpacity(
+                  opacity: widget.completed ? 0.5 : 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: baseBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderCol, width: 1),
+                      boxShadow: [
+                        if (isFirstNextUp)
+                          BoxShadow(
+                            color: const Color(0xFF2A9D8F).withValues(alpha: 0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                      ],
+                    ),
+                    child: Stack(
+                      children: [
+                        // Left Accent Bar (Item 1 or Completed)
+                        if (isFirstNextUp || widget.completed)
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 3.5,
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF2A9D8F),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  bottomLeft: Radius.circular(16),
+                                ),
+                              ),
+                            ),
+                          ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: Row(
+                            children: [
+                              // Order Circle (28px)
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isFirstNextUp
+                                      ? const Color(0xFFE0F2F1)
+                                      : (theme.isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : const Color(0xFFF5F5F0)),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '${widget.index + 1}',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: isFirstNextUp
+                                        ? const Color(0xFF2A9D8F)
+                                        : const Color(0xFF8B8B7A),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Text Column: Name & Sub-line (Combined 3 × 8 · Primary Muscle)
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      normalizeExerciseName(widget.exercise[0]),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.isDark
+                                            ? Colors.white
+                                            : const Color(0xFF264653),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${widget.sets} × ${_isIsometric ? '${widget.reps}s' : '${widget.reps}'} · $primaryMuscle',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: const Color(0xFF8B8B7A),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Right Column: Big Target Number (24px weight 300) + Unit + Chevron
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text(
+                                    _isIsometric
+                                        ? '${widget.reps}'
+                                        : '${widget.reps}',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w300,
+                                      color: theme.isDark
+                                          ? Colors.white
+                                          : const Color(0xFF264653),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _isIsometric ? 's' : 'reps',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w400,
+                                      color: const Color(0xFFB7B7A4),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 18,
+                                    color: Color(0xFFB7B7A4),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
