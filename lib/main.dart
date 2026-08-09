@@ -7839,45 +7839,32 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Row 1 — Progress Path (6 micro-dots)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: List.generate(exercisesCount, (idx) {
-                      final isFirst = idx == 0;
-                      return Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isFirst
-                              ? const Color(0xFF2A9D8F)
-                              : theme.border,
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    List.generate(exercisesCount, (i) => '${i + 1}').join('  —  '),
-                    style: GoogleFonts.dmSans(
-                      fontSize: 9,
-                      color: theme.text3,
-                      fontWeight: FontWeight.w600,
+              Row(
+                children: List.generate(exercisesCount, (idx) {
+                  final isFirst = idx == 0;
+                  return Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isFirst
+                          ? const Color(0xFF2A9D8F)
+                          : theme.border,
                     ),
-                  ),
-                ],
+                  );
+                }),
               ),
+              const SizedBox(height: 4),
               Text(
-                '~25 min',
+                List.generate(exercisesCount, (i) => '${i + 1}').join('  —  '),
                 style: GoogleFonts.dmSans(
-                  fontSize: 12,
+                  fontSize: 9,
                   color: theme.text3,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -7888,19 +7875,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           Text(
             '${normalizeExerciseName(firstEx[0])} First',
             style: GoogleFonts.dmSans(
-              fontSize: 28,
+              fontSize: 32,
               fontWeight: FontWeight.w300,
-              color: theme.text1,
+              color: theme.isDark ? Colors.white : const Color(0xFF264653),
               letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            '$sets sets of $reps reps · 90s rest between sets',
+            '$sets × $reps reps',
             style: GoogleFonts.dmSans(
-              fontSize: 13,
-              color: theme.text3,
-              fontWeight: FontWeight.w400,
+              fontSize: 14,
+              color: const Color(0xFF8B8B7A),
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 18),
@@ -8057,7 +8044,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
                   clipBehavior: Clip.none,
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -8193,22 +8180,13 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           }),
                         ),
                       ),
-                      const SizedBox(height: 140),
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-
-          // 5. STICKY BOTTOM ACTION BAR
-          if (!_showRepCounter)
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 90,
-              child: _buildStartButton(theme),
-            ),
 
           // 6. REP COUNTER OVERLAY (slides in from right with parallax scale)
           AnimatedPositioned(
@@ -14799,19 +14777,6 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (isFirstNextUp)
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 4),
-            child: Text(
-              'START HERE',
-              style: GoogleFonts.dmSans(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.5,
-                color: const Color(0xFF2A9D8F),
-              ),
-            ),
-          ),
         GestureDetector(
           onTapDown: (_) => _pressController.forward(),
           onTapUp: (_) {
@@ -14834,7 +14799,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                   duration: const Duration(milliseconds: 300),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
-                    height: 80,
+                    height: 76,
                     decoration: BoxDecoration(
                       color: baseBg,
                       borderRadius: BorderRadius.circular(16),
@@ -14871,7 +14836,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           child: Row(
                             children: [
-                              // Order Circle (28px)
+                              // Order Circle
                               Container(
                                 width: 28,
                                 height: 28,
@@ -14891,13 +14856,15 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                     fontWeight: FontWeight.w700,
                                     color: isFirstNextUp
                                         ? const Color(0xFF2A9D8F)
-                                        : const Color(0xFF8B8B7A),
+                                        : (theme.isDark
+                                            ? Colors.white.withValues(alpha: 0.7)
+                                            : const Color(0xFF5A5A4A)),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 12),
 
-                              // Text Column: Name & Sub-line (Combined 3 × 8 · Primary Muscle)
+                              // Name + Sets/Reps · PrimaryMuscle
                               Expanded(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -14917,7 +14884,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${widget.sets} × ${_isIsometric ? '${widget.reps}s' : '${widget.reps}'} · $primaryMuscle',
+                                      '${widget.sets} × ${_isIsometric ? '${widget.reps}s' : '${widget.reps}'} · ${primaryMuscle.split(',').first.trim()}',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
@@ -14930,19 +14897,17 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                 ),
                               ),
 
-                              // Right Column: Big Target Number (24px weight 300) + Unit + Chevron
+                              // Target Number + Unit (NO chevron)
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.baseline,
                                 textBaseline: TextBaseline.alphabetic,
                                 children: [
                                   Text(
-                                    _isIsometric
-                                        ? '${widget.reps}'
-                                        : '${widget.reps}',
+                                    '${widget.reps}',
                                     style: GoogleFonts.dmSans(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w300,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w200,
                                       color: theme.isDark
                                           ? Colors.white
                                           : const Color(0xFF264653),
@@ -14956,12 +14921,6 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                       fontWeight: FontWeight.w400,
                                       color: const Color(0xFFB7B7A4),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.chevron_right_rounded,
-                                    size: 18,
-                                    color: Color(0xFFB7B7A4),
                                   ),
                                 ],
                               ),
