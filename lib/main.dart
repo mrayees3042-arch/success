@@ -1144,6 +1144,19 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         ),
       ),
       SizedBox.expand(
+        child: WorkoutScreen(
+          theme: _theme,
+          onWorkoutCompleted: _markWorkoutCompleted,
+          onWorkoutProgressChanged: _updateWorkoutProgress,
+          onScreenshot: _takeScreenshot,
+          userName: _userName,
+          onNameChanged: _updateProfileFromNameChanged,
+          userGoalYear: _userGoalYear,
+          userGoalMonth: _userGoalMonth,
+          userGoalDay: _userGoalDay,
+        ),
+      ),
+      SizedBox.expand(
         child: IncomeScreen(
           theme: _theme,
           incomeLog: _incomeLog,
@@ -1224,11 +1237,12 @@ class _BottomNavBarState extends State<_BottomNavBar>
   static const _icons = [
     Icons.home_outlined,
     Icons.check_circle_outline,
+    Icons.fitness_center_outlined,
     Icons.account_balance_wallet_outlined,
     Icons.flag_outlined,
   ];
 
-  static const _labels = ['Today', 'Habits', 'Income', 'Goals'];
+  static const _labels = ['Today', 'Habits', 'Workout', 'Income', 'Goals'];
 
   @override
   Widget build(BuildContext context) {
