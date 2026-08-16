@@ -130,6 +130,20 @@ class AppColors {
   Color get track => theme.isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000);
   Color get pink => const Color(0xFFFF007F);
 
+  // ── Antigravity Workout Tokens ──
+  Color get auroraText => theme.isDark ? const Color(0xFFE8E8F0) : const Color(0xFF1C1914);
+  Color get auroraTextSec => theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560);
+  Color get auroraTextMuted => theme.isDark ? const Color(0xFF4A4A5A) : const Color(0xFFA8A29D);
+  Color get auroraTeal => theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488);
+  Color get auroraTealSoft => theme.isDark ? const Color(0x262DD4A8) : const Color(0x1F0D9488);
+  Color get solarGold => theme.isDark ? const Color(0xFFD4A843) : const Color(0xFFB48A2A);
+  Color get solarGoldSoft => theme.isDark ? const Color(0x1FD4A843) : const Color(0x1AB48A2A);
+  Color get auroraCoral => theme.isDark ? const Color(0xFFF87171) : const Color(0xFFDC584C);
+  Color get glassSurface => theme.isDark ? const Color(0xFF141423).withOpacity(0.65) : Colors.white.withOpacity(0.72);
+  Color get glassBorder => theme.isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.85);
+  Color get glassBorderBottom => theme.isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.04);
+  Color get voidBg => theme.isDark ? const Color(0xFF0B0B14) : const Color(0xFFF0EDE6);
+
   List<BoxShadow>? get shadow {
     if (theme.isDark) return null;
     return [

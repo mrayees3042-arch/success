@@ -232,50 +232,32 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                    // Animated Pulse M Growth Chart Emblem
+                    // New Sleek App Icon
                     AnimatedBuilder(
-                      animation: Listenable.merge([
-                        _sequenceController,
-                        _shineController,
-                        _ringController,
-                      ]),
+                      animation: _sequenceController,
                       builder: (context, child) {
-                        final strokeDrawProgress = (_sequenceController.value * 2.0).clamp(0.0, 1.0);
                         return Transform.scale(
                           scale: _starScale.value,
                           child: Container(
-                            width: 144,
-                            height: 144,
-                            padding: const EdgeInsets.all(12),
+                            width: 120,
+                            height: 120,
                             decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF0C0F19)
-                                  : const Color(0xFFFFFFFF),
-                              borderRadius: BorderRadius.circular(34),
-                              border: Border.all(
-                                color: isDark
-                                    ? const Color(0xFF00C896).withValues(alpha: 0.35 + 0.15 * math.sin(_ringController.value * math.pi * 2))
-                                    : const Color(0xFF00C896).withValues(alpha: 0.25),
-                                width: 1.8,
-                              ),
+                              borderRadius: BorderRadius.circular(28),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF00C896).withValues(alpha: 0.20 + 0.10 * math.sin(_ringController.value * math.pi * 2)),
-                                  blurRadius: 36,
-                                  spreadRadius: -2,
-                                ),
-                                BoxShadow(
-                                  color: goldColor.withValues(alpha: 0.10),
-                                  blurRadius: 20,
-                                  spreadRadius: -4,
+                                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+                                  blurRadius: 30,
+                                  offset: const Offset(0, 8),
                                 ),
                               ],
                             ),
-                            child: CustomPaint(
-                              painter: PulseMPainter(
-                                progress: strokeDrawProgress,
-                                pulse: _shineController.value,
-                                isDark: isDark,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(28),
+                              child: Image.asset(
+                                'assets/icon/app_icon.png',
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.cover,
                               ),
                             ),
                           ),

@@ -7151,12 +7151,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       icon: Icons.fitness_center,
       color: Colors.teal,
       exercises: [
-        ['Push-ups', '3 x 8 reps', 'Chest, shoulders, triceps'],
-        ['Incline Push-ups', '3 x 10 reps', 'Feet on chair, upper chest'],
-        ['Pike Push-ups', '3 x 6 reps', 'Shoulders, hips high'],
-        ['Door Rows', '3 x 12 reps', 'Back & biceps, grip doorframe'],
-        ['Arm Circles', '3 x 15 reps', 'Shoulder mobility'],
-        ['Plank Hold', '3 x 30 seconds', 'Core stability'],
+        ['Push-ups', '3 x 8 reps', 'Chest'],
+        ['Incline Push-ups', '3 x 10 reps', 'Incline'],
+        ['Pike Push-ups', '3 x 6 reps', 'Shoulders'],
+        ['Door Rows', '3 x 12 reps', 'Back'],
+        ['Arm Circles', '3 x 15 reps', 'Shoulders'],
+        ['Plank Hold', '3 x 30 sec', 'Core'],
       ],
     ),
     WorkoutDay(
@@ -7820,118 +7820,122 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final sets = parseSets(firstEx[1]);
     final reps = parseReps(firstEx[1]);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: theme.card,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.border, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: theme.isDark ? 0.2 : 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: theme.isDark
+                ? const Color(0xFF1C1C1E).withOpacity(0.85)
+                : Colors.white.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.isDark
+                  ? Colors.white.withOpacity(0.06)
+                  : Colors.white.withOpacity(0.9),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: theme.isDark
+                    ? Colors.black.withOpacity(0.35)
+                    : const Color(0xFF3C321E).withOpacity(0.06),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1 — Progress Path (6 micro-dots)
-          Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Apple Fitness+ Segmented Step Indicator
               Row(
                 children: List.generate(exercisesCount, (idx) {
-                  final isFirst = idx == 0;
-                  return Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isFirst
-                          ? const Color(0xFF2A9D8F)
-                          : theme.border,
+                  final isActive = idx == 0;
+                  return Expanded(
+                    child: Container(
+                      height: 3.5,
+                      margin: EdgeInsets.only(right: idx < exercisesCount - 1 ? 5 : 0),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? (theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488))
+                            : (theme.isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06)),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   );
                 }),
               ),
+              const SizedBox(height: 18),
+
+              // The Mission Title
+              Text(
+                '${normalizeExerciseName(firstEx[0])} First',
+                style: GoogleFonts.dmSans(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w300,
+                  color: theme.text1,
+                  letterSpacing: -0.5,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
-                List.generate(exercisesCount, (i) => '${i + 1}').join('  —  '),
+                '$sets × $reps reps',
                 style: GoogleFonts.dmSans(
-                  fontSize: 9,
-                  color: theme.text3,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.24,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Apple 50px Primary Action Button
+              GestureDetector(
+                onTap: _startTodayWorkout,
+                child: Container(
+                  height: 50,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488)).withOpacity(0.25),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.play_arrow_rounded,
+                        color: theme.isDark ? Colors.black : Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Start First Set',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.41,
+                          color: theme.isDark ? Colors.black : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // Row 2 — The Mission
-          Text(
-            '${normalizeExerciseName(firstEx[0])} First',
-            style: GoogleFonts.dmSans(
-              fontSize: 32,
-              fontWeight: FontWeight.w300,
-              color: theme.isDark ? Colors.white : const Color(0xFF264653),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$sets × $reps reps',
-            style: GoogleFonts.dmSans(
-              fontSize: 14,
-              color: const Color(0xFF8B8B7A),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // Row 3 — The CTA Inside Hero
-          GestureDetector(
-            onTap: _startTodayWorkout,
-            child: Container(
-              height: 48,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A9D8F),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF2A9D8F).withValues(alpha: 0.25),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Start First Set',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -7943,33 +7947,27 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2A9D8F),
-                    shape: BoxShape.circle,
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${_selectedSplit.title} · Bodyweight',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: theme.text1,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${_selectedSplit.title} · Bodyweight',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: theme.text1,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
           GestureDetector(
             onTap: () {
               HapticService.tapFeedback();
@@ -7984,7 +7982,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               style: GoogleFonts.dmSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: theme.text3,
+                color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
               ),
             ),
           ),
@@ -8009,10 +8007,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 gradient: RadialGradient(
                   center: const Alignment(0.0, -0.4),
                   radius: 0.8,
-                  colors: [
-                    const Color(0xFF2A9D8F).withValues(alpha: 0.04),
-                    Colors.transparent,
-                  ],
+                  colors: theme.isDark
+                      ? [
+                          const Color(0xFF12122A),
+                          const Color(0xFF0B0B14),
+                        ]
+                      : [
+                          const Color(0xFFF5F2EB),
+                          const Color(0xFFE8E4DB),
+                        ],
                 ),
               ),
             ),
@@ -8050,7 +8053,6 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     children: [
                       // 1. HEADER BAR
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
                             child: Column(
@@ -8059,56 +8061,35 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 Text(
                                   'TRAINING',
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 10,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    letterSpacing: 2.0,
-                                    color: theme.text3,
+                                    letterSpacing: -0.08,
+                                    color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   _weekdayName(DateTime.now()),
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 28,
+                                    fontSize: 32,
                                     fontWeight: FontWeight.w700,
-                                    color: theme.text1,
+                                    letterSpacing: -0.5,
+                                    color: theme.isDark ? const Color(0xFFE8E8F0) : const Color(0xFF1C1914),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '${_selectedSplit.title} · $exercisesCount Exercises · ~25 Min',
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 13,
-                                    color: theme.text3,
+                                    fontSize: 15,
+                                    color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
                                     fontWeight: FontWeight.w400,
+                                    letterSpacing: -0.24,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          if (currentStreak > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFDF8E8),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFFE9D5A3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                '👍 $currentStreak',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFD4A843),
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                       const SizedBox(height: 18),
@@ -8119,21 +8100,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
                       // 3. ROUTINE CONFIRMATION BAR
                       _buildRoutineConfirmationBar(theme),
-                      const SizedBox(height: 14),
-
-                      // 4. EXERCISE ROADMAP (UP NEXT)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, bottom: 8),
-                        child: Text(
-                          'UP NEXT',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 2.0,
-                            color: theme.text3,
-                          ),
-                        ),
-                      ),
+                      const SizedBox(height: 10),
 
                       // EXERCISE LIST
                       KeyedSubtree(
@@ -8887,10 +8854,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       if (lower.contains('leg')) return 'ABS & CORE';
       return 'SHOULDERS';
     }
-    if (lower.contains('row')) return 'BACK & BICEPS';
-    if (lower.contains('circle')) return 'SHOULDER MOBILITY';
-    if (lower.contains('plank')) return 'CORE STABILITY';
-    if (lower.contains('pull')) return 'LATS & BACK';
+    if (lower.contains('row')) return 'BACK';
+    if (lower.contains('circle')) return 'SHOULDERS';
+    if (lower.contains('plank')) return 'CORE';
+    if (lower.contains('pull')) return 'BACK';
     if (lower.contains('curl')) return 'BICEPS';
     if (lower.contains('press')) {
       if (lower.contains('bench')) return 'CHEST';
@@ -9262,928 +9229,751 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     final state = _activeExerciseState!;
     final totalSets = state.totalSets;
     final currentSet = state.currentSet;
-    final isSetDone = _repsRemaining == 0;
-    final isLastSet = currentSet == totalSets;
+    final isLastSet = currentSet >= totalSets;
     final targetReps = state.maxReps;
-    final currentRepsLogged = targetReps - _repsRemaining;
-    final currentExIndex = _currentExerciseIndex;
-    final totalExCount = _selectedSplit.exercises.length;
 
-    final nextExName = currentExIndex < totalExCount
-        ? _selectedSplit.exercises[currentExIndex][0]
-        : null;
-    final nextExMeta = currentExIndex < totalExCount
-        ? '${_selectedSplit.exercises[currentExIndex][1]} · ${_getEquipmentForExercise(_selectedSplit.exercises[currentExIndex][0])}'
-        : null;
+    final auroraTeal = theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488);
+    final textPrim = theme.isDark ? const Color(0xFFE8E8F0) : const Color(0xFF1C1914);
+    final textSec = theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560);
+    final textMuted = theme.isDark ? const Color(0xFF4A4A5A) : const Color(0xFFA8A29D);
+    final solarGold = theme.isDark ? const Color(0xFFD4A843) : const Color(0xFFB48A2A);
+    final coralRed = theme.isDark ? const Color(0xFFF87171) : const Color(0xFFDC584C);
 
-    // Realistic time calculation: (Work 45s + Rest 90s) * remaining sets
-    final remainingSetsCount =
-        (totalExCount - currentExIndex) * totalSets +
-        (totalSets - currentSet + 1);
-    final minutesLeft =
-        ((remainingSetsCount *
-                    (45 + _getPrescribedRestSeconds(_activeExerciseName!))) /
-                60)
-            .round();
+    final bgCol = theme.isDark
+        ? const Color(0xFF0B0B14).withOpacity(0.96)
+        : const Color(0xFFF0EDE6).withOpacity(0.96);
 
     return Stack(
       children: [
-        // Instrument Panel Container (#0A0C10 background, no bottom nav bar)
-        Container(
-          color: const Color(0xFF0A0C10),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Top Navigation Bar (Instrument Panel)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Back Button (Requires Confirmation)
-                      GestureDetector(
-                        onTap: () {
-                          HapticService.negative();
-                          SoundManager.playTapClick();
-                          _showEndWorkoutConfirmation(theme);
-                        },
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF181B21),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: const Color(0xFF23262D),
-                              width: 1,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back,
-                            size: 18,
-                            color: Color(0xFFE8EAED),
-                          ),
-                        ),
+        // Cockpit Glass Container
+        ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              color: bgCol,
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    // Top Navigation Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
                       ),
-
-                      // Set Progress Badge + Large Segmented Bar (Issue 12)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF2ECC71,
-                              ).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: const Color(
-                                  0xFF2ECC71,
-                                ).withValues(alpha: 0.25),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Set $currentSet/$totalSets',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF2ECC71),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // Segmented Progress Bar (3 blocks, 6px height)
-                                Row(
-                                  children: List.generate(totalSets, (i) {
-                                    final filled = i < currentSet;
-                                    return Container(
-                                      width: 12,
-                                      height: 6,
-                                      margin: EdgeInsets.only(
-                                        left: i > 0 ? 3 : 0,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: filled
-                                            ? const Color(0xFF2ECC71)
-                                            : const Color(0xFF23262D),
-                                        borderRadius: BorderRadius.circular(3),
-                                      ),
-                                    );
-                                  }),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Voice Cue Toggle & Pause Button (Issues 3 & 13)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Voice Cue Toggle
+                          // Glass Back Button
                           GestureDetector(
                             onTap: () {
-                              HapticService.light();
-                              setState(() {
-                                _voiceCuesEnabled = !_voiceCuesEnabled;
-                              });
+                              HapticService.negative();
+                              SoundManager.playTapClick();
+                              _showEndWorkoutConfirmation(theme);
                             },
                             child: Container(
-                              width: 36,
-                              height: 36,
-                              margin: const EdgeInsets.only(right: 8),
+                              width: 38,
+                              height: 38,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF181B21),
-                                borderRadius: BorderRadius.circular(10),
+                                color: theme.isDark
+                                    ? Colors.white.withOpacity(0.06)
+                                    : Colors.white.withOpacity(0.8),
+                                shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: const Color(0xFF23262D),
+                                  color: theme.isDark
+                                      ? Colors.white.withOpacity(0.1)
+                                      : Colors.black.withOpacity(0.06),
                                   width: 1,
                                 ),
                               ),
                               child: Icon(
-                                _voiceCuesEnabled
-                                    ? Icons.volume_up_rounded
-                                    : Icons.volume_off_rounded,
+                                Icons.arrow_back_rounded,
                                 size: 18,
-                                color: _voiceCuesEnabled
-                                    ? const Color(0xFF2ECC71)
-                                    : const Color(0xFF6B7280),
+                                color: textPrim,
                               ),
                             ),
                           ),
-                          // Pause Button (Issue 3)
-                          GestureDetector(
-                            onTap: () {
-                              HapticService.light();
-                              setState(() => _isPaused = true);
-                            },
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF181B21),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: const Color(0xFF23262D),
-                                  width: 1,
+
+                          // Exercise Name & Set Progress
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                normalizeExerciseName(_activeExerciseName!),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: textPrim,
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.pause_rounded,
-                                size: 20,
-                                color: Color(0xFFF2C94C),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Set $currentSet of $totalSets',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: auroraTeal,
+                                ),
                               ),
-                            ),
+                            ],
+                          ),
+
+                          // Top Right Actions (✎ Edit & Pause)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // ✎ Edit Button
+                              GestureDetector(
+                                onTap: () {
+                                  HapticService.selection();
+                                  _editRepsController.text = '${state.maxReps}';
+                                  setState(() => _showEditRepsModal = true);
+                                },
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: theme.isDark
+                                        ? Colors.white.withOpacity(0.06)
+                                        : Colors.white.withOpacity(0.8),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: theme.isDark
+                                          ? Colors.white.withOpacity(0.1)
+                                          : Colors.black.withOpacity(0.06),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.edit_outlined,
+                                    size: 17,
+                                    color: textSec,
+                                  ),
+                                ),
+                              ),
+
+                              // Pause Button
+                              GestureDetector(
+                                onTap: () {
+                                  HapticService.light();
+                                  setState(() => _isPaused = true);
+                                },
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: theme.isDark
+                                        ? Colors.white.withOpacity(0.06)
+                                        : Colors.white.withOpacity(0.8),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: theme.isDark
+                                          ? Colors.white.withOpacity(0.1)
+                                          : Colors.black.withOpacity(0.06),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.pause_rounded,
+                                    size: 18,
+                                    color: solarGold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
 
-                // Main Scrollable Area (Instrument Panel during set, Recovery Dashboard during rest)
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 8),
+                    // Main Scrollable Area
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 12),
 
-                        // Exercise Title
-                        Text(
-                          _activeExerciseName!,
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
+                            // 1. SET TRACKER BUBBLES
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(totalSets, (i) {
+                                final setNum = i + 1;
+                                final isDone = setNum < currentSet;
+                                final isActive = setNum == currentSet;
 
-                        // Exercise Meta line + Realistic Time Estimate (Issue 5)
-                        Text(
-                          '$totalSets sets × $targetReps reps · ${_getEquipmentForExercise(_activeExerciseName!)}',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            color: const Color(0xFF8B929D),
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '~$minutesLeft min left (work + rest)',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: const Color(0xFF6B7280),
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
+                                Color bubbleBg;
+                                Color bubbleText;
+                                BoxBorder? bubbleBorder;
+                                List<BoxShadow>? bubbleShadow;
 
-                        // Last Session Performance & RPE Context Pill (Issue 10)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF181B21),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: const Color(0xFF23262D),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.trending_up_rounded,
-                                size: 14,
-                                color: Color(0xFF6B7280),
-                              ),
-                              const SizedBox(width: 6),
-                              RichText(
-                                text: TextSpan(
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 12,
-                                    color: const Color(0xFF8B929D),
-                                  ),
-                                  children: [
-                                    const TextSpan(text: 'Last: '),
-                                    TextSpan(
-                                      text: '${targetReps - 1} reps @ RPE 8 ',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
+                                if (isDone) {
+                                  bubbleBg = auroraTeal;
+                                  bubbleText = theme.isDark ? Colors.black : Colors.white;
+                                } else if (isActive) {
+                                  bubbleBg = auroraTeal.withOpacity(theme.isDark ? 0.12 : 0.08);
+                                  bubbleText = auroraTeal;
+                                  bubbleBorder = Border.all(color: auroraTeal, width: 1.5);
+                                  if (theme.isDark) {
+                                    bubbleShadow = [
+                                      BoxShadow(
+                                        color: auroraTeal.withOpacity(0.2),
+                                        blurRadius: 10,
                                       ),
-                                    ),
-                                    const TextSpan(
-                                      text: '↑',
-                                      style: TextStyle(
-                                        color: Color(0xFF2ECC71),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
+                                    ];
+                                  }
+                                } else {
+                                  bubbleBg = theme.isDark
+                                      ? Colors.white.withOpacity(0.04)
+                                      : Colors.white.withOpacity(0.7);
+                                  bubbleText = textMuted;
+                                  bubbleBorder = Border.all(
+                                    color: theme.isDark
+                                        ? Colors.white.withOpacity(0.06)
+                                        : Colors.black.withOpacity(0.06),
+                                    width: 1,
+                                  );
+                                }
 
-                        // Exercise Illustration Card (140x140) (Issue 11)
-                        Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF181B21),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: const Color(0xFF23262D),
-                              width: 1,
-                            ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: StickFigureWidget(
-                              exerciseName: _isCelebrating
-                                  ? 'celebrate'
-                                  : _activeExerciseName!,
-                              accentColor: const Color(0xFF2ECC71),
-                              size: 140,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Form Cue Banner with Left Accent Border (Issue 9)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF181B21),
-                            borderRadius: BorderRadius.circular(10),
-                            border: const Border(
-                              left: BorderSide(
-                                color: Color(0xFFF2C94C),
-                                width: 3,
-                              ),
-                              top: BorderSide(
-                                color: Color(0xFF23262D),
-                                width: 1,
-                              ),
-                              right: BorderSide(
-                                color: Color(0xFF23262D),
-                                width: 1,
-                              ),
-                              bottom: BorderSide(
-                                color: Color(0xFF23262D),
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.info_outline_rounded,
-                                size: 16,
-                                color: Color(0xFFF2C94C),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _getFormCueForExercise(_activeExerciseName!),
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFFF2C94C),
+                                return Container(
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                                  margin: EdgeInsets.only(left: i > 0 ? 8 : 0),
+                                  decoration: BoxDecoration(
+                                    color: bubbleBg,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: bubbleBorder,
+                                    boxShadow: bubbleShadow,
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Circular Progress Ring & Large Rep Display (Issue 8)
-                        _isResting
-                            ? Column(
-                                children: [
-                                  Text(
-                                    '${(_restSeconds ~/ 60)}:${(_restSeconds % 60).toString().padLeft(2, '0')}',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 64,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFFF2C94C),
-                                      fontFeatures: const [
-                                        FontFeature.tabularFigures(),
-                                      ],
-                                    ),
-                                  ),
-                                  Text(
-                                    'Resting... breathe & recover',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 13,
-                                      color: const Color(0xFF6B7280),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Column(
-                                children: [
-                                  // Circular Progress Ring wrapping Hero Number
-                                  SizedBox(
-                                    width: 150,
-                                    height: 150,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: 150,
-                                          height: 150,
-                                          child: CustomPaint(
-                                            painter:
-                                                _CircularProgressRingPainter(
-                                                  progress: targetReps > 0
-                                                      ? (currentRepsLogged /
-                                                                targetReps)
-                                                            .clamp(0.0, 1.0)
-                                                      : 0.0,
-                                                  trackColor: const Color(
-                                                    0xFF23262D,
-                                                  ),
-                                                  color:
-                                                      currentRepsLogged >=
-                                                          targetReps
-                                                      ? const Color(0xFF2ECC71)
-                                                      : const Color(0xFF2ECC71),
-                                                ),
+                                  alignment: Alignment.center,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isDone)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 4),
+                                          child: Icon(
+                                            Icons.check_rounded,
+                                            size: 14,
+                                            color: bubbleText,
                                           ),
                                         ),
-                                        Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              '$currentRepsLogged',
-                                              style: GoogleFonts.dmSans(
-                                                fontSize: 56,
-                                                fontWeight: FontWeight.w500,
-                                                color:
-                                                    currentRepsLogged >=
-                                                        targetReps
-                                                    ? const Color(0xFF2ECC71)
-                                                    : Colors.white,
-                                                fontFeatures: const [
-                                                  FontFeature.tabularFigures(),
-                                                ],
-                                              ),
-                                            ),
-                                            Text(
-                                              'of $targetReps reps',
-                                              style: GoogleFonts.dmSans(
-                                                fontSize: 12,
-                                                color: const Color(0xFF6B7280),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                        const SizedBox(height: 20),
-
-                        // Hero Single Tap Button + Undo Link (Issues 6 & 7)
-                        if (!_isResting)
-                          Column(
-                            children: [
-                              // Main Hero Tap Button
-                              GestureDetector(
-                                onTap: () {
-                                  HapticService.medium();
-                                  SoundManager.playTapClick();
-
-                                  if (currentRepsLogged >= targetReps) {
-                                    // Finish set -> trigger RPE overlay
-                                    setState(() {
-                                      _selectedRpe = null;
-                                      _showRpeOverlay = true;
-                                    });
-                                  } else {
-                                    // Log rep
-                                    setState(() {
-                                      _repsRemaining--;
-                                      state.repsRemaining = _repsRemaining;
-                                    });
-                                    if (_repsRemaining == 0) {
-                                      HapticService.workoutRepZero();
-                                      setState(() {
-                                        _selectedRpe = null;
-                                        _showRpeOverlay = true;
-                                      });
-                                    }
-                                  }
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: currentRepsLogged >= targetReps
-                                        ? const Color(0xFF2ECC71)
-                                        : const Color(0xFF181B21),
-                                    border: Border.all(
-                                      color: const Color(0xFF2ECC71),
-                                      width: 3,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(
-                                          0xFF2ECC71,
-                                        ).withValues(alpha: 0.15),
-                                        blurRadius: 24,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        currentRepsLogged >= targetReps
-                                            ? Icons.check
-                                            : Icons.add_rounded,
-                                        size: 32,
-                                        color: currentRepsLogged >= targetReps
-                                            ? const Color(0xFF0A0C10)
-                                            : const Color(0xFF2ECC71),
-                                      ),
-                                      const SizedBox(height: 4),
                                       Text(
-                                        currentRepsLogged >= targetReps
-                                            ? 'FINISH SET'
-                                            : 'LOG REP',
+                                        'Set $setNum',
                                         style: GoogleFonts.dmSans(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
-                                          letterSpacing: 0.5,
-                                          color: currentRepsLogged >= targetReps
-                                              ? const Color(0xFF0A0C10)
-                                              : const Color(0xFF2ECC71),
+                                          color: bubbleText,
                                         ),
                                       ),
                                     ],
                                   ),
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 28),
+
+                            // 2. GIANT REP COUNTER WITH ± GLASS BUTTONS
+                            Container(
+                              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: theme.isDark
+                                    ? const Color(0xFF141423).withOpacity(0.6)
+                                    : Colors.white.withOpacity(0.75),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: theme.isDark
+                                      ? Colors.white.withOpacity(0.06)
+                                      : Colors.white.withOpacity(0.9),
+                                  width: 1,
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-
-                              // Undo last rep link (Issue 7)
-                              if (currentRepsLogged > 0)
-                                TextButton.icon(
-                                  onPressed: () {
-                                    HapticService.light();
-                                    setState(() {
-                                      if (_repsRemaining < targetReps) {
-                                        _repsRemaining++;
-                                        state.repsRemaining = _repsRemaining;
-                                      }
-                                    });
-                                  },
-                                  icon: const Icon(
-                                    Icons.undo_rounded,
-                                    size: 14,
-                                    color: Color(0xFF6B7280),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.isDark
+                                        ? Colors.black.withOpacity(0.3)
+                                        : const Color(0xFF3C321E).withOpacity(0.06),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 6),
                                   ),
-                                  label: Text(
-                                    'Undo last rep (−1)',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 12,
-                                      color: const Color(0xFF6B7280),
-                                    ),
-                                  ),
-                                )
-                              else
-                                const SizedBox(height: 24),
-                            ],
-                          )
-                        else
-                          // Skip Rest Button (Rest Mode)
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              _restTimer?.cancel();
-                              setState(() {
-                                _isResting = false;
-                                _restSeconds = 0;
-                              });
-                            },
-                            icon: const Icon(
-                              Icons.fast_forward_rounded,
-                              color: Color(0xFF0A0C10),
-                            ),
-                            label: Text(
-                              'SKIP REST',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                                color: const Color(0xFF0A0C10),
+                                ],
                               ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF2C94C),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 28,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 20),
-
-                        // Long-Press Skip Exercise Button (Issue 2)
-                        GestureDetector(
-                          onLongPressStart: (_) {
-                            HapticService.selection();
-                            _skipHoldProgress = 0.0;
-                            _skipHoldTimer?.cancel();
-                            _skipHoldTimer = Timer.periodic(
-                              const Duration(milliseconds: 50),
-                              (timer) {
-                                setState(() {
-                                  _skipHoldProgress +=
-                                      0.033; // 1.5 seconds total
-                                });
-                                if (_skipHoldProgress >= 1.0) {
-                                  timer.cancel();
-                                  HapticService.medium();
-                                  setState(() {
-                                    _activeExerciseState?.completed = true;
-                                    _showRepCounter = false;
-                                    _skipHoldProgress = 0.0;
-                                  });
-                                  _MainScreenState.hideBottomNavNotifier.value =
-                                      false;
-                                }
-                              },
-                            );
-                          },
-                          onLongPressEnd: (_) {
-                            _skipHoldTimer?.cancel();
-                            setState(() => _skipHoldProgress = 0.0);
-                          },
-                          child: Container(
-                            width: 220,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF181B21),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: const Color(0xFF23262D),
-                                width: 1,
-                              ),
-                            ),
-                            child: Stack(
-                              alignment: Alignment.centerLeft,
-                              children: [
-                                // Fill progress bar during long press
-                                if (_skipHoldProgress > 0)
-                                  FractionallySizedBox(
-                                    widthFactor: _skipHoldProgress.clamp(
-                                      0.0,
-                                      1.0,
-                                    ),
-                                    child: Container(
-                                      height: 24,
-                                      decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFFEF4444,
-                                        ).withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                    ),
-                                  ),
-                                Center(
-                                  child: Text(
-                                    _skipHoldProgress > 0
-                                        ? 'Hold to skip...'
-                                        : 'Hold 1.5s to Skip Exercise',
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'TARGET REPS',
                                     style: GoogleFonts.dmSans(
                                       fontSize: 11,
-                                      color: _skipHoldProgress > 0
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFF6B7280),
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 2.0,
+                                      color: textMuted,
                                     ),
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Minus Glass Button
+                                      GestureDetector(
+                                        onTap: () {
+                                          HapticService.selection();
+                                          SoundManager.playTapClick();
+                                          if (_repsRemaining > 1) {
+                                            setState(() {
+                                              _repsRemaining--;
+                                              state.repsRemaining = _repsRemaining;
+                                            });
+                                          }
+                                        },
+                                        child: Container(
+                                          width: 56,
+                                          height: 56,
+                                          decoration: BoxDecoration(
+                                            color: coralRed.withOpacity(theme.isDark ? 0.12 : 0.08),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: coralRed.withOpacity(0.3),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Icon(
+                                            Icons.remove_rounded,
+                                            size: 26,
+                                            color: coralRed,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 28),
+
+                                      // Large Hero Number
+                                      Text(
+                                        '${_repsRemaining > 0 ? _repsRemaining : state.maxReps}',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 76,
+                                          fontWeight: FontWeight.w200,
+                                          color: textPrim,
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures(),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 28),
+
+                                      // Plus Glass Button
+                                      GestureDetector(
+                                        onTap: () {
+                                          HapticService.selection();
+                                          SoundManager.playTapClick();
+                                          setState(() {
+                                            _repsRemaining++;
+                                            state.repsRemaining = _repsRemaining;
+                                          });
+                                        },
+                                        child: Container(
+                                          width: 56,
+                                          height: 56,
+                                          decoration: BoxDecoration(
+                                            color: auroraTeal.withOpacity(theme.isDark ? 0.12 : 0.08),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: auroraTeal.withOpacity(0.3),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Icon(
+                                            Icons.add_rounded,
+                                            size: 26,
+                                            color: auroraTeal,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+
+                                  Text(
+                                    '${state.maxReps} reps prescribed · Tap ± to adjust',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: textSec,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+
+                            // 3. RPE SELECTOR (HOW HARD WAS THAT?)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4, bottom: 10),
+                                  child: Text(
+                                    'HOW HARD WAS THAT? (RPE)',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 1.5,
+                                      color: textMuted,
+                                    ),
+                                  ),
+                                ),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  child: Row(
+                                    children: List.generate(10, (idx) {
+                                      final rpe = idx + 1;
+                                      final isSelected = _selectedRpe == rpe;
+                                      return GestureDetector(
+                                        onTap: () {
+                                          HapticService.selection();
+                                          setState(() => _selectedRpe = rpe);
+                                        },
+                                        child: Container(
+                                          width: 44,
+                                          height: 44,
+                                          margin: EdgeInsets.only(right: idx < 9 ? 6 : 0),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? solarGold.withOpacity(theme.isDark ? 0.2 : 0.15)
+                                                : (theme.isDark
+                                                    ? Colors.white.withOpacity(0.04)
+                                                    : Colors.white.withOpacity(0.75)),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? solarGold
+                                                  : (theme.isDark
+                                                      ? Colors.white.withOpacity(0.06)
+                                                      : Colors.black.withOpacity(0.06)),
+                                              width: isSelected ? 1.5 : 1,
+                                            ),
+                                            boxShadow: isSelected && theme.isDark
+                                                ? [
+                                                    BoxShadow(
+                                                      color: solarGold.withOpacity(0.2),
+                                                      blurRadius: 10,
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '$rpe',
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 15,
+                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                              color: isSelected ? solarGold : textSec,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 60),
-                      ],
-                    ),
-                  ),
-                ),
+                            const SizedBox(height: 20),
 
-                // Next Exercise Preview Bar (Fixed at bottom)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF181B21),
-                    border: Border(
-                      top: BorderSide(color: Color(0xFF23262D), width: 1),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF23262D),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          nextExName != null
-                              ? Icons.fitness_center
-                              : Icons.check_circle,
-                          size: 20,
-                          color: nextExName != null
-                              ? const Color(0xFF8B929D)
-                              : const Color(0xFF2ECC71),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              nextExName != null
-                                  ? 'UP NEXT'
-                                  : 'WORKOUT COMPLETE',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.0,
-                                color: const Color(0xFF6B7280),
+                            // 4. FORM GUIDANCE
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
                               ),
-                            ),
-                            Text(
-                              nextExName ??
-                                  'Great job completing all exercises!',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFFE8EAED),
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (nextExMeta != null)
-                              Text(
-                                nextExMeta,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  color: const Color(0xFF6B7280),
+                              decoration: BoxDecoration(
+                                color: theme.isDark
+                                    ? Colors.white.withOpacity(0.03)
+                                    : Colors.white.withOpacity(0.65),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.isDark
+                                      ? Colors.white.withOpacity(0.06)
+                                      : Colors.black.withOpacity(0.05),
+                                  width: 1,
                                 ),
-                                overflow: TextOverflow.ellipsis,
                               ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.tips_and_updates_outlined,
+                                    size: 16,
+                                    color: solarGold,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _getFormCueForExercise(_activeExerciseName!),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: textSec,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+
+                            // 5. AURORA COMPLETE SET BUTTON
+                            GestureDetector(
+                              onTap: () {
+                                HapticService.medium();
+                                SoundManager.playTapClick();
+
+                                if (currentSet < totalSets) {
+                                  // Advance set and start rest
+                                  setState(() {
+                                    state.currentSet++;
+                                    _repsRemaining = state.maxReps;
+                                    state.repsRemaining = state.maxReps;
+                                    _restSeconds = _getPrescribedRestSeconds(_activeExerciseName!);
+                                    _isResting = true;
+                                  });
+                                  _startRestTimer();
+                                  _savePreferences();
+                                } else {
+                                  // Last set completed -> finish exercise
+                                  setState(() {
+                                    state.completed = true;
+                                    state.repsRemaining = 0;
+                                  });
+                                  _savePreferences();
+
+                                  // Check if whole workout complete
+                                  final allDone = _selectedSplit.exercises.every((ex) {
+                                    final k = '${_selectedSplit.title}|${ex[0]}';
+                                    return _exerciseStates[k]?.completed == true;
+                                  });
+
+                                  if (allDone) {
+                                    _maybeCompleteWorkout();
+                                  } else {
+                                    // Move to next exercise
+                                    final nextEx = _selectedSplit.exercises.firstWhere(
+                                      (ex) {
+                                        final k = '${_selectedSplit.title}|${ex[0]}';
+                                        return _exerciseStates[k]?.completed != true;
+                                      },
+                                      orElse: () => _selectedSplit.exercises.first,
+                                    );
+                                    final nextKey = '${_selectedSplit.title}|${nextEx[0]}';
+                                    final nextState = _exerciseStates[nextKey];
+
+                                    setState(() {
+                                      _activeExerciseName = nextEx[0];
+                                      _activeExerciseState = nextState;
+                                      _repsRemaining = nextState?.maxReps ?? parseReps(nextEx[1]);
+                                      _restSeconds = _getPrescribedRestSeconds(nextEx[0]);
+                                      _isResting = true;
+                                    });
+                                    _startRestTimer();
+                                    _savePreferences();
+                                  }
+                                }
+                              },
+                              child: Container(
+                                height: 56,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: auroraTeal,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: auroraTeal.withOpacity(theme.isDark ? 0.35 : 0.25),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                    if (theme.isDark)
+                                      BoxShadow(
+                                        color: auroraTeal.withOpacity(0.12),
+                                        blurRadius: 36,
+                                      ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  isLastSet ? 'Finish Exercise ▶' : 'Complete Set $currentSet ▶',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.isDark ? Colors.black : Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 30),
                           ],
                         ),
                       ),
-                      const Icon(
-                        Icons.chevron_right,
-                        size: 20,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
 
-        // Pause Overlay (Issue 3)
+        // Pause Overlay
         if (_isPaused) Positioned.fill(child: _buildPauseOverlay(theme)),
 
-        // RPE Rating Overlay
-        if (_showRpeOverlay)
-          Positioned.fill(
-            child: _buildRpeRatingOverlay(theme, state, isLastSet),
-          ),
+        // Antigravity Glass Edit Sheet
+        if (_showEditRepsModal)
+          Positioned.fill(child: _buildEditRepsModal(theme)),
       ],
     );
   }
 
   Widget _buildEditRepsModal(ThemeColors theme) {
+    final auroraTeal = theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488);
+    final textPrim = theme.isDark ? const Color(0xFFE8E8F0) : const Color(0xFF1C1914);
+    final textSec = theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560);
+
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _showEditRepsModal = false;
-        });
-      },
+      onTap: () => setState(() => _showEditRepsModal = false),
       child: Container(
-        color: Colors.black.withValues(alpha: 0.6),
-        child: Center(
-          child: GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 320,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: theme.border, width: 1),
+        color: Colors.black.withOpacity(0.6),
+        alignment: Alignment.bottomCenter,
+        child: GestureDetector(
+          onTap: () {},
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+            decoration: BoxDecoration(
+              color: theme.isDark
+                  ? const Color(0xFF141423).withOpacity(0.92)
+                  : Colors.white.withOpacity(0.94),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border(
+                top: BorderSide(
+                  color: theme.isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.white.withOpacity(0.9),
+                  width: 1,
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Edit Reps',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: theme.text1,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'TARGET REPS',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      color: theme.text3,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 48,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.4),
+                  blurRadius: 30,
+                  offset: const Offset(0, -8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: theme.bg,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.border, width: 1),
+                      color: textSec.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                Text(
+                  'Edit Target Reps',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: textPrim,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Update the prescribed rep count for ${_activeExerciseName ?? "this exercise"}',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: textSec,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: theme.isDark
+                        ? Colors.white.withOpacity(0.06)
+                        : Colors.black.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: auroraTeal.withOpacity(0.4),
+                      width: 1,
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  alignment: Alignment.center,
+                  child: TextField(
+                    controller: _editRepsController,
+                    keyboardType: TextInputType.number,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textPrim,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                GestureDetector(
+                  onTap: () {
+                    final reps = int.tryParse(_editRepsController.text.trim());
+                    if (reps != null && reps > 0) {
+                      HapticService.medium();
+                      SoundManager.playTapClick();
+                      setState(() {
+                        _activeExerciseState!.maxReps = reps;
+                        _activeExerciseState!.repsRemaining = reps;
+                        _repsRemaining = reps;
+                        _showEditRepsModal = false;
+                        _recalculateStats();
+                      });
+                      _savePreferences();
+                    }
+                  },
+                  child: Container(
+                    height: 52,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: auroraTeal,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: auroraTeal.withOpacity(0.3),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     alignment: Alignment.center,
-                    child: TextField(
-                      controller: _editRepsController,
-                      keyboardType: TextInputType.number,
+                    child: Text(
+                      'Save Changes',
                       style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: theme.text1,
-                      ),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: theme.isDark ? Colors.black : Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          HapticService.negative();
-                          SoundManager.playTapClick();
-                          setState(() {
-                            _showEditRepsModal = false;
-                          });
-                        },
-                        style: TextButton.styleFrom(
-                          backgroundColor: theme.card,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(color: theme.border, width: 0.5),
-                          ),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: GoogleFonts.dmSans(
-                            color: theme.text2,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      TextButton(
-                        onPressed: () {
-                          final reps = int.tryParse(
-                            _editRepsController.text.trim(),
-                          );
-                          if (reps != null && reps > 0) {
-                            HapticService.medium();
-                            SoundManager.playTapClick();
-                            setState(() {
-                              _activeExerciseState!.maxReps = reps;
-                              _activeExerciseState!.repsRemaining = reps;
-                              _repsRemaining = reps;
-                              _showEditRepsModal = false;
-                              _recalculateStats();
-                            });
-                            _savePreferences();
-                          }
-                        },
-                        style: TextButton.styleFrom(
-                          backgroundColor: theme.teal,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Text(
-                          'Save',
-                          style: GoogleFonts.dmSans(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -10205,87 +9995,117 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       }
     }
 
-    return Container(
-      color: theme.bg,
-      child: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Rest between sets',
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  color: theme.text2,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 40),
-              Stack(
-                alignment: Alignment.center,
+    final bgCol = theme.isDark
+        ? const Color(0xFF0B0B14).withOpacity(0.95)
+        : const Color(0xFFF0EDE6).withOpacity(0.95);
+    final tealCol = theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488);
+    final textPrim = theme.isDark ? const Color(0xFFE8E8F0) : const Color(0xFF1C1914);
+    final textSec = theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560);
+    final textMuted = theme.isDark ? const Color(0xFF4A4A5A) : const Color(0xFFA8A29D);
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          color: bgCol,
+          child: SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: 160,
-                    height: 160,
-                    child: CustomPaint(
-                      painter: ProgressRingPainter(
-                        progress: _restSeconds / 90.0,
-                        trackColor: theme.isDark
-                            ? theme.border
-                            : theme.text4.withValues(alpha: 0.15),
-                        progressColor: theme.teal,
-                      ),
+                  Text(
+                    'RESTING BEFORE',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: textMuted,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2.0,
                     ),
                   ),
+                  const SizedBox(height: 8),
                   Text(
-                    '$_restSeconds',
+                    nextExerciseName == 'Workout complete!'
+                        ? 'Finish Line'
+                        : nextExerciseName,
                     style: GoogleFonts.dmSans(
-                      fontSize: 64,
-                      fontWeight: FontWeight.w800,
-                      color: theme.teal,
+                      fontSize: 20,
+                      color: textPrim,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 160,
+                        height: 160,
+                        child: CustomPaint(
+                          painter: ProgressRingPainter(
+                            progress: (_restSeconds / 90.0).clamp(0.0, 1.0),
+                            trackColor: theme.isDark
+                                ? Colors.white.withOpacity(0.06)
+                                : Colors.black.withOpacity(0.06),
+                            progressColor: tealCol,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '$_restSeconds',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w200,
+                          color: textPrim,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 48),
+                  GestureDetector(
+                    onTap: () {
+                      HapticService.negative();
+                      SoundManager.playTapClick();
+                      _skipRest();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.isDark
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.white.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: theme.isDark
+                              ? Colors.white.withOpacity(0.10)
+                              : Colors.black.withOpacity(0.08),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.isDark
+                                ? Colors.black.withOpacity(0.3)
+                                : const Color(0xFF3C321E).withOpacity(0.06),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'Skip Rest ›',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textSec,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
-              Text(
-                nextExerciseName == 'Workout complete!'
-                    ? 'Next: Workout complete!'
-                    : 'Next: $nextExerciseName',
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  color: theme.text2,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 50),
-              GestureDetector(
-                onTap: () {
-                  HapticService.negative();
-                  SoundManager.playTapClick();
-                  _skipRest();
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.card,
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: theme.border, width: 1),
-                  ),
-                  child: Text(
-                    'Skip Rest',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: theme.text1,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -12018,20 +11838,20 @@ class _IncomeScreenState extends State<IncomeScreen>
   Widget _buildHeader(AppColors colors) {
     final streak = _earningStreak();
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: label + streak badge
+          // Top row: label + compact streak pill badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'INCOME TRACKER',
+                'INCOME',
                 style: GoogleFonts.dmSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.08,
                   color: colors.text3,
                 ),
               ),
@@ -12041,33 +11861,27 @@ class _IncomeScreenState extends State<IncomeScreen>
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: streak >= 3 ? colors.gold3 : colors.card,
-                  borderRadius: BorderRadius.circular(20),
+                  color: colors.gold.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: streak >= 3
-                        ? colors.gold.withValues(alpha: 0.2)
-                        : colors.cardBorder,
-                    width: 1,
+                    color: colors.gold.withValues(alpha: 0.20),
+                    width: 0.5,
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      streak >= 3 ? '🔥' : '🌱',
-                      style: const TextStyle(fontSize: 10),
+                      streak > 0 ? '🌱' : '💼',
+                      style: const TextStyle(fontSize: 11),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      streak >= 3
-                          ? '$streak day streak'
-                          : (streak > 0
-                                ? '$streak day streak'
-                                : 'Start your streak'),
+                      streak > 0 ? '$streak days logged' : 'Log daily',
                       style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: streak >= 3 ? colors.gold : colors.text3,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: colors.gold,
                       ),
                     ),
                   ],
@@ -12075,7 +11889,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Month nav row
           Row(
@@ -12084,46 +11898,61 @@ class _IncomeScreenState extends State<IncomeScreen>
               GestureDetector(
                 onTap: _prevMonth,
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: colors.card,
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: colors.cardBorder, width: 1),
+                    color: colors.theme.isDark
+                        ? const Color(0xFF1C1C1E)
+                        : const Color(0xFFF2F2F7),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: colors.theme.isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
+                      width: 0.5,
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Icon(
                     Icons.chevron_left,
-                    size: 11,
-                    color: colors.text2,
+                    size: 18,
+                    color: colors.text1,
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Text(
                 '${_monthNames[_selectedMonth - 1]} $_selectedYear',
-                style: GoogleFonts.syne(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
+                style: GoogleFonts.dmSans(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
                   color: colors.text1,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               GestureDetector(
                 onTap: _nextMonth,
                 child: Container(
-                  width: 30,
-                  height: 30,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: colors.card,
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(color: colors.cardBorder, width: 1),
+                    color: colors.theme.isDark
+                        ? const Color(0xFF1C1C1E)
+                        : const Color(0xFFF2F2F7),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: colors.theme.isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
+                      width: 0.5,
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Icon(
                     Icons.chevron_right,
-                    size: 11,
-                    color: colors.text2,
+                    size: 18,
+                    color: colors.text1,
                   ),
                 ),
               ),
@@ -12136,7 +11965,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             child: Text(
               _hijriApprox(),
               style: GoogleFonts.amiri(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: colors.text2,
               ),
@@ -12163,25 +11992,38 @@ class _IncomeScreenState extends State<IncomeScreen>
     String statusText;
     if (dailyAvg >= 10000) {
       statusColor = colors.emerald;
-      statusText = '${_money(dailyAvg.round())}/day — On track!';
-    } else if (dailyAvg >= 5000) {
-      statusColor = colors.gold;
-      statusText = '${_money(dailyAvg.round())}/day — Below target';
+      statusText = '${_money(dailyAvg.round())}/day · On track';
     } else if (dailyAvg > 0) {
       statusColor = colors.gold;
-      statusText = '${_money(dailyAvg.round())}/day — Getting started';
+      statusText = '${_money(dailyAvg.round())}/day · Target: ₹10,000';
     } else {
       statusColor = colors.text3;
-      statusText = 'Ready to log • Target: ₹10,000/day';
+      statusText = 'Target: ₹10,000/day';
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: colors.cardBorder, width: 1),
+        color: colors.theme.isDark
+            ? const Color(0xFF1C1C1E)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colors.theme.isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.theme.isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : const Color(0xFF3C321E).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -12191,14 +12033,14 @@ class _IncomeScreenState extends State<IncomeScreen>
             children: [
               Row(
                 children: [
-                  Icon(Icons.speed, size: 10, color: colors.gold),
+                  Icon(Icons.speed, size: 14, color: colors.gold),
                   const SizedBox(width: 6),
                   Text(
                     'DAILY VELOCITY',
                     style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
                       color: colors.text3,
                     ),
                   ),
@@ -12207,14 +12049,16 @@ class _IncomeScreenState extends State<IncomeScreen>
               Text(
                 statusText,
                 style: GoogleFonts.dmSans(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                   color: statusColor,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           // Bar
           AnimatedBuilder(
@@ -12227,35 +12071,31 @@ class _IncomeScreenState extends State<IncomeScreen>
                 children: [
                   // Background track
                   Container(
-                    height: 8,
+                    height: 6,
                     decoration: BoxDecoration(
                       color: colors.theme.isDark
-                          ? Colors.white.withValues(alpha: 0.04)
-                          : Colors.black.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(4),
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                   // Filled bar
                   FractionallySizedBox(
                     widthFactor: animFill,
                     child: Container(
-                      height: 8,
+                      height: 6,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
                             dailyAvg >= 10000
                                 ? colors.emerald.withValues(alpha: 0.7)
-                                : dailyAvg >= 5000
-                                ? const Color(0xFFB8860B)
-                                : const Color(0xFFC0392B),
+                                : colors.gold.withValues(alpha: 0.7),
                             dailyAvg >= 10000
                                 ? colors.emerald
-                                : dailyAvg >= 5000
-                                ? colors.gold
-                                : colors.red,
+                                : colors.gold,
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(3),
                       ),
                       child: AnimatedBuilder(
                         animation: _shimmerController,
@@ -12282,7 +12122,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(3),
                               ),
                             ),
                           );
@@ -12348,283 +12188,242 @@ class _IncomeScreenState extends State<IncomeScreen>
     final isUp = changePct >= 0;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
+        color: colors.theme.isDark
+            ? const Color(0xFF1C1C1E)
+            : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: colors.gold.withValues(alpha: 0.12),
-          width: 1,
+          color: colors.theme.isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colors.gold.withValues(alpha: 0.1),
-            colors.gold.withValues(alpha: 0.02),
-            colors.emerald.withValues(alpha: 0.05),
-          ],
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.theme.isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : const Color(0xFF3C321E).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            top: -20,
-            right: -20,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    colors.gold.withValues(alpha: 0.15),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -15,
-            left: -15,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    colors.emerald.withValues(alpha: 0.08),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 4,
-            right: 4,
-            child: CustomPaint(
-              size: const Size(20, 20),
-              painter: _IslamicStarPainter(
-                color: colors.theme.isDark
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.black.withValues(alpha: 0.04),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
+                  Icon(
+                    Icons.account_balance_wallet,
+                    size: 13,
+                    color: colors.gold,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'NET BALANCE',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
+                      color: colors.text3,
+                    ),
+                  ),
+                ],
+              ),
+              if (prevTotal > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isUp ? colors.emerald2 : colors.theme.isDark ? Colors.white10 : Colors.black12,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${isUp ? "↑" : "↓"} ${changePct.abs().toStringAsFixed(0)}%',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isUp ? colors.emerald : colors.text2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '₹',
+                style: GoogleFonts.dmSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w300,
+                  color: netBalance == 0 ? colors.text3 : colors.text2,
+                ),
+              ),
+              const SizedBox(width: 2),
+              TweenAnimationBuilder<double>(
+                key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
+                tween: Tween<double>(
+                  begin: 0.0,
+                  end: netBalance.toDouble(),
+                ),
+                duration: const Duration(milliseconds: 1200),
+                curve: Curves.easeOutCubic,
+                builder: (_, value, _) {
+                  final display = value
+                      .round()
+                      .abs()
+                      .toString()
+                      .replaceAllMapped(
+                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                        (m) => '${m[1]},',
+                      );
+                  final isNegative = netBalance < 0;
+                  return Text(
+                    '${isNegative ? "-" : ""}${netBalance == 0 ? "—" : display}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 44,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: -1.0,
+                      fontFeatures: const [
+                        FontFeature.tabularFigures(),
+                      ],
+                      color: isNegative
+                          ? colors.red
+                          : (netBalance == 0 ? colors.text3 : colors.text1),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.theme.isDark
+                        ? const Color(0xFF2C2C2E)
+                        : const Color(0xFFF2F2F7),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.account_balance_wallet,
-                        size: 10,
-                        color: colors.gold,
-                      ),
-                      const SizedBox(width: 6),
                       Text(
-                        'NET BALANCE',
+                        'INCOME',
                         style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.08,
                           color: colors.text3,
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        totalEarned > 0 ? _money(totalEarned) : '—',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.41,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: totalEarned > 0
+                              ? colors.emerald
+                              : colors.text3,
+                        ),
+                      ),
+                      if (totalEarned > 0) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Avg: ${_money(dailyAvg)}/day',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                            color: colors.text2,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                  if (prevTotal > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isUp ? colors.emerald2 : colors.red2,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${isUp ? "↑" : "↓"} ${changePct.abs().toStringAsFixed(0)}%',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.theme.isDark
+                        ? const Color(0xFF2C2C2E)
+                        : const Color(0xFFF2F2F7),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'EXPENSES',
                         style: GoogleFonts.dmSans(
                           fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isUp ? colors.emerald : colors.red,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.08,
+                          color: colors.text3,
                         ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '₹',
-                    style: GoogleFonts.syne(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: netBalance == 0 ? colors.text3.withValues(alpha: 0.5) : colors.text2,
-                    ),
-                  ),
-                  TweenAnimationBuilder<double>(
-                    key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
-                    tween: Tween<double>(
-                      begin: 0.0,
-                      end: netBalance.toDouble(),
-                    ),
-                    duration: const Duration(milliseconds: 1200),
-                    curve: Curves.easeOutCubic,
-                    builder: (_, value, _) {
-                      final display = value
-                          .round()
-                          .abs()
-                          .toString()
-                          .replaceAllMapped(
-                            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                            (m) => '${m[1]},',
-                          );
-                      final isNegative = netBalance < 0;
-                      return Text(
-                        '${isNegative ? "-" : ""}${netBalance == 0 ? "—" : display}',
-                        style: GoogleFonts.syne(
-                          fontSize: 34,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.0,
-                          color: isNegative
-                              ? colors.red
-                              : (netBalance == 0 ? colors.text3.withValues(alpha: 0.4) : colors.text1),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: totalEarned > 0 ? colors.emerald2 : colors.card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: totalEarned > 0
-                              ? colors.emerald.withValues(alpha: 0.1)
-                              : colors.cardBorder,
-                          width: 1,
+                      const SizedBox(height: 4),
+                      Text(
+                        totalSpent > 0 ? _money(totalSpent) : '—',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.41,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: totalSpent > 0 ? colors.text1 : colors.text3,
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'INCOME',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
-                              color: colors.text3,
-                            ),
+                      if (totalSpent > 0) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Avg: ${_money(dailyAvgSpent)}/day',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                            color: colors.text2,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            totalEarned > 0 ? _money(totalEarned) : '—',
-                            style: GoogleFonts.syne(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: totalEarned > 0
-                                  ? colors.emerald
-                                  : colors.text3,
-                            ),
-                          ),
-                          if (totalEarned > 0) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              'Avg: ${_money(dailyAvg)}/day',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 9,
-                                color: colors.text2,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: totalSpent > 0 ? colors.red2 : colors.card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: totalSpent > 0
-                              ? colors.red.withValues(alpha: 0.1)
-                              : colors.cardBorder,
-                          width: 1,
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'EXPENSES',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
-                              color: colors.text3,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            totalSpent > 0 ? _money(totalSpent) : '—',
-                            style: GoogleFonts.syne(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: totalSpent > 0 ? colors.red : colors.text3,
-                            ),
-                          ),
-                          if (totalSpent > 0) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              'Avg: ${_money(dailyAvgSpent)}/day',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 9,
-                                color: colors.text2,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              Center(
-                child: Text(
-                  daysSoFar >= 3 && totalEarned > 0
-                      ? 'Projected income: ${_money(projected)} this month'
-                      : 'Projected income: — (log 3 days to calculate)',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: daysSoFar >= 3 && totalEarned > 0 ? colors.gold : colors.text3,
+                      ],
+                    ],
                   ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+
+          Center(
+            child: Text(
+              daysSoFar >= 3 && totalEarned > 0
+                  ? 'Projected income: ${_money(projected)} this month'
+                  : 'Projected income: — (log 3 days to calculate)',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                letterSpacing: -0.1,
+                color: daysSoFar >= 3 && totalEarned > 0 ? colors.gold : colors.text3,
+              ),
+            ),
           ),
         ],
       ),
@@ -12638,13 +12437,29 @@ class _IncomeScreenState extends State<IncomeScreen>
     final forSavings = (baseAmount * 0.30).round();
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: colors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.cardBorder, width: 1),
+        color: colors.theme.isDark
+            ? const Color(0xFF1C1C1E)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colors.theme.isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.theme.isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : const Color(0xFF3C321E).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -12661,9 +12476,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                       child: Text(
                         'INCOME ALLOCATION',
                         style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.1,
                           color: colors.text3,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -12694,8 +12509,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                       ? '70% Spend · 30% Save'
                       : 'Split activates when Net Balance > 0',
                   style: GoogleFonts.dmSans(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                     color: hasBalance ? colors.gold : colors.text3,
                   ),
                 ),
@@ -12706,8 +12521,8 @@ class _IncomeScreenState extends State<IncomeScreen>
           Row(
             children: [
               SizedBox(
-                width: 74,
-                height: 74,
+                width: 80,
+                height: 80,
                 child: CustomPaint(
                   painter: _AllocationDonutPainter(
                     colors: colors,
@@ -12718,10 +12533,12 @@ class _IncomeScreenState extends State<IncomeScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          hasBalance ? '₹${_money(netBalance)}' : '—',
-                          style: GoogleFonts.syne(
-                            fontSize: hasBalance ? 11 : 14,
-                            fontWeight: FontWeight.w800,
+                          hasBalance ? _money(netBalance) : '—',
+                          style: GoogleFonts.dmSans(
+                            fontSize: hasBalance ? 12 : 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                             color: hasBalance ? colors.text1 : colors.text3,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -12729,8 +12546,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                         Text(
                           'NET BAL',
                           style: GoogleFonts.dmSans(
-                            fontSize: 7,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w600,
                             color: colors.text3,
                           ),
                         ),
@@ -12739,7 +12556,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -12761,18 +12578,20 @@ class _IncomeScreenState extends State<IncomeScreen>
                             Text(
                               'For My Use (70%)',
                               style: GoogleFonts.dmSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                                 color: hasBalance ? colors.text2 : colors.text3,
                               ),
                             ),
                           ],
                         ),
                         Text(
-                          hasBalance ? '₹${_money(forUse)}' : '—',
-                          style: GoogleFonts.syne(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                          hasBalance ? _money(forUse) : '—',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                             color: hasBalance ? colors.gold : colors.text3,
                           ),
                         ),
@@ -12785,12 +12604,12 @@ class _IncomeScreenState extends State<IncomeScreen>
                         value: hasBalance ? 0.70 : 0.0,
                         minHeight: 4,
                         backgroundColor: colors.theme.isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.05),
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.06),
                         valueColor: AlwaysStoppedAnimation(colors.gold),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -12808,18 +12627,20 @@ class _IncomeScreenState extends State<IncomeScreen>
                             Text(
                               'For Savings (30%)',
                               style: GoogleFonts.dmSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                                 color: hasBalance ? colors.text2 : colors.text3,
                               ),
                             ),
                           ],
                         ),
                         Text(
-                          hasBalance ? '₹${_money(forSavings)}' : '—',
-                          style: GoogleFonts.syne(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                          hasBalance ? _money(forSavings) : '—',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                             color: hasBalance ? colors.emerald : colors.text3,
                           ),
                         ),
@@ -12832,8 +12653,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                         value: hasBalance ? 0.30 : 0.0,
                         minHeight: 4,
                         backgroundColor: colors.theme.isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.05),
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.06),
                         valueColor: AlwaysStoppedAnimation(colors.emerald),
                       ),
                     ),
@@ -13136,12 +12957,28 @@ class _IncomeScreenState extends State<IncomeScreen>
         });
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 14),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: colors.card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.cardBorder, width: 1),
+          color: colors.theme.isDark
+              ? const Color(0xFF1C1C1E)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colors.theme.isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
+            width: 0.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colors.theme.isDark
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : const Color(0xFF3C321E).withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -13151,21 +12988,21 @@ class _IncomeScreenState extends State<IncomeScreen>
                 Icon(
                   Icons.rocket_launch,
                   size: 14,
-                  color: const Color(0xFFA78BFA),
+                  color: colors.gold,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   'EARNING POTENTIAL',
                   style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.1,
                     color: colors.text3,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
@@ -13176,30 +13013,32 @@ class _IncomeScreenState extends State<IncomeScreen>
                       });
                     },
                     child: Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: colors.theme.isDark
-                            ? Colors.white.withValues(alpha: 0.02)
-                            : Colors.black.withValues(alpha: 0.02),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: colors.cardBorder, width: 1),
+                            ? const Color(0xFF2C2C2E)
+                            : const Color(0xFFF2F2F7),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             _earningCurrent,
-                            style: GoogleFonts.syne(
+                            style: GoogleFonts.dmSans(
                               fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: colors.text2,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.4,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                              color: colors.text1,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'CURRENT /MONTH',
                             style: GoogleFonts.dmSans(
-                              fontSize: 8,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
                               color: colors.text3,
                             ),
                           ),
@@ -13217,15 +13056,13 @@ class _IncomeScreenState extends State<IncomeScreen>
                       });
                     },
                     child: Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFA78BFA).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        color: colors.gold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(
-                            0xFFA78BFA,
-                          ).withValues(alpha: 0.15),
-                          width: 1,
+                          color: colors.gold.withValues(alpha: 0.25),
+                          width: 0.5,
                         ),
                       ),
                       child: Column(
@@ -13233,17 +13070,20 @@ class _IncomeScreenState extends State<IncomeScreen>
                         children: [
                           Text(
                             _earningTarget,
-                            style: GoogleFonts.syne(
+                            style: GoogleFonts.dmSans(
                               fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFFA78BFA),
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.4,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                              color: colors.gold,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'FREELANCE POTENTIAL',
                             style: GoogleFonts.dmSans(
-                              fontSize: 8,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
                               color: colors.text3,
                             ),
                           ),
@@ -13254,20 +13094,20 @@ class _IncomeScreenState extends State<IncomeScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.bolt, size: 8, color: Color(0xFFA78BFA)),
+                  Icon(Icons.bolt, size: 10, color: colors.gold),
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
                       _earningTip,
                       style: GoogleFonts.dmSans(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFFA78BFA),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: colors.gold,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -13298,14 +13138,31 @@ class _IncomeScreenState extends State<IncomeScreen>
     final todayDay = isCurrentMonth ? now.day : -1;
 
     final hasEarnings = dailyAmounts.any((amt) => amt > 0);
+    final daysLogged = dailyAmounts.where((amt) => amt > 0).length;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.cardBorder, width: 1),
+        color: colors.theme.isDark
+            ? const Color(0xFF1C1C1E)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colors.theme.isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.theme.isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : const Color(0xFF3C321E).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -13316,23 +13173,25 @@ class _IncomeScreenState extends State<IncomeScreen>
               Text(
                 'DAILY EARNINGS',
                 style: GoogleFonts.dmSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
                   color: colors.text3,
                 ),
               ),
               Text(
-                _monthNames[_selectedMonth - 1],
+                hasEarnings
+                    ? '$daysLogged of $daysInMonth days logged'
+                    : _monthNames[_selectedMonth - 1],
                 style: GoogleFonts.dmSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
                   color: hasEarnings ? colors.emerald : colors.text3,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           SizedBox(
             height: 80,
             child: Stack(
@@ -13348,18 +13207,13 @@ class _IncomeScreenState extends State<IncomeScreen>
                             ? (amt / maxDaily).clamp(0.0, 1.0)
                             : 0.0;
                         final barH = amt > 0
-                            ? math.max(3.0, barPct * 60.0)
-                            : 3.0;
+                            ? math.max(4.0, barPct * 60.0)
+                            : 4.0;
                         final isToday = (i + 1) == todayDay;
-                        final showLabel = (i + 1) % 7 == 0; // Day 7, 14, 21, 28
+                        final showLabel = (i + 1) == 1 || (i + 1) % 7 == 0;
 
-                        // Stagger: each bar 15ms delay
-                        final staggerStart = (i * 15.0 / 1300.0).clamp(
-                          0.0,
-                          1.0,
-                        );
-                        final staggerEnd = (staggerStart + 800.0 / 1300.0)
-                            .clamp(0.0, 1.0);
+                        final staggerStart = (i * 15.0 / 1300.0).clamp(0.0, 1.0);
+                        final staggerEnd = (staggerStart + 800.0 / 1300.0).clamp(0.0, 1.0);
                         final interval = Interval(
                           staggerStart,
                           staggerEnd,
@@ -13381,36 +13235,19 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 Container(
                                   height: animH,
                                   decoration: BoxDecoration(
-                                    gradient: amt > 0
-                                        ? LinearGradient(
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                            colors: [
-                                              colors.gold,
-                                              colors.gold.withValues(
-                                                alpha: 0.3,
-                                              ),
-                                            ],
-                                          )
-                                        : null,
-                                    color: amt <= 0
-                                        ? (colors.theme.isDark
-                                              ? Colors.white.withValues(
-                                                  alpha: 0.03,
-                                                )
-                                              : Colors.black.withValues(
-                                                  alpha: 0.03,
-                                                ))
-                                        : null,
+                                    color: amt > 0
+                                        ? (isToday ? colors.gold : colors.emerald)
+                                        : (colors.theme.isDark
+                                            ? Colors.white.withValues(alpha: 0.06)
+                                            : Colors.black.withValues(alpha: 0.04)),
                                     borderRadius: const BorderRadius.vertical(
                                       top: Radius.circular(3),
-                                      bottom: Radius.circular(1),
                                     ),
                                     boxShadow: isToday && amt > 0
                                         ? [
                                             BoxShadow(
-                                              color: colors.gold3,
-                                              blurRadius: 8,
+                                              color: colors.gold.withValues(alpha: 0.3),
+                                              blurRadius: 6,
                                             ),
                                           ]
                                         : null,
@@ -13423,7 +13260,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                       ? Text(
                                           '${i + 1}',
                                           style: GoogleFonts.dmSans(
-                                            fontSize: 7,
+                                            fontSize: 8,
                                             fontWeight: FontWeight.w500,
                                             color: colors.text3,
                                           ),
@@ -13438,31 +13275,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                     );
                   },
                 ),
-                if (!hasEarnings)
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.card.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: colors.cardBorder,
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        'Earnings chart will appear here once logged',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: colors.text3,
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -13470,7 +13282,6 @@ class _IncomeScreenState extends State<IncomeScreen>
       ),
     );
   }
-
   Widget _buildTransactionList(AppColors colors) {
     final now = DateTime.now();
     final isCurrentMonth =
@@ -13511,181 +13322,261 @@ class _IncomeScreenState extends State<IncomeScreen>
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 0),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Container(
-                  width: 3,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: colors.emerald,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+          Row(
+            children: [
+              Text(
+                'RECENT TRANSACTIONS',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                  color: colors.text3,
                 ),
-                const SizedBox(width: 8),
+              ),
+              const Spacer(),
+              if (entries.isNotEmpty)
                 Text(
-                  'RECENT',
+                  '${entries.length} entries',
                   style: GoogleFonts.dmSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                     color: colors.text3,
                   ),
                 ),
-                const Spacer(),
-                if (entries.isNotEmpty)
-                  Text(
-                    '${entries.length} entries',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: colors.text3,
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Apple Native iOS 17 Segmented Control
+          Container(
+            height: 34,
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: colors.theme.isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : Colors.black.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(
+              children: ['All', 'Earned', 'Spent'].map((label) {
+                final isSelected = _filter == label;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticService.selection();
+                      setState(() {
+                        _filter = label;
+                      });
+                      _listStaggerController.reset();
+                      _listStaggerController.forward();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? (colors.theme.isDark
+                                ? const Color(0xFF636366)
+                                : Colors.white)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.12),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        label,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          letterSpacing: -0.1,
+                          color: isSelected
+                              ? colors.text1
+                              : colors.text3,
+                        ),
+                      ),
                     ),
                   ),
-              ],
+                );
+              }).toList(),
             ),
           ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                _filterChip('All', colors),
-                const SizedBox(width: 8),
-                _filterChip('Earned', colors),
-                const SizedBox(width: 8),
-                _filterChip('Spent', colors),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
+
           if (entries.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+              decoration: BoxDecoration(
+                color: colors.theme.isDark
+                    ? const Color(0xFF1C1C1E)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: colors.theme.isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                  width: 0.5,
+                ),
+              ),
               child: Center(
                 child: Text(
                   'Tap + to log your first transaction',
                   style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
                     color: colors.text3,
                   ),
                 ),
               ),
             )
           else
-            AnimatedBuilder(
-              animation: _listStaggerController,
-              builder: (_, _) {
-                return Column(
-                  children: List.generate(entries.length, (i) {
-                    final e = entries[i];
-                    final staggerStart = (i * 40.0 / 2000.0).clamp(0.0, 1.0);
-                    final staggerEnd = (staggerStart + 350.0 / 2000.0).clamp(
-                      0.0,
-                      1.0,
-                    );
-                    final interval = Interval(
-                      staggerStart,
-                      staggerEnd,
-                      curve: Curves.easeOutCubic,
-                    );
-                    final progress = interval.transform(
-                      _listStaggerController.value,
-                    );
-                    final opacity = progress;
-                    final translateY = (1 - progress) * 14;
+            Container(
+              decoration: BoxDecoration(
+                color: colors.theme.isDark
+                    ? const Color(0xFF1C1C1E)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: colors.theme.isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                  width: 0.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.theme.isDark
+                        ? Colors.black.withValues(alpha: 0.3)
+                        : const Color(0xFF3C321E).withValues(alpha: 0.04),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: AnimatedBuilder(
+                animation: _listStaggerController,
+                builder: (_, _) {
+                  return Column(
+                    children: List.generate(entries.length, (i) {
+                      final e = entries[i];
+                      final staggerStart = (i * 40.0 / 2000.0).clamp(0.0, 1.0);
+                      final staggerEnd = (staggerStart + 350.0 / 2000.0).clamp(
+                        0.0,
+                        1.0,
+                      );
+                      final interval = Interval(
+                        staggerStart,
+                        staggerEnd,
+                        curve: Curves.easeOutCubic,
+                      );
+                      final progress = interval.transform(
+                        _listStaggerController.value,
+                      );
+                      final opacity = progress;
 
-                    final isInc = e.isIncome;
-                    final displayColor = isInc ? colors.emerald : colors.red;
-                    final iconBgColor = isInc ? colors.emerald2 : colors.red2;
-                    final iconData = isInc
-                        ? Icons.south_west
-                        : Icons.north_east;
-                    final prefix = isInc ? '+' : '−';
+                      final isInc = e.isIncome;
+                      final displayColor = isInc ? colors.emerald : colors.text1;
+                      final iconBgColor = isInc
+                          ? colors.emerald.withValues(alpha: 0.12)
+                          : (colors.theme.isDark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : Colors.black.withValues(alpha: 0.05));
+                      final iconData = isInc
+                          ? Icons.arrow_downward_rounded
+                          : Icons.arrow_upward_rounded;
+                      final prefix = isInc ? '+' : '−';
 
-                    return Transform.translate(
-                      offset: Offset(0, translateY),
-                      child: Opacity(
+                      return Opacity(
                         opacity: opacity,
-                        child: Container(
-                          margin: const EdgeInsets.fromLTRB(24, 0, 24, 6),
-                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                          decoration: BoxDecoration(
-                            color: i.isOdd
-                                ? (colors.theme.isDark
-                                      ? Colors.white.withValues(alpha: 0.03)
-                                      : Colors.black.withValues(alpha: 0.02))
-                                : colors.card,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: colors.cardBorder,
-                              width: 1,
+                        child: Column(
+                          children: [
+                            Container(
+                              height: 58,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: iconBgColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      iconData,
+                                      size: 15,
+                                      color: displayColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          getDayName(e.date),
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            letterSpacing: -0.2,
+                                            color: colors.text1,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          formatDayRowDate(e.date),
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w400,
+                                            color: colors.text3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    '$prefix${_money(e.amount)}',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: -0.4,
+                                      fontFeatures: const [FontFeature.tabularFigures()],
+                                      color: displayColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: iconBgColor,
-                                  borderRadius: BorderRadius.circular(9),
-                                ),
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  iconData,
-                                  size: 11,
-                                  color: displayColor,
-                                ),
+                            if (i < entries.length - 1)
+                              Divider(
+                                height: 0.5,
+                                thickness: 0.5,
+                                indent: 60,
+                                color: colors.theme.isDark
+                                    ? Colors.white.withValues(alpha: 0.08)
+                                    : Colors.black.withValues(alpha: 0.06),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      getDayName(e.date),
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: colors.text1,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      formatDayRowDate(e.date),
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w500,
-                                        color: colors.text3,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                '$prefix${_money(e.amount)}',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.3,
-                                  color: displayColor,
-                                ),
-                              ),
-                            ],
-                          ),
+                          ],
                         ),
-                      ),
-                    );
-                  }),
-                );
-              },
+                      );
+                    }),
+                  );
+                },
+              ),
             ),
         ],
       ),
@@ -13694,71 +13585,44 @@ class _IncomeScreenState extends State<IncomeScreen>
 
   Widget _buildFab(AppColors colors) {
     return Positioned(
-      bottom: 88,
-      right: 24,
+      bottom: 24,
+      right: 20,
       child: GestureDetector(
         onTap: () {
           HapticService.light();
           _showAddIncomeSheet();
         },
-        child: SizedBox(
-          width: 66,
-          height: 66,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Pulse ring
-              AnimatedBuilder(
-                animation: _fabPulseController,
-                builder: (_, _) {
-                  final scale = 1.0 + 0.3 * _fabPulseController.value;
-                  final opacity = 0.6 * (1 - _fabPulseController.value);
-                  return Transform.scale(
-                    scale: scale,
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Container(
-                        width: 62,
-                        height: 62,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: colors.emerald, width: 2),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                colors.emerald,
+                colors.theme.isDark
+                    ? const Color(0xFF16A34A)
+                    : const Color(0xFF15803D),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: colors.emerald.withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
-              // FAB button
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      colors.emerald,
-                      colors.theme.isDark
-                          ? const Color(0xFF16A34A)
-                          : const Color(0xFF15803D),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.emerald.withValues(alpha: 0.35),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                alignment: Alignment.center,
-                child: const Text(
-                  '₹',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 4),
+              Text(
+                'Log',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -14756,23 +14620,62 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
     final theme = widget.theme;
     final isFirstNextUp = widget.index == 0 && !widget.completed && !widget.isLibrary;
 
-    // Card background and border styling according to spec
-    final isEven = widget.index % 2 == 0;
-    final baseBg = isFirstNextUp
-        ? (theme.isDark ? const Color(0x1C2A9D8F) : const Color(0xFFFAFDFC))
-        : (theme.isDark
-            ? (isEven
-                ? Colors.white.withValues(alpha: 0.03)
-                : Colors.white.withValues(alpha: 0.06))
-            : (isEven
-                ? Colors.white.withValues(alpha: 0.82)
-                : Colors.white.withValues(alpha: 0.92)));
+    // Spec Colors
+    final dayAccent = const Color(0xFF0D9488);
+    final nightAccent = const Color(0xFF2DD4A8);
+    final accentCol = theme.isDark ? nightAccent : dayAccent;
 
-    final borderCol = isFirstNextUp
-        ? const Color(0xFF2A9D8F).withValues(alpha: 0.3)
-        : (theme.isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : const Color(0xFFEAE5D9));
+    final primaryTextCol = theme.isDark ? const Color(0xFFE8E8F0) : const Color(0xFF1C1914);
+    final secondaryTextCol = theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560);
+    final mutedTextCol = theme.isDark ? const Color(0xFF4A4A5A) : const Color(0xFFA8A29D);
+
+    // Card background, border and shadow according to spec
+    Color baseBg;
+    BoxBorder border;
+    List<BoxShadow> shadows = [];
+
+    if (isFirstNextUp) {
+      baseBg = theme.isDark
+          ? nightAccent.withOpacity(0.04)
+          : dayAccent.withOpacity(0.04);
+      border = Border.all(
+          color: theme.isDark
+              ? nightAccent.withOpacity(0.25)
+              : dayAccent.withOpacity(0.25),
+          width: 1.5);
+      
+      shadows = [
+        if (theme.isDark)
+          BoxShadow(
+            color: nightAccent.withOpacity(0.06),
+            blurRadius: 20,
+          )
+        else
+          BoxShadow(
+            color: const Color(0xFF3C321E).withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          )
+      ];
+    } else {
+      baseBg = theme.isDark
+          ? const Color(0xFF141423).withOpacity(0.55)
+          : Colors.white.withOpacity(0.60);
+      border = Border.all(
+          color: theme.isDark
+              ? Colors.white.withOpacity(0.04)
+              : Colors.white.withOpacity(0.70),
+          width: 1);
+      shadows = [
+        BoxShadow(
+          color: theme.isDark
+              ? Colors.black.withOpacity(0.4)
+              : const Color(0xFF3C321E).withOpacity(0.06),
+          blurRadius: 16,
+          offset: const Offset(0, 4),
+        )
+      ];
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -14795,139 +14698,152 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
               return Transform.scale(
                 scale: scale,
                 child: AnimatedOpacity(
-                  opacity: widget.completed ? 0.5 : 1.0,
+                  opacity: widget.completed ? 0.55 : 1.0,
                   duration: const Duration(milliseconds: 300),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     height: 76,
                     decoration: BoxDecoration(
-                      color: baseBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: borderCol, width: 1),
-                      boxShadow: [
-                        if (isFirstNextUp)
-                          BoxShadow(
-                            color: const Color(0xFF2A9D8F).withValues(alpha: 0.12),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                      ],
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: shadows,
                     ),
-                    child: Stack(
-                      children: [
-                        // Left Accent Bar (Item 1 or Completed)
-                        if (isFirstNextUp || widget.completed)
-                          Positioned(
-                            left: 0,
-                            top: 0,
-                            bottom: 0,
-                            width: 3.5,
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF2A9D8F),
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                  bottomLeft: Radius.circular(16),
-                                ),
-                              ),
-                            ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: baseBg,
+                            borderRadius: BorderRadius.circular(18),
+                            border: border,
                           ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Row(
+                          child: Stack(
                             children: [
-                              // Order Circle
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isFirstNextUp
-                                      ? const Color(0xFFE0F2F1)
-                                      : (theme.isDark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : const Color(0xFFF5F5F0)),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  '${widget.index + 1}',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: isFirstNextUp
-                                        ? const Color(0xFF2A9D8F)
-                                        : (theme.isDark
-                                            ? Colors.white.withValues(alpha: 0.7)
-                                            : const Color(0xFF5A5A4A)),
+                              // Left Accent Bar (Item 1)
+                              if (isFirstNextUp)
+                                Positioned(
+                                  left: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: 3,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: accentCol,
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(18),
+                                        bottomLeft: Radius.circular(18),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-
-                              // Name + Sets/Reps · PrimaryMuscle
-                              Expanded(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                child: Row(
                                   children: [
-                                    Text(
-                                      normalizeExerciseName(widget.exercise[0]),
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: theme.isDark
-                                            ? Colors.white
-                                            : const Color(0xFF264653),
+                                    // Clean Left-Aligned Apple Order Number
+                                    SizedBox(
+                                      width: 24,
+                                      child: Text(
+                                        '${widget.index + 1}.',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: isFirstNextUp
+                                              ? accentCol
+                                              : (widget.completed
+                                                  ? accentCol
+                                                  : mutedTextCol),
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${widget.sets} × ${_isIsometric ? '${widget.reps}s' : '${widget.reps}'} · ${primaryMuscle.split(',').first.trim()}',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: const Color(0xFF8B8B7A),
+                                    const SizedBox(width: 8),
+
+                                    // Name + Sets/Reps · PrimaryMuscle
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            normalizeExerciseName(widget.exercise[0]),
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: -0.41,
+                                              color: primaryTextCol,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${widget.sets} × ${_isIsometric ? '${widget.reps} sec' : '${widget.reps}'} · ${primaryMuscle.split(',').first.trim()}',
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w400,
+                                              letterSpacing: -0.08,
+                                              color: secondaryTextCol,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    ),
+
+                                    // Target Number + Unit + Last Benchmark Sub-line
+                                    Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                                          textBaseline: TextBaseline.alphabetic,
+                                          children: [
+                                            Text(
+                                              '${widget.reps}',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 28,
+                                                fontWeight: FontWeight.w300,
+                                                letterSpacing: -0.5,
+                                                color: primaryTextCol,
+                                                fontFeatures: const [
+                                                  FontFeature.tabularFigures(),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 3),
+                                            Text(
+                                              _isIsometric ? 'sec' : 'reps',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w400,
+                                                letterSpacing: -0.08,
+                                                color: mutedTextCol,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Text(
+                                          'Last: ${widget.reps}',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                            color: theme.isDark
+                                                ? Colors.white38
+                                                : Colors.black38,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
-
-                              // Target Number + Unit (NO chevron)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    '${widget.reps}',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w200,
-                                      color: theme.isDark
-                                          ? Colors.white
-                                          : const Color(0xFF264653),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _isIsometric ? 's' : 'reps',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w400,
-                                      color: const Color(0xFFB7B7A4),
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -16135,13 +16051,19 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
+    final primaryTeal = theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488);
+    final textPrim = theme.isDark ? const Color(0xFFE8E8F0) : const Color(0xFF1C1914);
+    final textSec = theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         _initConfetti(constraints.maxWidth);
         return GestureDetector(
           onTap: widget.onDismiss,
           child: Container(
-            color: Colors.black.withValues(alpha: 0.85),
+            color: theme.isDark
+                ? const Color(0xFF0B0B14).withOpacity(0.88)
+                : const Color(0xFFF0EDE6).withOpacity(0.88),
             alignment: Alignment.center,
             child: Stack(
               children: [
@@ -16155,119 +16077,169 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
                     onTap: () {},
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 24),
-                      padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: theme.card,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: theme.border, width: 1),
+                        borderRadius: BorderRadius.circular(28),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            blurRadius: 40,
-                            offset: const Offset(0, 15),
+                            color: theme.isDark
+                                ? Colors.black.withOpacity(0.5)
+                                : const Color(0xFF3C321E).withOpacity(0.12),
+                            blurRadius: 36,
+                            offset: const Offset(0, 12),
                           ),
+                          if (theme.isDark)
+                            BoxShadow(
+                              color: primaryTeal.withOpacity(0.06),
+                              blurRadius: 40,
+                            ),
                         ],
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 100,
-                            height: 100,
-                            child: AnimatedBuilder(
-                              animation: _checkmarkController,
-                              builder: (context, child) {
-                                return CustomPaint(
-                                  painter: _SelfDrawingCheckPainter(
-                                    progress: _checkmarkController.value,
-                                    color: const Color(0xFF00C896),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          AnimatedOpacity(
-                            opacity: _showTitle ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 300),
-                            child: Text(
-                              'WORKOUT COMPLETE!',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.syne(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(28),
+                        child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                          child: Container(
+                            padding: const EdgeInsets.all(32),
+                            decoration: BoxDecoration(
+                              color: theme.isDark
+                                  ? const Color(0xFF141423).withOpacity(0.75)
+                                  : Colors.white.withOpacity(0.85),
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(
+                                color: theme.isDark
+                                    ? Colors.white.withOpacity(0.08)
+                                    : Colors.white.withOpacity(0.9),
+                                width: 1,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 28),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 90,
+                                  height: 90,
+                                  child: AnimatedBuilder(
+                                    animation: _checkmarkController,
+                                    builder: (context, child) {
+                                      return CustomPaint(
+                                        painter: _SelfDrawingCheckPainter(
+                                          progress: _checkmarkController.value,
+                                          color: primaryTeal,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
 
-                          Row(
-                            children: [
-                              Expanded(
-                                child: AnimatedOpacity(
-                                  opacity: _showStat1 ? 1.0 : 0.0,
+                                AnimatedOpacity(
+                                  opacity: _showTitle ? 1.0 : 0.0,
                                   duration: const Duration(milliseconds: 300),
-                                  child: _buildSummaryStatCard(
-                                    '${widget.exercisesCompleted}',
-                                    'exercises',
-                                    theme,
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        'WORKOUT COMPLETE!',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.syne(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w800,
+                                          color: textPrim,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Session finished · Rest & recover',
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: textSec,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AnimatedOpacity(
-                                  opacity: _showStat2 ? 1.0 : 0.0,
-                                  duration: const Duration(milliseconds: 300),
-                                  child: _buildSummaryStatCard(
-                                    '${widget.totalReps}',
-                                    'reps',
-                                    theme,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AnimatedOpacity(
-                                  opacity: _showStat3 ? 1.0 : 0.0,
-                                  duration: const Duration(milliseconds: 300),
-                                  child: _buildSummaryStatCard(
-                                    '${widget.minutesSpent} min',
-                                    'time spent',
-                                    theme,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 32),
+                                const SizedBox(height: 24),
 
-                          AnimatedOpacity(
-                            opacity: _showButton ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 300),
-                            child: ElevatedButton(
-                              onPressed: widget.onContinue,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00C896),
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(double.infinity, 50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: AnimatedOpacity(
+                                        opacity: _showStat1 ? 1.0 : 0.0,
+                                        duration: const Duration(milliseconds: 300),
+                                        child: _buildSummaryStatCard(
+                                          '${widget.exercisesCompleted}',
+                                          'exercises',
+                                          theme,
+                                          primaryTeal,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: AnimatedOpacity(
+                                        opacity: _showStat2 ? 1.0 : 0.0,
+                                        duration: const Duration(milliseconds: 300),
+                                        child: _buildSummaryStatCard(
+                                          '${widget.totalReps}',
+                                          'reps',
+                                          theme,
+                                          primaryTeal,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: AnimatedOpacity(
+                                        opacity: _showStat3 ? 1.0 : 0.0,
+                                        duration: const Duration(milliseconds: 300),
+                                        child: _buildSummaryStatCard(
+                                          '${widget.minutesSpent}m',
+                                          'time spent',
+                                          theme,
+                                          primaryTeal,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                elevation: 2,
-                              ),
-                              child: Text(
-                                'Continue',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                                const SizedBox(height: 28),
+
+                                AnimatedOpacity(
+                                  opacity: _showButton ? 1.0 : 0.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  child: GestureDetector(
+                                    onTap: widget.onContinue,
+                                    child: Container(
+                                      height: 52,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: primaryTeal,
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: primaryTeal.withOpacity(0.35),
+                                            blurRadius: 16,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'Back to Home',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: theme.isDark ? Colors.black : Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -16280,13 +16252,20 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
     );
   }
 
-  Widget _buildSummaryStatCard(String value, String label, ThemeColors theme) {
+  Widget _buildSummaryStatCard(String value, String label, ThemeColors theme, Color accent) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
-        color: theme.isDark ? const Color(0x0CFFFFFF) : const Color(0x0A000000),
+        color: theme.isDark
+            ? Colors.white.withOpacity(0.04)
+            : Colors.black.withOpacity(0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.border, width: 0.5),
+        border: Border.all(
+          color: theme.isDark
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.06),
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
@@ -16295,7 +16274,7 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
             style: GoogleFonts.syne(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF00C896),
+              color: accent,
             ),
           ),
           const SizedBox(height: 4),
@@ -16303,7 +16282,7 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
             label,
             style: GoogleFonts.dmSans(
               fontSize: 10,
-              color: theme.text3,
+              color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
               fontWeight: FontWeight.w600,
             ),
           ),
