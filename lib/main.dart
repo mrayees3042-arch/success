@@ -17875,42 +17875,65 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header Bar
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'SETTINGS',
-                  style: GoogleFonts.syne(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: theme.text1,
-                    letterSpacing: 1.5,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      width: 3.5,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD4A843),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Settings',
+                      style: GoogleFonts.syne(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: theme.text1,
+                      ),
+                    ),
+                  ],
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: Icon(Icons.close, color: theme.text3, size: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme.isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.05),
+                    ),
+                    child: Icon(Icons.close, color: theme.text3, size: 16),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
+            // 1. App Preferences
             Text(
-              'APP SETTINGS',
-              style: GoogleFonts.syne(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: theme.gold,
-                letterSpacing: 1.0,
+              'APP PREFERENCES',
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.text3,
+                letterSpacing: 0.8,
               ),
             ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
                 color: theme.isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.015),
-                borderRadius: BorderRadius.circular(12),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.025),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: theme.border, width: 0.5),
               ),
               child: Column(
@@ -17918,17 +17941,18 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   SwitchListTile(
                     title: Text(
                       'Sound Effects',
-                      style: TextStyle(
+                      style: GoogleFonts.dmSans(
                         color: theme.text1,
                         fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     subtitle: Text(
-                      'Enable workout sound effects',
-                      style: TextStyle(color: theme.text3, fontSize: 11),
+                      'Enable workout audio cues',
+                      style: GoogleFonts.dmSans(color: theme.text3, fontSize: 11),
                     ),
-                    activeThumbColor: theme.teal,
+                    activeThumbColor: const Color(0xFF2DD4A8),
+                    activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
                     value: SoundManager.isEnabled,
                     onChanged: (val) async {
                       await SoundManager.setEnabled(val);
@@ -17941,17 +17965,18 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   SwitchListTile(
                     title: Text(
                       'Haptic Feedback',
-                      style: TextStyle(
+                      style: GoogleFonts.dmSans(
                         color: theme.text1,
                         fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     subtitle: Text(
-                      'Enable physical feedback on taps',
-                      style: TextStyle(color: theme.text3, fontSize: 11),
+                      'Vibration feedback on tap',
+                      style: GoogleFonts.dmSans(color: theme.text3, fontSize: 11),
                     ),
-                    activeThumbColor: theme.teal,
+                    activeThumbColor: const Color(0xFF2DD4A8),
+                    activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
                     value: HapticService.isEnabled,
                     onChanged: (val) async {
                       await HapticService.setEnabled(val);
@@ -17962,86 +17987,84 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
+            // 2. Profile Settings
             Text(
-              'PROFILE SETTINGS',
-              style: GoogleFonts.syne(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: theme.gold,
-                letterSpacing: 1.0,
+              'ACCOUNT & PROFILE',
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.text3,
+                letterSpacing: 0.8,
               ),
             ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
                 color: theme.isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.015),
-                borderRadius: BorderRadius.circular(12),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.025),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: theme.border, width: 0.5),
               ),
-              child: ListTile(
-                title: Text(
-                  'Profile Settings',
-                  style: TextStyle(
-                    color: theme.text1,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                subtitle: Text(
-                  widget.userName.isNotEmpty
-                      ? '${widget.userName} • ${getAgeFromDob(widget.userDob)} y/o'
-                      : 'Set your name, Date of Birth & goal',
-                  style: TextStyle(color: theme.text3, fontSize: 11),
-                ),
-                trailing: Icon(Icons.chevron_right, color: theme.text2),
-                onTap: () => _showEditNameDialog(context, theme),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Container(
-              decoration: BoxDecoration(
-                color: theme.card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.border, width: 0.5),
-              ),
-              child: ListTile(
-                title: Text(
-                  'Replay Setup (Demo Mode)',
-                  style: TextStyle(
-                    color: theme.text1,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                subtitle: Text(
-                  'Re-launch the first-boot guided onboarding tour',
-                  style: TextStyle(color: theme.text3, fontSize: 11),
-                ),
-                trailing: Icon(Icons.play_circle_outline, color: theme.teal),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const OnboardingScreen(),
+              child: Column(
+                children: [
+                  ListTile(
+                    title: Text(
+                      'Profile Information',
+                      style: GoogleFonts.dmSans(
+                        color: theme.text1,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  );
-                },
+                    subtitle: Text(
+                      widget.userName.isNotEmpty
+                          ? '${widget.userName} • ${getAgeFromDob(widget.userDob)} y/o'
+                          : 'Set name, Date of Birth & goal',
+                      style: GoogleFonts.dmSans(color: theme.text3, fontSize: 11),
+                    ),
+                    trailing: Icon(Icons.chevron_right, color: theme.text3, size: 18),
+                    onTap: () => _showEditNameDialog(context, theme),
+                  ),
+                  Divider(color: theme.border, height: 0.5, thickness: 0.5),
+                  ListTile(
+                    title: Text(
+                      'Replay Setup (Demo Mode)',
+                      style: GoogleFonts.dmSans(
+                        color: theme.text1,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Restart the guided onboarding tour',
+                      style: GoogleFonts.dmSans(color: theme.text3, fontSize: 11),
+                    ),
+                    trailing: const Icon(Icons.play_circle_outline, color: Color(0xFF2DD4A8), size: 20),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const OnboardingScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
+            // 3. Prayer Timings Settings
             Text(
-              'PRAYER TIMINGS SETTINGS',
-              style: GoogleFonts.syne(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: theme.gold,
-                letterSpacing: 1.0,
+              'PRAYER CALCULATION & LOCATION',
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.text3,
+                letterSpacing: 0.8,
               ),
             ),
             const SizedBox(height: 8),
@@ -18049,22 +18072,22 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: theme.isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.015),
-                borderRadius: BorderRadius.circular(12),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.025),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: theme.border, width: 0.5),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.location_on, color: theme.gold, size: 22),
-                  const SizedBox(width: 12),
+                  const Icon(Icons.location_on, color: Color(0xFFD4A843), size: 20),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Current Location:',
-                          style: TextStyle(
+                          'Location',
+                          style: GoogleFonts.dmSans(
                             color: theme.text3,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -18075,61 +18098,52 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                           _locationName.isNotEmpty
                               ? _locationName
                               : 'Detecting...',
-                          style: TextStyle(
+                          style: GoogleFonts.dmSans(
                             color: theme.text1,
                             fontSize: 13,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
                   ),
                   _detecting
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: theme.gold,
+                            color: Color(0xFFD4A843),
                           ),
                         )
                       : TextButton.icon(
                           onPressed: _detectLocation,
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.my_location,
                             size: 14,
-                            color: theme.teal,
+                            color: Color(0xFF2DD4A8),
                           ),
                           label: Text(
                             'Auto Detect',
-                            style: TextStyle(
-                              color: theme.teal,
+                            style: GoogleFonts.dmSans(
+                              color: const Color(0xFF2DD4A8),
                               fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
 
-            Text(
-              'Select City Preset',
-              style: TextStyle(
-                color: theme.text2,
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
                 color: theme.isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.015),
-                borderRadius: BorderRadius.circular(12),
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.025),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: theme.border, width: 0.5),
               ),
               child: DropdownButtonHideUnderline(
@@ -18140,10 +18154,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       : null,
                   hint: Text(
                     'Choose a preset city...',
-                    style: TextStyle(color: theme.text3, fontSize: 13),
+                    style: GoogleFonts.dmSans(color: theme.text3, fontSize: 13),
                   ),
                   dropdownColor: theme.bg,
-                  style: TextStyle(color: theme.text1, fontSize: 13),
+                  style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
                   items: _cityPresets.keys.map((city) {
                     return DropdownMenuItem(value: city, child: Text(city));
                   }).toList(),
@@ -18159,22 +18173,23 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             SwitchListTile(
               title: Text(
                 'Advanced Settings',
-                style: TextStyle(
+                style: GoogleFonts.dmSans(
                   color: theme.text1,
                   fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               subtitle: Text(
-                'Configure manual coordinates and calculations',
-                style: TextStyle(color: theme.text3, fontSize: 10),
+                'Manual coordinates & calculation methods',
+                style: GoogleFonts.dmSans(color: theme.text3, fontSize: 10),
               ),
-              activeThumbColor: theme.teal,
+              activeThumbColor: const Color(0xFF2DD4A8),
+              activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
               contentPadding: EdgeInsets.zero,
               value: _showAdvancedTimings,
               onChanged: (val) {
@@ -18183,9 +18198,9 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 });
               },
             ),
-            const SizedBox(height: 12),
 
             if (_showAdvancedTimings) ...[
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -18194,10 +18209,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       children: [
                         Text(
                           'Latitude',
-                          style: TextStyle(
+                          style: GoogleFonts.dmSans(
                             color: theme.text3,
                             fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -18206,7 +18221,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          style: TextStyle(color: theme.text1, fontSize: 13),
+                          style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: theme.isDark
@@ -18221,8 +18236,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: theme.gold,
+                              borderSide: const BorderSide(
+                                color: Color(0xFFD4A843),
                                 width: 1.0,
                               ),
                             ),
@@ -18248,10 +18263,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       children: [
                         Text(
                           'Longitude',
-                          style: TextStyle(
+                          style: GoogleFonts.dmSans(
                             color: theme.text3,
                             fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -18260,7 +18275,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          style: TextStyle(color: theme.text1, fontSize: 13),
+                          style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: theme.isDark
@@ -18275,8 +18290,8 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: theme.gold,
+                              borderSide: const BorderSide(
+                                color: Color(0xFFD4A843),
                                 width: 1.0,
                               ),
                             ),
@@ -18297,14 +18312,14 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               Text(
                 'Calculation Method',
-                style: TextStyle(
+                style: GoogleFonts.dmSans(
                   color: theme.text2,
                   fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 6),
@@ -18322,7 +18337,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     isExpanded: true,
                     value: _selectedMethod,
                     dropdownColor: theme.bg,
-                    style: TextStyle(color: theme.text1, fontSize: 13),
+                    style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
                     items: const [
                       DropdownMenuItem(
                         value: 'Karachi',
@@ -18361,14 +18376,14 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               Text(
                 'Asr Calculation Madhab',
-                style: TextStyle(
+                style: GoogleFonts.dmSans(
                   color: theme.text2,
                   fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 6),
@@ -18386,7 +18401,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     isExpanded: true,
                     value: _selectedMadhab,
                     dropdownColor: theme.bg,
-                    style: TextStyle(color: theme.text1, fontSize: 13),
+                    style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
                     items: const [
                       DropdownMenuItem(
                         value: 'Shafi',
@@ -18406,28 +18421,35 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ),
               ),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _saveSettings,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.teal,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+            // Save Settings CTA Button
+            GestureDetector(
+              onTap: _saveSettings,
+              child: Container(
+                height: 48,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2DD4A8),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2DD4A8).withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
-                    child: Text(
-                      'Save Settings',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.bold),
-                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Save Settings',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),

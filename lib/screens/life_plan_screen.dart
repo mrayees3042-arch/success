@@ -993,17 +993,17 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${widget.userGoalYear - 1} Tasks',
+                          'DAILY & LONG-TERM',
                           style: GoogleFonts.dmSans(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 3.0,
+                            letterSpacing: 2.0,
                             color: goldColor,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'To Do',
+                          'To Do & Goals',
                           style: GoogleFonts.syne(
                             fontSize: 26,
                             fontWeight: FontWeight.w800,
@@ -1012,7 +1012,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '$daysRemaining days remaining',
+                          'Priorities & Action Items',
                           style: GoogleFonts.dmSans(
                             fontSize: 13,
                             color: text2,
@@ -1043,9 +1043,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 24),
-              buildYearProgressCard(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               if (_goals.isEmpty)
                 buildEmptyState()
               else ...[
