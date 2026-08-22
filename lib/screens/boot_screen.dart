@@ -232,40 +232,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                    // New Sleek App Icon
-                    AnimatedBuilder(
-                      animation: _sequenceController,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _starScale.value,
-                          child: Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(28),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(28),
-                              child: Image.asset(
-                                'assets/icon/app_icon.png',
-                                width: 120,
-                                height: 120,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 12),
 
                     // Arabic Text: "مُتَّقِين"
                     AnimatedBuilder(

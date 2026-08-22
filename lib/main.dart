@@ -6358,8 +6358,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
             Text(
               title.toUpperCase(),
               style: GoogleFonts.dmSans(
-                fontSize: 11,
-                letterSpacing: 2,
+                fontSize: 10.5,
+                letterSpacing: 1.8,
                 fontWeight: FontWeight.w700,
                 color: appColors.text3,
               ),
@@ -6368,7 +6368,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
               Text(
                 rightText,
                 style: GoogleFonts.dmSans(
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w600,
                   color: rightColor ?? appColors.text2,
                 ),
@@ -6378,7 +6378,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
         const SizedBox(height: 8),
         _GlassCard(
           theme: appColors.theme,
-          radius: 16,
+          radius: 18,
           padding: const EdgeInsets.all(16),
           child: child,
         ),
@@ -6395,12 +6395,12 @@ class _HabitsScreenState extends State<HabitsScreen> {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
           color: appColors.theme.isDark
               ? const Color(0x06FFFFFF)
               : appColors.theme.bg,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: appColors.cardBorder, width: 0.5),
         ),
         child: Column(
@@ -6409,8 +6409,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
             Text(
               label.toUpperCase(),
               style: GoogleFonts.dmSans(
-                fontSize: 9,
-                letterSpacing: 1,
+                fontSize: 9.5,
+                letterSpacing: 1.2,
                 fontWeight: FontWeight.w600,
                 color: appColors.text3,
               ),
@@ -6420,7 +6420,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             Text(
               value,
               style: GoogleFonts.syne(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: valueColor,
               ),
@@ -6452,7 +6452,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
       textColor = appColors.emerald;
       statusIcon = Icon(
         Icons.check_circle_outline,
-        size: 14,
+        size: 15,
         color: appColors.emerald,
       );
     } else if (missed) {
@@ -6464,9 +6464,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
       statusIcon = Text(
         timeStr,
         style: GoogleFonts.dmSans(
-          fontSize: 9,
+          fontSize: 9.5,
           color: appColors.text3,
-          fontWeight: FontWeight.normal,
+          fontWeight: FontWeight.w500,
         ),
       );
     } else {
@@ -6477,37 +6477,38 @@ class _HabitsScreenState extends State<HabitsScreen> {
       textColor = appColors.text3;
       statusIcon = Text(
         timeStr,
-        style: GoogleFonts.dmSans(fontSize: 9, color: appColors.text3),
+        style: GoogleFonts.dmSans(
+          fontSize: 9.5,
+          color: appColors.text3,
+          fontWeight: FontWeight.w500,
+        ),
       );
     }
 
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor, width: 0.5),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              name,
-              style: GoogleFonts.dmSans(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 0.5),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            name,
+            style: GoogleFonts.dmSans(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: textColor,
             ),
-            const SizedBox(height: 4),
-            statusIcon,
-          ],
-        ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 5),
+          statusIcon,
+        ],
       ),
     );
   }
@@ -6553,11 +6554,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
               _loadDayData(date);
             },
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 2.5, vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: isSelected ? appColors.card : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isSelected ? appColors.gold : appColors.cardBorder,
                   width: isSelected ? 1.5 : 0.5,
@@ -6572,11 +6573,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     child: Text(
                       shortDayName,
                       style: GoogleFonts.dmSans(
-                        fontSize: 10,
+                        fontSize: 10.5,
                         fontWeight: isSelected
                             ? FontWeight.w700
-                            : FontWeight.normal,
-                        color: appColors.text3,
+                            : FontWeight.w500,
+                        color: isSelected ? appColors.gold : appColors.text3,
                       ),
                     ),
                   ),
@@ -6586,7 +6587,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     child: Text(
                       dayNumber,
                       style: GoogleFonts.syne(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: isSelected ? appColors.text1 : appColors.text2,
                       ),
@@ -6598,7 +6599,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     child: Text(
                       '$percent%',
                       style: GoogleFonts.dmSans(
-                        fontSize: 9,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.w700,
                         color: scoreColor,
                       ),
