@@ -21,8 +21,9 @@ import 'package:success/services/haptic_service.dart';
 import 'package:success/services/audio_service.dart';
 import 'package:success/services/sound_manager.dart';
 import 'package:success/widgets/stick_figure_painter.dart';
-import 'package:success/widgets/pulse_m_logo.dart';
 import 'package:success/core/islamic_data.dart';
+import 'package:printing/printing.dart';
+import 'package:success/services/psychology_report_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1021,26 +1022,74 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   Future<void> _printPdf(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final pdf = buildPdf(_reportLines());
-    final fileName = 'rayees_30_day_report_${dayKey(DateTime.now())}.pdf';
     try {
-      final path = await _channel.invokeMethod<String>('savePdfToDownloads', {
-        'fileName': fileName,
-        'bytes': pdf,
-      });
-      if (!mounted) {
-        return;
+      HapticService.selection();
+      final days = <DailyHabitData>[];
+      final now = DateTime.now();
+      final startDate = now.subtract(const Duration(days: 29));
+
+      for (var i = 29; i >= 0; i--) {
+        final date = now.subtract(Duration(days: i));
+        final record = _recordFor(date);
+
+        final taskBreakdown = <String, bool>{};
+        for (var t = 0; t < kTodayTasks.length; t++) {
+          final done = t < record.tasks.length && record.tasks[t];
+          taskBreakdown[kTodayTasks[t].title] = done;
+        }
+
+        final prayerBreakdown = <String, bool>{};
+        for (final p in ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Tahajjud']) {
+          prayerBreakdown[p] = record.prayers[p] ?? false;
+        }
+
+        days.add(
+          DailyHabitData(
+            date: date,
+            score: record.percent,
+            tasksDone: record.taskDone,
+            tasksTotal: kTodayTasks.length,
+            prayersDone: record.prayerDone,
+            prayersTotal: 5,
+            taskBreakdown: taskBreakdown,
+            prayerBreakdown: prayerBreakdown,
+            workoutName: record.workoutSummary?.workoutName,
+          ),
+        );
       }
-      setState(() => _lastPdfPath = path ?? 'Downloads/$fileName');
-      messenger.showSnackBar(
-        SnackBar(content: Text('PDF saved: ${path ?? fileName}')),
+
+      final reportData = HabitReportData(
+        userName: _userName.isNotEmpty ? _userName : 'Rayees',
+        startDate: startDate,
+        endDate: now,
+        days: days,
       );
-    } catch (error) {
-      if (!mounted) {
-        return;
+
+      final pdfBytes = await PsychologyReportService.generatePdfBytes(reportData);
+      final fileName = 'muttaqin_30_day_report_${dayKey(now)}.pdf';
+
+      await Printing.sharePdf(
+        bytes: pdfBytes,
+        filename: fileName,
+      );
+
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('30-Day Report generated successfully!'),
+            backgroundColor: Color(0xFF2DD4A8),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
+    } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('PDF save failed: $error')),
+        SnackBar(
+          content: Text('Report generation failed: $error'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
