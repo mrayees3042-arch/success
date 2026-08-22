@@ -222,9 +222,9 @@ class DayRecord {
 
   factory DayRecord.empty() {
     return DayRecord(
-      tasks: List<bool>.generate(
+      tasks: List<bool>.filled(
         kTodayTasks.length,
-        (i) => i < 2, // Endowed progress: first 2 default tasks pre-completed
+        false,
         growable: true,
       ),
       prayers: {for (final name in kPrayerNames) name: false},
@@ -580,10 +580,26 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       if (raw != null && raw.isNotEmpty) {
         final decoded = jsonDecode(raw) as Map<String, dynamic>;
+        final todayK = dayKey(DateTime.now());
         for (final entry in decoded.entries) {
-          _history[entry.key] = DayRecord.fromJson(
+          final rec = DayRecord.fromJson(
             entry.value as Map<String, dynamic>,
           );
+          // Sanitize contaminated ghost records from previous fallback where first 2 tasks were defaulted true
+          if (entry.key != todayK) {
+            final taskTrueCount = rec.tasks.where((t) => t).length;
+            final prayerTrueCount = rec.prayers.values.where((p) => p).length;
+            if (taskTrueCount == 2 &&
+                rec.tasks.length >= 2 &&
+                rec.tasks[0] &&
+                rec.tasks[1] &&
+                prayerTrueCount == 0 &&
+                rec.workoutSummary == null) {
+              rec.tasks[0] = false;
+              rec.tasks[1] = false;
+            }
+          }
+          _history[entry.key] = rec;
         }
       }
     } catch (_) {}
@@ -591,6 +607,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     for (final record in _history.values) {
       record.syncTaskCount();
     }
+    _saveHistory();
     if (mounted) {
       setState(() => _loaded = true);
     }
