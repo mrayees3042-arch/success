@@ -3523,7 +3523,7 @@ class _TodayScreenState extends State<TodayScreen>
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: widget.theme.isDark ? const Color(0xFF14141A) : const Color(0xFFF6F8F7),
         borderRadius: BorderRadius.circular(24),
@@ -3540,56 +3540,67 @@ class _TodayScreenState extends State<TodayScreen>
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              PulsingDot(color: const Color(0xFF2DD4A8), size: 10),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'UPCOMING PRAYER',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                      color: widget.theme.text3,
+          PulsingDot(color: const Color(0xFF2DD4A8), size: 10),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'UPCOMING PRAYER',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: widget.theme.text3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  children: [
+                    Text(
+                      nextPrayer['name']!,
+                      style: GoogleFonts.syne(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: widget.theme.text1,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Text(
-                        nextPrayer['name']!,
-                        style: GoogleFonts.syne(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: widget.theme.text1,
-                        ),
+                    Text(
+                      nextPrayer['time']!,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF2DD4A8),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        nextPrayer['time']!,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF2DD4A8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          Text(
-            nextPrayer['in']!,
-            style: GoogleFonts.syne(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF2DD4A8),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2DD4A8).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
+                width: 0.8,
+              ),
+            ),
+            child: Text(
+              nextPrayer['in']!,
+              style: GoogleFonts.syne(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF2DD4A8),
+              ),
             ),
           ),
         ],
@@ -4372,34 +4383,40 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8B84B).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFFE8B84B).withValues(alpha: 0.3),
-                    width: 0.5,
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
                   ),
-                ),
-                child: Builder(
-                  builder: (context) {
-                    final next = _getNextPrayer();
-                    final badgeText = next['name'] != 'All Done'
-                        ? 'Next: ${next['name']} (${next['time']})'
-                        : '$fardDone/5 Completed';
-                    return Text(
-                      badgeText,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFE8B84B),
-                      ),
-                    );
-                  },
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8B84B).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFE8B84B).withValues(alpha: 0.3),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Builder(
+                    builder: (context) {
+                      final next = _getNextPrayer();
+                      final prayerShortName = next['name']!.replaceAll(' (Tomorrow)', '');
+                      final badgeText = next['name'] != 'All Done'
+                          ? 'Next: $prayerShortName (${next['time']})'
+                          : '$fardDone/5 Completed';
+                      return FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          badgeText,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFE8B84B),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
