@@ -1924,21 +1924,22 @@ class _TodayScreenState extends State<TodayScreen>
   Widget _taskRow(MapEntry<int, TodayTask> entry) {
     final task = entry.value;
     final done = _isTaskDone(entry.key);
-    const taskAccent = Color(0xFFFF9500);
+    final isDark = widget.theme.isDark;
 
     Widget card = Container(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      child: _GlassCard(
-        theme: widget.theme,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0x0AFFFFFF) : const Color(0x06000000),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: done
-              ? const Color(0xFF00C896).withValues(alpha: 0.35)
-              : taskAccent.withValues(alpha: 0.3),
-          width: 0.8,
+              ? const Color(0xFF2DD4A8).withValues(alpha: 0.3)
+              : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06)),
+          width: 0.5,
         ),
-        radius: 16,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
+      ),
+      child: Row(
           children: [
             GestureDetector(
               onTap: () {
@@ -2016,8 +2017,7 @@ class _TodayScreenState extends State<TodayScreen>
             ),
           ],
         ),
-      ),
-    );
+      );
 
     return done ? Opacity(opacity: 0.65, child: card) : card;
   }
@@ -3601,19 +3601,14 @@ class _TodayScreenState extends State<TodayScreen>
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: widget.theme.isDark ? const Color(0xFF14141A) : const Color(0xFFF6F8F7),
-        borderRadius: BorderRadius.circular(24),
+        color: widget.theme.isDark ? const Color(0xFF18181C) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFF2DD4A8).withValues(alpha: 0.35),
-          width: 1.0,
+          color: widget.theme.isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2DD4A8).withValues(alpha: 0.08),
-            blurRadius: 16,
-            spreadRadius: -2,
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -4413,8 +4408,8 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   Widget _buildPrayerGrid() {
-    const fardPrayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-    final fardDone = _fardPrayerDone;
+    final fardPrayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    final fardDone = fardPrayers.where((p) => widget.record.prayers[p] ?? false).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4425,34 +4420,12 @@ class _TodayScreenState extends State<TodayScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 3.5,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8B84B),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Daily Prayers',
-                          style: GoogleFonts.syne(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                            color: widget.theme.text1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              Text(
+                'Daily Prayers',
+                style: GoogleFonts.syne(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: widget.theme.text1,
                 ),
               ),
               const SizedBox(width: 8),
@@ -4518,14 +4491,14 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   Widget _buildTahajjudOptionalTile() {
-    const prayer = 'Tahajjud';
-    final done = widget.record.prayers[prayer] ?? false;
-    final tod = _prayerTimes[prayer] ?? const TimeOfDay(hour: 3, minute: 2);
+    final done = widget.record.prayers['Tahajjud'] ?? false;
+    final tod = _prayerTimes['Tahajjud'] ?? const TimeOfDay(hour: 3, minute: 4);
     final hour12 = tod.hour == 0
         ? 12
         : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
     final ampm = tod.hour < 12 ? 'AM' : 'PM';
     final timeStr = '$hour12:${tod.minute.toString().padLeft(2, '0')} $ampm';
+    const prayer = 'Tahajjud';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -4639,160 +4612,141 @@ class _TodayScreenState extends State<TodayScreen>
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF18181C) : const Color(0xFFFAF8F2),
+        color: isDark ? const Color(0xFF18181C) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: goldColor.withValues(alpha: 0.25),
-          width: 0.8,
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 0.5,
         ),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 4px Gold Left Accent Bar
-              Container(
-                width: 4,
-                decoration: const BoxDecoration(
-                  color: goldColor,
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: goldColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.task_alt_rounded,
-                                  color: goldColor,
-                                  size: 16,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Daily Tasks',
-                                style: GoogleFonts.syne(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
-                                  color: widget.theme.text1,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: goldColor.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '$doneTasks of $totalTasks done',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: goldColor,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => _showTaskSheet(),
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: goldColor,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.add,
-                                    color: Colors.black,
-                                    size: 16,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      // Empty State Callout when no tasks
-                      if (_visibleTasks.isEmpty)
-                        GestureDetector(
-                          onTap: () => _showTaskSheet(),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 22,
-                              horizontal: 16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: goldColor.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: goldColor.withValues(alpha: 0.3),
-                                width: 1.0,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.add_task_rounded,
-                                  color: goldColor,
-                                  size: 32,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  "No daily tasks set",
-                                  style: GoogleFonts.syne(
-                                    color: widget.theme.text1,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "Tap '+' to add your first goal for today",
-                                  style: GoogleFonts.dmSans(
-                                    color: widget.theme.text3,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      // Task Rows
-                      ..._visibleTasks.map(
-                        (entry) => RepaintBoundary(child: _taskRow(entry)),
-                      ),
-                    ],
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: goldColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.task_alt_rounded,
+                      color: goldColor,
+                      size: 16,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Daily Tasks',
+                    style: GoogleFonts.syne(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: widget.theme.text1,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: goldColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$doneTasks of $totalTasks done',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: goldColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _showTaskSheet(),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: goldColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.black,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 14),
+          // Empty State Callout when no tasks
+          if (_visibleTasks.isEmpty)
+            GestureDetector(
+              onTap: () => _showTaskSheet(),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 22,
+                  horizontal: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: goldColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: goldColor.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.add_task_rounded,
+                      color: goldColor,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "No daily tasks set",
+                      style: GoogleFonts.syne(
+                        color: widget.theme.text1,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Tap '+' to add your first goal for today",
+                      style: GoogleFonts.dmSans(
+                        color: widget.theme.text3,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          // Task Rows
+          ..._visibleTasks.map(
+            (entry) => RepaintBoundary(child: _taskRow(entry)),
+          ),
+        ],
       ),
     );
   }
@@ -4834,35 +4788,22 @@ class _GlassCard extends StatelessWidget {
             border ??
             Border.all(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.09)
+                  ? Colors.white.withValues(alpha: 0.08)
                   : Colors.black.withValues(alpha: 0.06),
               width: 0.5,
             ),
-        boxShadow: isDark && glowColor != null
+        boxShadow: isDark
             ? [
                 BoxShadow(
-                  color: glowColor!.withValues(alpha: 0.12),
-                  blurRadius: 32,
-                  spreadRadius: -4,
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
               ]
-            : isDark
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 2),
-                ),
-              ]
             : [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 8,
+                  color: const Color(0xFF3C321E).withValues(alpha: 0.04),
+                  blurRadius: 12,
                   offset: const Offset(0, 2),
                 ),
               ],
