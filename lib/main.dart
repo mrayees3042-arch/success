@@ -7616,14 +7616,14 @@ int parseSets(String description) {
 
 int parseReps(String description) {
   if (description.toLowerCase().contains('max')) {
-    return 12;
+    return 10;
   }
   final match = RegExp(r'x\s*([0-9]+)').firstMatch(description);
   if (match != null) {
-    return int.tryParse(match.group(1) ?? '') ?? 1;
+    return int.tryParse(match.group(1) ?? '') ?? 5;
   }
   final anyNumber = RegExp(r'([0-9]+)').firstMatch(description);
-  return int.tryParse(anyNumber?.group(1) ?? '') ?? 1;
+  return int.tryParse(anyNumber?.group(1) ?? '') ?? 5;
 }
 
 class WorkoutScreen extends StatefulWidget {
@@ -7663,18 +7663,18 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   static const _prefsRestEndKey = 'workout_rest_end_ms';
   static const _prefsRestExerciseKey = 'workout_rest_exercise';
 
-  final List<WorkoutDay> _plan = const [
+  List<WorkoutDay> _plan = [
     WorkoutDay(
       title: 'Upper Body',
       freq: 'Mon / Wed / Sat',
       icon: Icons.fitness_center,
       color: Colors.teal,
       exercises: [
-        ['Push-ups', '3 x 8 reps', 'Chest'],
-        ['Incline Push-ups', '3 x 10 reps', 'Incline'],
-        ['Pike Push-ups', '3 x 6 reps', 'Shoulders'],
-        ['Door Rows', '3 x 12 reps', 'Back'],
-        ['Arm Circles', '3 x 15 reps', 'Shoulders'],
+        ['Push-ups', '3 x 5 reps', 'Chest'],
+        ['Incline Push-ups', '3 x 5 reps', 'Incline'],
+        ['Pike Push-ups', '3 x 5 reps', 'Shoulders'],
+        ['Door Rows', '3 x 5 reps', 'Back'],
+        ['Arm Circles', '3 x 5 reps', 'Shoulders'],
         ['Plank Hold', '3 x 30 sec', 'Core'],
       ],
     ),
@@ -7684,12 +7684,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       icon: Icons.directions_run,
       color: Colors.teal,
       exercises: [
-        ['Bodyweight Squats', '3 x 15 reps', 'Full depth'],
-        ['Jump Squats', '3 x 10 reps', 'Explosive'],
-        ['Lunges', '3 x 10 reps', 'Each leg'],
-        ['Glute Bridges', '3 x 15 reps', 'Posterior chain'],
-        ['Calf Raises', '3 x 20 reps', 'Slow down, explode up'],
-        ['Leg Raises', '3 x 12 reps', 'Lower abs'],
+        ['Bodyweight Squats', '3 x 5 reps', 'Full depth'],
+        ['Jump Squats', '3 x 5 reps', 'Explosive'],
+        ['Lunges', '3 x 5 reps', 'Each leg'],
+        ['Glute Bridges', '3 x 5 reps', 'Posterior chain'],
+        ['Calf Raises', '3 x 5 reps', 'Calves'],
+        ['Leg Raises', '3 x 5 reps', 'Lower abs'],
       ],
     ),
   ];
@@ -7698,12 +7698,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   final Map<String, bool> _expandedCards = {};
   final ScrollController _scrollController = ScrollController();
   final List<List<String>> _libraryExercises = const [
-    ['Lying Leg Curls', '3 x 12 reps', 'Hamstrings'],
-    ['Leg Extensions', '3 x 15 reps', 'Quads'],
-    ['Dumbbell Lunges', '3 x 10 reps', 'Legs & Glutes'],
-    ['Lat Pulldown', '3 x 10 reps', 'Back & Biceps'],
-    ['Cable Crossover', '3 x 12 reps', 'Chest & Shoulders'],
-    ['Dumbbell Shrugs', '3 x 15 reps', 'Shoulders & Neck'],
+    ['Lying Leg Curls', '3 x 5 reps', 'Hamstrings'],
+    ['Leg Extensions', '3 x 5 reps', 'Quads'],
+    ['Dumbbell Lunges', '3 x 5 reps', 'Legs & Glutes'],
+    ['Lat Pulldown', '3 x 5 reps', 'Back & Biceps'],
+    ['Cable Crossover', '3 x 5 reps', 'Chest & Shoulders'],
+    ['Dumbbell Shrugs', '3 x 5 reps', 'Shoulders & Neck'],
   ];
   SharedPreferences? _prefs;
   String? _activeDayTitle;
@@ -7722,7 +7722,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   String? _activeExerciseName;
   int _repsRemaining = 0;
   bool _showEditRepsModal = false;
+  final TextEditingController _editExerciseNameController = TextEditingController();
+  final TextEditingController _editWorkoutTitleController = TextEditingController();
   final TextEditingController _editRepsController = TextEditingController();
+  final TextEditingController _editSetsController = TextEditingController();
   int _exerciseTab = 0; // 0 = My Routine, 1 = Exercise Library
 
   // State variables for Duolingo & Brilliant upgrades
@@ -9844,7 +9847,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               GestureDetector(
                                 onTap: () {
                                   HapticService.selection();
+                                  _editExerciseNameController.text = _activeExerciseName ?? 'Push-ups';
+                                  _editWorkoutTitleController.text = _selectedSplit.title;
                                   _editRepsController.text = '${state.maxReps}';
+                                  _editSetsController.text = '${state.totalSets}';
                                   setState(() => _showEditRepsModal = true);
                                 },
                                 child: Container(
@@ -10358,17 +10364,17 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     return GestureDetector(
       onTap: () => setState(() => _showEditRepsModal = false),
       child: Container(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.black.withOpacity(0.65),
         alignment: Alignment.bottomCenter,
         child: GestureDetector(
           onTap: () {},
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
             decoration: BoxDecoration(
               color: theme.isDark
-                  ? const Color(0xFF141423).withOpacity(0.92)
-                  : Colors.white.withOpacity(0.94),
+                  ? const Color(0xFF141423).withOpacity(0.96)
+                  : Colors.white.withOpacity(0.96),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               border: Border(
                 top: BorderSide(
@@ -10386,113 +10392,413 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 ),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: textSec.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                Text(
-                  'Edit Target Reps',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: textPrim,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Update the prescribed rep count for ${_activeExerciseName ?? "this exercise"}',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    color: textSec,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Container(
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: theme.isDark
-                        ? Colors.white.withOpacity(0.06)
-                        : Colors.black.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: auroraTeal.withOpacity(0.4),
-                      width: 1,
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  alignment: Alignment.center,
-                  child: TextField(
-                    controller: _editRepsController,
-                    keyboardType: TextInputType.number,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: textPrim,
-                    ),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                GestureDetector(
-                  onTap: () {
-                    final reps = int.tryParse(_editRepsController.text.trim());
-                    if (reps != null && reps > 0) {
-                      HapticService.medium();
-                      SoundManager.playTapClick();
-                      setState(() {
-                        _activeExerciseState!.maxReps = reps;
-                        _activeExerciseState!.repsRemaining = reps;
-                        _repsRemaining = reps;
-                        _showEditRepsModal = false;
-                        _recalculateStats();
-                      });
-                      _savePreferences();
-                    }
-                  },
-                  child: Container(
-                    height: 52,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: auroraTeal,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: auroraTeal.withOpacity(0.3),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Save Changes',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: theme.isDark ? Colors.black : Colors.white,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: textSec.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Edit Workout & Exercise',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: textPrim,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _showEditRepsModal = false),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.isDark
+                                ? Colors.white.withOpacity(0.06)
+                                : Colors.black.withOpacity(0.05),
+                          ),
+                          child: Icon(Icons.close, size: 16, color: textSec),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Customise your routine title, exercise name, and target reps',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: textSec,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // 1. Workout Routine Name Field
+                  Text(
+                    'WORKOUT ROUTINE NAME',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: textSec,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: theme.isDark
+                          ? Colors.white.withOpacity(0.06)
+                          : Colors.black.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: auroraTeal.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    alignment: Alignment.centerLeft,
+                    child: TextField(
+                      controller: _editWorkoutTitleController,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textPrim,
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        hintText: 'e.g. Upper Body, Calisthenics',
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // 2. Exercise Name Field
+                  Text(
+                    'EXERCISE NAME',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: textSec,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: theme.isDark
+                          ? Colors.white.withOpacity(0.06)
+                          : Colors.black.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: auroraTeal.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    alignment: Alignment.centerLeft,
+                    child: TextField(
+                      controller: _editExerciseNameController,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textPrim,
+                      ),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        hintText: 'e.g. Push-ups, Pull-ups',
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 3. Target Reps & Sets Steppers Row
+                  Row(
+                    children: [
+                      // Target Reps Stepper
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'TARGET REPS',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: textSec,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: theme.isDark
+                                    ? Colors.white.withOpacity(0.06)
+                                    : Colors.black.withOpacity(0.04),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: auroraTeal.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      final cur = int.tryParse(_editRepsController.text) ?? 5;
+                                      if (cur > 1) {
+                                        HapticService.selection();
+                                        _editRepsController.text = '${cur - 1}';
+                                        setState(() {});
+                                      }
+                                    },
+                                    child: Container(
+                                      width: 40,
+                                      height: 48,
+                                      alignment: Alignment.center,
+                                      child: Icon(Icons.remove, size: 18, color: textPrim),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _editRepsController,
+                                      textAlign: TextAlign.center,
+                                      keyboardType: TextInputType.number,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: textPrim,
+                                      ),
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      final cur = int.tryParse(_editRepsController.text) ?? 5;
+                                      HapticService.selection();
+                                      _editRepsController.text = '${cur + 1}';
+                                      setState(() {});
+                                    },
+                                    child: Container(
+                                      width: 40,
+                                      height: 48,
+                                      alignment: Alignment.center,
+                                      child: Icon(Icons.add, size: 18, color: textPrim),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Target Sets Stepper
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'TOTAL SETS',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: textSec,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: theme.isDark
+                                    ? Colors.white.withOpacity(0.06)
+                                    : Colors.black.withOpacity(0.04),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: auroraTeal.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      final cur = int.tryParse(_editSetsController.text) ?? 3;
+                                      if (cur > 1) {
+                                        HapticService.selection();
+                                        _editSetsController.text = '${cur - 1}';
+                                        setState(() {});
+                                      }
+                                    },
+                                    child: Container(
+                                      width: 40,
+                                      height: 48,
+                                      alignment: Alignment.center,
+                                      child: Icon(Icons.remove, size: 18, color: textPrim),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _editSetsController,
+                                      textAlign: TextAlign.center,
+                                      keyboardType: TextInputType.number,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: textPrim,
+                                      ),
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      final cur = int.tryParse(_editSetsController.text) ?? 3;
+                                      HapticService.selection();
+                                      _editSetsController.text = '${cur + 1}';
+                                      setState(() {});
+                                    },
+                                    child: Container(
+                                      width: 40,
+                                      height: 48,
+                                      alignment: Alignment.center,
+                                      child: Icon(Icons.add, size: 18, color: textPrim),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+
+                  // 4. Save Changes CTA
+                  GestureDetector(
+                    onTap: () {
+                      final newRoutineTitle = _editWorkoutTitleController.text.trim();
+                      final newExerciseName = _editExerciseNameController.text.trim();
+                      final reps = int.tryParse(_editRepsController.text.trim()) ?? 5;
+                      final sets = int.tryParse(_editSetsController.text.trim()) ?? 3;
+
+                      if (newExerciseName.isNotEmpty && reps > 0 && sets > 0) {
+                        HapticService.medium();
+                        SoundManager.playTapClick();
+
+                        final oldExName = _activeExerciseName ?? '';
+                        final oldKey = '${_selectedSplit.title}|$oldExName';
+
+                        setState(() {
+                          // Update exercises list in _selectedSplit
+                          final updatedExercises = _selectedSplit.exercises.map((e) {
+                            if (e[0] == oldExName) {
+                              final muscle = e.length > 2 ? e[2] : 'Chest';
+                              return [newExerciseName, '$sets x $reps reps', muscle];
+                            }
+                            return e;
+                          }).toList();
+
+                          final updatedSplitTitle = newRoutineTitle.isNotEmpty ? newRoutineTitle : _selectedSplit.title;
+
+                          final updatedSplit = WorkoutDay(
+                            title: updatedSplitTitle,
+                            freq: _selectedSplit.freq,
+                            icon: _selectedSplit.icon,
+                            color: _selectedSplit.color,
+                            exercises: updatedExercises,
+                          );
+
+                          // Update in _plan
+                          final planIndex = _plan.indexWhere((p) => p.title == _selectedSplit.title);
+                          if (planIndex != -1) {
+                            _plan[planIndex] = updatedSplit;
+                          }
+                          _selectedSplit = updatedSplit;
+                          _activeExerciseName = newExerciseName;
+
+                          // Update or transfer state
+                          final newKey = '$updatedSplitTitle|$newExerciseName';
+                          final oldState = _exerciseStates[oldKey];
+                          if (oldState != null) {
+                            _exerciseStates.remove(oldKey);
+                            _exerciseStates[newKey] = WorkoutExerciseState(
+                              exerciseKey: newKey,
+                              totalSets: sets,
+                              maxReps: reps,
+                              currentSet: oldState.currentSet <= sets ? oldState.currentSet : sets,
+                              repsRemaining: reps,
+                              awaitingNextSet: oldState.awaitingNextSet,
+                              completed: oldState.completed,
+                            );
+                            _activeExerciseState = _exerciseStates[newKey];
+                          } else if (_activeExerciseState != null) {
+                            _activeExerciseState!.maxReps = reps;
+                            _activeExerciseState!.repsRemaining = reps;
+                          }
+                          _repsRemaining = reps;
+                          _showEditRepsModal = false;
+                          _recalculateStats();
+                        });
+                        _savePreferences();
+                      }
+                    },
+                    child: Container(
+                      height: 52,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: auroraTeal,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: auroraTeal.withOpacity(0.3),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Save Changes',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: theme.isDark ? Colors.black : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
