@@ -2802,33 +2802,12 @@ class _TodayScreenState extends State<TodayScreen>
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  'Your next prayer is your next chance to prepare.',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 10.5,
-                    color: widget.theme.text3,
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  HapticService.tapFeedback();
-                  _scrollTo(_prayersKey);
-                },
-                child: Text(
-                  quoteInfo['action']!,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: goldColor,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Your next prayer is your next chance to prepare.',
+            style: GoogleFonts.dmSans(
+              fontSize: 10.5,
+              color: widget.theme.text3,
+            ),
           ),
         ],
       ),
@@ -3484,7 +3463,30 @@ class _TodayScreenState extends State<TodayScreen>
     final completedCount = widget.record.prayers.entries
         .where((e) => e.key != 'Tahajjud' && e.value == true)
         .length;
-    return {'name': 'All Done', 'time': '$completedCount/5 prayed', 'in': '✓'};
+    if (completedCount >= 5) {
+      return {'name': 'All Done', 'time': '5/5 prayed', 'in': '✓'};
+    }
+
+    // After Isha: Next upcoming prayer is Tomorrow's Fajr
+    final fajrTime = _prayerTimes['Fajr'] ?? const TimeOfDay(hour: 5, minute: 4);
+    final tomorrowFajr = DateTime(
+      now.year,
+      now.month,
+      now.day + 1,
+      fajrTime.hour,
+      fajrTime.minute,
+    );
+    final diff = tomorrowFajr.difference(now);
+    final hours = diff.inHours;
+    final minutes = diff.inMinutes % 60;
+    final hour12 = fajrTime.hour == 0
+        ? 12
+        : (fajrTime.hour > 12 ? fajrTime.hour - 12 : fajrTime.hour);
+    final ampm = fajrTime.hour < 12 ? 'AM' : 'PM';
+    final timeStr =
+        '$hour12:${fajrTime.minute.toString().padLeft(2, '0')} $ampm';
+    final inStr = 'in ${hours > 0 ? '${hours}h ' : ''}${minutes}m';
+    return {'name': 'Fajr (Tomorrow)', 'time': timeStr, 'in': inStr};
   }
 
   Widget _nextPrayerBanner() {
