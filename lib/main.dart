@@ -11169,11 +11169,13 @@ class _IncomeScreenState extends State<IncomeScreen>
   String _filter = 'All';
   bool _isInputIncome = true;
 
-  // --- Editable goals (persisted) ---
+  // --- Editable goals & targets (persisted) ---
   List<SavingsGoal> _savingsGoals = [];
+  int _dailyTarget = 1500;
+  int _monthlyTarget = 45000;
   String _earningCurrent = '₹1,50,000';
   String _earningTarget = '₹3,00,000';
-  String _earningTip = 'Aim: ₹3,00,000/month · ₹10,000 a day';
+  String _earningTip = 'Aim: ₹3,00,000/month · Target editable';
 
   // --- Animation controllers ---
   late AnimationController _fireController;
@@ -11438,12 +11440,14 @@ class _IncomeScreenState extends State<IncomeScreen>
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
+      _dailyTarget = prefs.getInt('income_daily_target') ?? 1500;
+      _monthlyTarget = prefs.getInt('income_monthly_target') ?? 45000;
       _earningCurrent =
           prefs.getString('income_earning_current') ?? '₹1,50,000';
       _earningTarget = prefs.getString('income_earning_target') ?? '₹3,00,000';
       _earningTip =
           prefs.getString('income_earning_tip') ??
-          'Aim: ₹3,00,000/month · ₹10,000 a day';
+          'Aim: ₹3,00,000/month · Long term';
 
       final rawGoals = prefs.getString('income_savings_goals_list');
       if (rawGoals != null && rawGoals.isNotEmpty) {
@@ -11492,12 +11496,102 @@ class _IncomeScreenState extends State<IncomeScreen>
 
   Future<void> _saveEditableGoals() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('income_daily_target', _dailyTarget);
+    await prefs.setInt('income_monthly_target', _monthlyTarget);
     await prefs.setString('income_earning_current', _earningCurrent);
     await prefs.setString('income_earning_target', _earningTarget);
     await prefs.setString('income_earning_tip', _earningTip);
 
     final encoded = jsonEncode(_savingsGoals.map((g) => g.toJson()).toList());
     await prefs.setString('income_savings_goals_list', encoded);
+  }
+
+  void _editDailyTargetDialog() {
+    final ctrl = TextEditingController(text: _dailyTarget.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors(widget.theme).bg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Edit Daily Income Target',
+          style: GoogleFonts.syne(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors(widget.theme).text1,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Set a realistic daily goal (e.g. ₹1,000 - ₹3,000/day):',
+              style: GoogleFonts.dmSans(
+                fontSize: 13,
+                color: AppColors(widget.theme).text2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors(widget.theme).text1,
+              ),
+              decoration: InputDecoration(
+                prefixText: '₹ ',
+                prefixStyle: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  color: AppColors(widget.theme).gold,
+                  fontWeight: FontWeight.bold,
+                ),
+                hintText: '1500',
+                hintStyle: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+                filled: true,
+                fillColor: AppColors(widget.theme).card,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors(widget.theme).cardBorder),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              final val = int.tryParse(ctrl.text.trim());
+              if (val != null && val > 0) {
+                setState(() {
+                  _dailyTarget = val;
+                });
+                _saveEditableGoals();
+                _velocityBarController.reset();
+                _velocityBarController.forward();
+              }
+              Navigator.pop(ctx);
+            },
+            child: Text(
+              'Save',
+              style: GoogleFonts.dmSans(
+                color: AppColors(widget.theme).emerald,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   int _earningStreak() {
@@ -12909,19 +13003,23 @@ class _IncomeScreenState extends State<IncomeScreen>
         _selectedMonth == now.month && _selectedYear == now.year;
     final daysSoFar = isCurrentMonth ? now.day : daysInMonth;
     final dailyAvg = daysSoFar > 0 ? totalEarned / daysSoFar : 0.0;
-    final fillPct = (dailyAvg / 20000).clamp(0.0, 1.0);
+    final todayEarned = isCurrentMonth ? (widget.incomeLog[dayKey(now)] ?? 0) : 0;
+    
+    // Normalized against user's custom daily target
+    final targetVal = _dailyTarget > 0 ? _dailyTarget : 1500;
+    final fillPct = (dailyAvg / targetVal).clamp(0.0, 1.0);
 
     Color statusColor;
     String statusText;
-    if (dailyAvg >= 10000) {
+    if (dailyAvg >= targetVal) {
       statusColor = colors.emerald;
       statusText = '${_money(dailyAvg.round())}/day · On track';
     } else if (dailyAvg > 0) {
       statusColor = colors.gold;
-      statusText = '${_money(dailyAvg.round())}/day · Target: ₹10,000';
+      statusText = '${_money(dailyAvg.round())}/day · Target: ₹${_money(targetVal)}';
     } else {
       statusColor = colors.text3;
-      statusText = 'Target: ₹10,000/day';
+      statusText = 'Target: ₹${_money(targetVal)}/day';
     }
 
     return Container(
@@ -12956,27 +13054,42 @@ class _IncomeScreenState extends State<IncomeScreen>
             children: [
               Row(
                 children: [
-                  Icon(Icons.speed, size: 14, color: colors.gold),
+                  Icon(Icons.speed, size: 14, color: colors.emerald),
                   const SizedBox(width: 6),
                   Text(
-                    'DAILY VELOCITY',
+                    'DAILY MOMENTUM',
                     style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.1,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
                       color: colors.text3,
                     ),
                   ),
                 ],
               ),
-              Text(
-                statusText,
-                style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.1,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                  color: statusColor,
+              GestureDetector(
+                onTap: _editDailyTargetDialog,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: colors.emerald2,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: colors.emerald.withValues(alpha: 0.3), width: 0.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        statusText,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.edit_outlined, size: 11, color: statusColor),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -12992,7 +13105,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                   Curves.easeOutCubic.transform(_velocityBarController.value);
               return Stack(
                 children: [
-                  // Background track
                   Container(
                     height: 6,
                     decoration: BoxDecoration(
@@ -13002,54 +13114,18 @@ class _IncomeScreenState extends State<IncomeScreen>
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
-                  // Filled bar
                   FractionallySizedBox(
-                    widthFactor: animFill,
+                    widthFactor: animFill.clamp(0.01, 1.0),
                     child: Container(
                       height: 6,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            dailyAvg >= 10000
-                                ? colors.emerald.withValues(alpha: 0.7)
-                                : colors.gold.withValues(alpha: 0.7),
-                            dailyAvg >= 10000
-                                ? colors.emerald
-                                : colors.gold,
+                            colors.emerald.withValues(alpha: 0.7),
+                            colors.emerald,
                           ],
                         ),
                         borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: AnimatedBuilder(
-                        animation: _shimmerController,
-                        builder: (_, _) {
-                          return ShaderMask(
-                            shaderCallback: (bounds) {
-                              final dx =
-                                  _shimmerController.value *
-                                      (bounds.width + 40) -
-                                  20;
-                              return LinearGradient(
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.white.withValues(alpha: 0.3),
-                                  Colors.transparent,
-                                ],
-                                stops: const [0.0, 0.5, 1.0],
-                                transform: GradientTranslation(dx),
-                              ).createShader(bounds);
-                            },
-                            blendMode: BlendMode.srcATop,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                          );
-                        },
                       ),
                     ),
                   ),
@@ -13057,27 +13133,30 @@ class _IncomeScreenState extends State<IncomeScreen>
               );
             },
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
 
-          // Scale labels
+          // Comparison text
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Ready',
-                style: GoogleFonts.dmSans(fontSize: 8, color: colors.text3),
+                'Today: ₹$todayEarned',
+                style: GoogleFonts.dmSans(fontSize: 11, color: colors.text3),
               ),
               Text(
-                '₹10,000 target',
-                style: GoogleFonts.dmSans(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  color: colors.gold,
+                'Avg: ₹${dailyAvg.round()}/day',
+                style: GoogleFonts.dmSans(fontSize: 11, color: colors.text2, fontWeight: FontWeight.w600),
+              ),
+              GestureDetector(
+                onTap: _editDailyTargetDialog,
+                child: Text(
+                  'Goal: ₹$targetVal/day',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: colors.emerald,
+                  ),
                 ),
-              ),
-              Text(
-                '₹20,000+',
-                style: GoogleFonts.dmSans(fontSize: 8, color: colors.text3),
               ),
             ],
           ),
@@ -13098,6 +13177,14 @@ class _IncomeScreenState extends State<IncomeScreen>
     final totalSpent = _monthTotal(widget.expenseLog, ref);
     final netBalance = totalEarned - totalSpent;
     final dailyAvgSpent = daysSoFar > 0 ? (totalSpent / daysSoFar).round() : 0;
+
+    // Count actual days logged
+    int daysLogged = 0;
+    for (int d = 1; d <= daysInMonth; d++) {
+      final date = DateTime(_selectedYear, _selectedMonth, d);
+      final amt = widget.incomeLog[dayKey(date)] ?? 0;
+      if (amt > 0) daysLogged++;
+    }
 
     final prevRef = DateTime(
       _selectedMonth == 1 ? _selectedYear - 1 : _selectedYear,
@@ -13145,15 +13232,15 @@ class _IncomeScreenState extends State<IncomeScreen>
                   Icon(
                     Icons.account_balance_wallet,
                     size: 13,
-                    color: colors.gold,
+                    color: colors.emerald,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     'NET BALANCE',
                     style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.1,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
                       color: colors.text3,
                     ),
                   ),
@@ -13187,13 +13274,13 @@ class _IncomeScreenState extends State<IncomeScreen>
             children: [
               Text(
                 '₹',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.syne(
                   fontSize: 24,
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w700,
                   color: netBalance == 0 ? colors.text3 : colors.text2,
                 ),
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: 4),
               TweenAnimationBuilder<double>(
                 key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
                 tween: Tween<double>(
@@ -13213,11 +13300,11 @@ class _IncomeScreenState extends State<IncomeScreen>
                       );
                   final isNegative = netBalance < 0;
                   return Text(
-                    '${isNegative ? "-" : ""}${netBalance == 0 ? "—" : display}',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 44,
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: -1.0,
+                    '${isNegative ? "-" : ""}${netBalance == 0 ? "0" : display}',
+                    style: GoogleFonts.syne(
+                      fontSize: 38,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
                       fontFeatures: const [
                         FontFeature.tabularFigures(),
                       ],
@@ -13249,20 +13336,18 @@ class _IncomeScreenState extends State<IncomeScreen>
                       Text(
                         'INCOME',
                         style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.08,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
                           color: colors.text3,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        totalEarned > 0 ? _money(totalEarned) : '—',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.41,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                        totalEarned > 0 ? _money(totalEarned) : '₹0',
+                        style: GoogleFonts.syne(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                           color: totalEarned > 0
                               ? colors.emerald
                               : colors.text3,
@@ -13274,7 +13359,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                           'Avg: ${_money(dailyAvg)}/day',
                           style: GoogleFonts.dmSans(
                             fontSize: 11,
-                            fontWeight: FontWeight.w400,
                             color: colors.text2,
                           ),
                         ),
@@ -13299,20 +13383,18 @@ class _IncomeScreenState extends State<IncomeScreen>
                       Text(
                         'EXPENSES',
                         style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.08,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
                           color: colors.text3,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        totalSpent > 0 ? _money(totalSpent) : '—',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.41,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                        totalSpent > 0 ? _money(totalSpent) : '₹0',
+                        style: GoogleFonts.syne(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                           color: totalSpent > 0 ? colors.text1 : colors.text3,
                         ),
                       ),
@@ -13322,7 +13404,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                           'Avg: ${_money(dailyAvgSpent)}/day',
                           style: GoogleFonts.dmSans(
                             fontSize: 11,
-                            fontWeight: FontWeight.w400,
                             color: colors.text2,
                           ),
                         ),
@@ -13337,14 +13418,13 @@ class _IncomeScreenState extends State<IncomeScreen>
 
           Center(
             child: Text(
-              daysSoFar >= 3 && totalEarned > 0
-                  ? 'Projected income: ${_money(projected)} this month'
-                  : 'Projected income: — (log 3 days to calculate)',
+              daysLogged >= 7
+                  ? 'Projected monthly income: ${_money(projected)}'
+                  : '₹$totalEarned earned so far · Log ${7 - daysLogged} more days for projection',
               style: GoogleFonts.dmSans(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
-                letterSpacing: -0.1,
-                color: daysSoFar >= 3 && totalEarned > 0 ? colors.gold : colors.text3,
+                color: daysLogged >= 7 ? colors.emerald : colors.text3,
               ),
             ),
           ),
@@ -13393,15 +13473,15 @@ class _IncomeScreenState extends State<IncomeScreen>
               Expanded(
                 child: Row(
                   children: [
-                    Icon(Icons.pie_chart_outline, size: 14, color: colors.gold),
+                    Icon(Icons.pie_chart_outline, size: 14, color: colors.emerald),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'INCOME ALLOCATION',
                         style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.1,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
                           color: colors.text3,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -13414,27 +13494,21 @@ class _IncomeScreenState extends State<IncomeScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: hasBalance
-                      ? colors.gold.withValues(alpha: 0.12)
-                      : (colors.theme.isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.04)),
+                  color: colors.emerald2,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: hasBalance
-                        ? colors.gold.withValues(alpha: 0.3)
-                        : colors.cardBorder,
+                    color: colors.emerald.withValues(alpha: 0.3),
                     width: 0.5,
                   ),
                 ),
                 child: Text(
                   hasBalance
                       ? '70% Spend · 30% Save'
-                      : 'Split activates when Net Balance > 0',
+                      : 'Activates when Balance > 0',
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: hasBalance ? colors.gold : colors.text3,
+                    color: colors.emerald,
                   ),
                 ),
               ),
@@ -13443,9 +13517,10 @@ class _IncomeScreenState extends State<IncomeScreen>
           const SizedBox(height: 16),
           Row(
             children: [
+              // Donut Ring showing proportions (70% · 30%)
               SizedBox(
-                width: 80,
-                height: 80,
+                width: 84,
+                height: 84,
                 child: CustomPaint(
                   painter: _AllocationDonutPainter(
                     colors: colors,
@@ -13456,21 +13531,19 @@ class _IncomeScreenState extends State<IncomeScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          hasBalance ? _money(netBalance) : '—',
-                          style: GoogleFonts.dmSans(
-                            fontSize: hasBalance ? 12 : 14,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.3,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                            color: hasBalance ? colors.text1 : colors.text3,
+                          '70 · 30',
+                          style: GoogleFonts.syne(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: colors.text1,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          'NET BAL',
+                          'SPEND / SAVE',
                           style: GoogleFonts.dmSans(
-                            fontSize: 8,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
                             color: colors.text3,
                           ),
                         ),
@@ -13484,55 +13557,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: hasBalance ? colors.gold : colors.text3,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'For My Use (70%)',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: hasBalance ? colors.text2 : colors.text3,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          hasBalance ? _money(forUse) : '—',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.2,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                            color: hasBalance ? colors.gold : colors.text3,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: hasBalance ? 0.70 : 0.0,
-                        minHeight: 4,
-                        backgroundColor: colors.theme.isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.black.withValues(alpha: 0.06),
-                        valueColor: AlwaysStoppedAnimation(colors.gold),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
+                    // Savings Bar
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -13551,19 +13576,17 @@ class _IncomeScreenState extends State<IncomeScreen>
                               'For Savings (30%)',
                               style: GoogleFonts.dmSans(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: hasBalance ? colors.text2 : colors.text3,
+                                fontWeight: FontWeight.w600,
+                                color: hasBalance ? colors.text1 : colors.text3,
                               ),
                             ),
                           ],
                         ),
                         Text(
                           hasBalance ? _money(forSavings) : '—',
-                          style: GoogleFonts.dmSans(
+                          style: GoogleFonts.syne(
                             fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.2,
-                            fontFeatures: const [FontFeature.tabularFigures()],
+                            fontWeight: FontWeight.w700,
                             color: hasBalance ? colors.emerald : colors.text3,
                           ),
                         ),
@@ -13574,11 +13597,60 @@ class _IncomeScreenState extends State<IncomeScreen>
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
                         value: hasBalance ? 0.30 : 0.0,
-                        minHeight: 4,
+                        minHeight: 5,
                         backgroundColor: colors.theme.isDark
                             ? Colors.white.withValues(alpha: 0.06)
                             : Colors.black.withValues(alpha: 0.06),
                         valueColor: AlwaysStoppedAnimation(colors.emerald),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Spend Bar
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: colors.text3,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'For My Use (70%)',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: hasBalance ? colors.text2 : colors.text3,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          hasBalance ? _money(forUse) : '—',
+                          style: GoogleFonts.syne(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: hasBalance ? colors.text2 : colors.text3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: hasBalance ? 0.70 : 0.0,
+                        minHeight: 4,
+                        backgroundColor: colors.theme.isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.06),
+                        valueColor: AlwaysStoppedAnimation(colors.text3.withValues(alpha: 0.6)),
                       ),
                     ),
                   ],
@@ -13915,11 +13987,11 @@ class _IncomeScreenState extends State<IncomeScreen>
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'EARNING POTENTIAL',
+                  'ASPIRATIONAL GOALS · LONG TERM',
                   style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.1,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
                     color: colors.text3,
                   ),
                 ),
@@ -13930,8 +14002,8 @@ class _IncomeScreenState extends State<IncomeScreen>
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onLongPress: () {
-                      _editStringField('Current', _earningCurrent, (v) {
+                    onTap: () {
+                      _editStringField('Target Milestone', _earningCurrent, (v) {
                         setState(() => _earningCurrent = v);
                       });
                     },
@@ -13948,20 +14020,18 @@ class _IncomeScreenState extends State<IncomeScreen>
                         children: [
                           Text(
                             _earningCurrent,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: -0.4,
-                              fontFeatures: const [FontFeature.tabularFigures()],
+                            style: GoogleFonts.syne(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
                               color: colors.text1,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'CURRENT /MONTH',
+                            'TARGET / MONTH',
                             style: GoogleFonts.dmSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
                               color: colors.text3,
                             ),
                           ),
@@ -13973,15 +14043,15 @@ class _IncomeScreenState extends State<IncomeScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: GestureDetector(
-                    onLongPress: () {
-                      _editStringField('Target', _earningTarget, (v) {
+                    onTap: () {
+                      _editStringField('Ultimate Milestone', _earningTarget, (v) {
                         setState(() => _earningTarget = v);
                       });
                     },
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: colors.gold.withValues(alpha: 0.12),
+                        color: colors.gold.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: colors.gold.withValues(alpha: 0.25),
@@ -13993,11 +14063,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                         children: [
                           Text(
                             _earningTarget,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 18,
+                            style: GoogleFonts.syne(
+                              fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              letterSpacing: -0.4,
-                              fontFeatures: const [FontFeature.tabularFigures()],
                               color: colors.gold,
                             ),
                           ),
@@ -14005,8 +14073,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                           Text(
                             'FREELANCE POTENTIAL',
                             style: GoogleFonts.dmSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
                               color: colors.text3,
                             ),
                           ),
@@ -14016,27 +14084,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bolt, size: 10, color: colors.gold),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      _earningTip,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: colors.gold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ],
         ),
@@ -14096,111 +14143,109 @@ class _IncomeScreenState extends State<IncomeScreen>
               Text(
                 'DAILY EARNINGS',
                 style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.1,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
                   color: colors.text3,
                 ),
               ),
               Text(
                 hasEarnings
-                    ? '$daysLogged of $daysInMonth days logged'
+                    ? '$daysLogged days logged'
                     : _monthNames[_selectedMonth - 1],
                 style: GoogleFonts.dmSans(
                   fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                   color: hasEarnings ? colors.emerald : colors.text3,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 80,
-            child: Stack(
-              children: [
-                AnimatedBuilder(
-                  animation: _chartBarsController,
-                  builder: (_, _) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: List.generate(daysInMonth, (i) {
-                        final amt = dailyAmounts[i];
-                        final barPct = maxDaily > 0
-                            ? (amt / maxDaily).clamp(0.0, 1.0)
-                            : 0.0;
-                        final barH = amt > 0
-                            ? math.max(4.0, barPct * 60.0)
-                            : 4.0;
-                        final isToday = (i + 1) == todayDay;
-                        final showLabel = (i + 1) == 1 || (i + 1) % 7 == 0;
+          if (!hasEarnings)
+            Container(
+              height: 70,
+              alignment: Alignment.center,
+              child: Text(
+                'Log earnings to view your daily momentum chart',
+                style: GoogleFonts.dmSans(fontSize: 12, color: colors.text3),
+              ),
+            )
+          else
+            SizedBox(
+              height: 80,
+              child: AnimatedBuilder(
+                animation: _chartBarsController,
+                builder: (_, _) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: List.generate(daysInMonth, (i) {
+                      final amt = dailyAmounts[i];
+                      final barPct = maxDaily > 0
+                          ? (amt / maxDaily).clamp(0.0, 1.0)
+                          : 0.0;
+                      final barH = amt > 0
+                          ? math.max(4.0, barPct * 60.0)
+                          : 4.0;
+                      final isToday = (i + 1) == todayDay;
+                      final showLabel = (i + 1) == 1 || (i + 1) % 5 == 0;
 
-                        final staggerStart = (i * 15.0 / 1300.0).clamp(0.0, 1.0);
-                        final staggerEnd = (staggerStart + 800.0 / 1300.0).clamp(0.0, 1.0);
-                        final interval = Interval(
-                          staggerStart,
-                          staggerEnd,
-                          curve: Curves.easeOutCubic,
-                        );
-                        final animH =
-                            barH *
-                            interval.transform(_chartBarsController.value);
+                      final staggerStart = (i * 15.0 / 1300.0).clamp(0.0, 1.0);
+                      final staggerEnd = (staggerStart + 800.0 / 1300.0).clamp(0.0, 1.0);
+                      final interval = Interval(
+                        staggerStart,
+                        staggerEnd,
+                        curve: Curves.easeOutCubic,
+                      );
+                      final animH =
+                          barH *
+                          interval.transform(_chartBarsController.value);
 
-                        return Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              left: i == 0 ? 0 : 1.5,
-                              right: i == daysInMonth - 1 ? 0 : 1.5,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Container(
-                                  height: animH,
-                                  decoration: BoxDecoration(
-                                    color: amt > 0
-                                        ? (isToday ? colors.gold : colors.emerald)
-                                        : (colors.theme.isDark
-                                            ? Colors.white.withValues(alpha: 0.06)
-                                            : Colors.black.withValues(alpha: 0.04)),
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(3),
-                                    ),
-                                    boxShadow: isToday && amt > 0
-                                        ? [
-                                            BoxShadow(
-                                              color: colors.gold.withValues(alpha: 0.3),
-                                              blurRadius: 6,
-                                            ),
-                                          ]
-                                        : null,
+                      return Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: i == 0 ? 0 : 1.5,
+                            right: i == daysInMonth - 1 ? 0 : 1.5,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Container(
+                                height: animH,
+                                decoration: BoxDecoration(
+                                  color: amt > 0
+                                      ? (isToday ? colors.gold : colors.emerald)
+                                      : (colors.theme.isDark
+                                          ? Colors.white.withValues(alpha: 0.06)
+                                          : Colors.black.withValues(alpha: 0.04)),
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(3),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  height: 10,
-                                  child: showLabel
-                                      ? Text(
-                                          '${i + 1}',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.w500,
-                                            color: colors.text3,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                height: 10,
+                                child: showLabel
+                                    ? Text(
+                                        '${i + 1}',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w500,
+                                          color: colors.text3,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                            ],
                           ),
-                        );
-                      }),
-                    );
-                  },
-                ),
-              ],
+                        ),
+                      );
+                    }),
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -14254,9 +14299,9 @@ class _IncomeScreenState extends State<IncomeScreen>
               Text(
                 'RECENT TRANSACTIONS',
                 style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.1,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
                   color: colors.text3,
                 ),
               ),
@@ -14274,7 +14319,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           ),
           const SizedBox(height: 12),
 
-          // Apple Native iOS 17 Segmented Control
+          // Apple Native Segmented Control
           Container(
             height: 34,
             padding: const EdgeInsets.all(2),
@@ -14323,7 +14368,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                         style: GoogleFonts.dmSans(
                           fontSize: 13,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                          letterSpacing: -0.1,
                           color: isSelected
                               ? colors.text1
                               : colors.text3,
@@ -14355,10 +14399,9 @@ class _IncomeScreenState extends State<IncomeScreen>
               ),
               child: Center(
                 child: Text(
-                  'Tap + to log your first transaction',
+                  'Tap + Log to record your first transaction',
                   style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
+                    fontSize: 13,
                     color: colors.text3,
                   ),
                 ),
@@ -14394,21 +14437,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                   return Column(
                     children: List.generate(entries.length, (i) {
                       final e = entries[i];
-                      final staggerStart = (i * 40.0 / 2000.0).clamp(0.0, 1.0);
-                      final staggerEnd = (staggerStart + 350.0 / 2000.0).clamp(
-                        0.0,
-                        1.0,
-                      );
-                      final interval = Interval(
-                        staggerStart,
-                        staggerEnd,
-                        curve: Curves.easeOutCubic,
-                      );
-                      final progress = interval.transform(
-                        _listStaggerController.value,
-                      );
-                      final opacity = progress;
-
                       final isInc = e.isIncome;
                       final displayColor = isInc ? colors.emerald : colors.text1;
                       final iconBgColor = isInc
@@ -14417,84 +14445,78 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 ? Colors.white.withValues(alpha: 0.06)
                                 : Colors.black.withValues(alpha: 0.05));
                       final iconData = isInc
-                          ? Icons.arrow_downward_rounded
-                          : Icons.arrow_upward_rounded;
+                          ? Icons.arrow_upward_rounded
+                          : Icons.arrow_downward_rounded;
                       final prefix = isInc ? '+' : '−';
 
-                      return Opacity(
-                        opacity: opacity,
-                        child: Column(
-                          children: [
-                            Container(
-                              height: 58,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: iconBgColor,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Icon(
-                                      iconData,
-                                      size: 15,
-                                      color: displayColor,
-                                    ),
+                      return Column(
+                        children: [
+                          Container(
+                            height: 58,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: iconBgColor,
+                                    shape: BoxShape.circle,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          getDayName(e.date),
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: -0.2,
-                                            color: colors.text1,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    iconData,
+                                    size: 15,
+                                    color: displayColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        getDayName(e.date),
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: colors.text1,
                                         ),
-                                        Text(
-                                          formatDayRowDate(e.date),
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w400,
-                                            color: colors.text3,
-                                          ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        formatDayRowDate(e.date),
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 11,
+                                          color: colors.text3,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    '$prefix${_money(e.amount)}',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: -0.4,
-                                      fontFeatures: const [FontFeature.tabularFigures()],
-                                      color: displayColor,
-                                    ),
+                                ),
+                                Text(
+                                  '$prefix₹${_money(e.amount)}',
+                                  style: GoogleFonts.syne(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: displayColor,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            if (i < entries.length - 1)
-                              Divider(
-                                height: 0.5,
-                                thickness: 0.5,
-                                indent: 60,
-                                color: colors.theme.isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : Colors.black.withValues(alpha: 0.06),
-                              ),
-                          ],
-                        ),
+                          ),
+                          if (i < entries.length - 1)
+                            Divider(
+                              height: 0.5,
+                              thickness: 0.5,
+                              indent: 60,
+                              color: colors.theme.isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.06),
+                            ),
+                        ],
                       );
                     }),
                   );
