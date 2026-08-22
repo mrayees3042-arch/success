@@ -1197,6 +1197,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           userGoalDay: _userGoalDay,
           userDob: _userDob,
           onProfileChanged: _updateProfile,
+          onResetToday: () => _resetDayData(DateTime.now()),
         ),
       ),
       SizedBox.expand(
@@ -1605,9 +1606,11 @@ class TodayScreen extends StatefulWidget {
     required this.userGoalDay,
     required this.userDob,
     this.onProfileChanged,
+    this.onResetToday,
   });
 
   final Function(String, int, int, int, String)? onProfileChanged;
+  final VoidCallback? onResetToday;
 
   final ThemeColors theme;
   final DayRecord record;
@@ -1711,6 +1714,7 @@ class _TodayScreenState extends State<TodayScreen>
         userGoalDay: widget.userGoalDay,
         userDob: widget.userDob,
         onProfileChanged: widget.onProfileChanged,
+        onResetToday: widget.onResetToday,
         onSaved: () {
           if (mounted) {
             setState(() {});
@@ -5965,33 +5969,6 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-
-            // 2. RESET DAY BUTTON
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _confirmResetDay(context, appColors),
-                icon: Icon(Icons.refresh, size: 14, color: appColors.red),
-                label: Text(
-                  'Reset Day',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: appColors.red,
-                  ),
-                ),
-                style: TextButton.styleFrom(
-                  backgroundColor: appColors.red2,
-                  side: BorderSide(color: appColors.red, width: 0.5),
-                  shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-            ),
             const SizedBox(height: 16),
 
             // 3. SCORE HERO CARD
@@ -6458,11 +6435,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
       borderColor = appColors.cardBorder;
       textColor = appColors.text3;
       statusIcon = Text(
-        'Qada',
+        timeStr,
         style: GoogleFonts.dmSans(
           fontSize: 9,
           color: appColors.text3,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.normal,
         ),
       );
     } else {
@@ -6536,7 +6513,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
           'Sun',
         ][date.weekday - 1];
         final dayNumber = date.day.toString();
-        final scoreColor = percent >= 50 ? appColors.emerald : appColors.red;
+        final scoreColor = percent >= 50
+            ? appColors.emerald
+            : (percent > 0 ? appColors.gold : appColors.text3);
 
         return Expanded(
           child: GestureDetector(
@@ -17502,6 +17481,7 @@ class _SettingsSheet extends StatefulWidget {
   final String userDob;
   final Function(String, int, int, int, String)? onProfileChanged;
   final VoidCallback onSaved;
+  final VoidCallback? onResetToday;
 
   const _SettingsSheet({
     required this.theme,
@@ -17512,6 +17492,7 @@ class _SettingsSheet extends StatefulWidget {
     required this.userDob,
     this.onProfileChanged,
     required this.onSaved,
+    this.onResetToday,
   });
 
   @override
@@ -18504,8 +18485,70 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ),
               ),
             ),
+            if (widget.onResetToday != null) ...[
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => _confirmResetToday(context, theme),
+                  icon: const Icon(Icons.refresh, size: 14, color: Color(0xFFE54D2E)),
+                  label: Text(
+                    'Reset Today\'s Progress',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFE54D2E),
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmResetToday(BuildContext context, ThemeColors theme) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: theme.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Reset Today\'s Progress?',
+          style: GoogleFonts.syne(color: theme.text1, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'This will clear all tracked prayers, tasks, and water intake for today. This action cannot be undone.',
+          style: GoogleFonts.dmSans(color: theme.text2, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text('Cancel', style: GoogleFonts.dmSans(color: theme.text3)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE54D2E),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(dialogCtx);
+              widget.onResetToday?.call();
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Today\'s progress has been reset.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Text('Reset', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
