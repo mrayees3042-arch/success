@@ -3486,7 +3486,7 @@ class _TodayScreenState extends State<TodayScreen>
     final timeStr =
         '$hour12:${fajrTime.minute.toString().padLeft(2, '0')} $ampm';
     final inStr = 'in ${hours > 0 ? '${hours}h ' : ''}${minutes}m';
-    return {'name': 'Fajr (Tomorrow)', 'time': timeStr, 'in': inStr};
+    return {'name': 'Fajr', 'time': timeStr, 'in': inStr, 'isTomorrow': 'true'};
   }
 
   Widget _nextPrayerBanner() {
@@ -3521,6 +3521,8 @@ class _TodayScreenState extends State<TodayScreen>
       );
     }
 
+    final isTomorrow = nextPrayer['isTomorrow'] == 'true';
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -3549,7 +3551,7 @@ class _TodayScreenState extends State<TodayScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'UPCOMING PRAYER',
+                  isTomorrow ? 'TOMORROW\'S FIRST PRAYER' : 'UPCOMING PRAYER',
                   style: GoogleFonts.dmSans(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
@@ -3557,23 +3559,22 @@ class _TodayScreenState extends State<TodayScreen>
                     color: widget.theme.text3,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 6,
+                const SizedBox(height: 3),
+                Row(
                   children: [
                     Text(
                       nextPrayer['name']!,
                       style: GoogleFonts.syne(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: widget.theme.text1,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       nextPrayer['time']!,
                       style: GoogleFonts.dmSans(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF2DD4A8),
                       ),
@@ -3583,9 +3584,9 @@ class _TodayScreenState extends State<TodayScreen>
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
               color: const Color(0xFF2DD4A8).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
@@ -4383,39 +4384,25 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8B84B).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFE8B84B).withValues(alpha: 0.3),
+                    width: 0.5,
                   ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8B84B).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFE8B84B).withValues(alpha: 0.3),
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Builder(
-                    builder: (context) {
-                      final next = _getNextPrayer();
-                      final prayerShortName = next['name']!.replaceAll(' (Tomorrow)', '');
-                      final badgeText = next['name'] != 'All Done'
-                          ? 'Next: $prayerShortName (${next['time']})'
-                          : '$fardDone/5 Completed';
-                      return FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          badgeText,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFE8B84B),
-                          ),
-                        ),
-                      );
-                    },
+                ),
+                child: Text(
+                  '$fardDone/5 Completed',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFE8B84B),
                   ),
                 ),
               ),
