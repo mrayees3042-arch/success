@@ -5895,122 +5895,115 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'MONITOR',
+                        _formatSelectedDate(_selectedDate).toUpperCase(),
                         style: GoogleFonts.dmSans(
                           fontSize: 10,
-                          letterSpacing: 3.0,
+                          letterSpacing: 2.0,
                           fontWeight: FontWeight.w700,
                           color: appColors.gold,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
-                        'Habits',
+                        'Habits & Momentum',
                         style: GoogleFonts.syne(
-                          fontSize: 26,
+                          fontSize: 24,
                           fontWeight: FontWeight.w800,
                           color: appColors.text1,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
-                        '${_formatSelectedDate(_selectedDate)} · Daily Report',
+                        'Your authentic daily progression',
                         style: GoogleFonts.dmSans(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: appColors.text3,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Print Button
-                IconButton(
+                // Monthly Report Button
+                TextButton.icon(
                   onPressed: widget.onPrintPdf,
-                  icon: const Icon(Icons.print, size: 20),
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(40, 40),
-                    backgroundColor: appColors.card,
-                    side: BorderSide(color: appColors.cardBorder, width: 0.5),
+                  icon: const Icon(Icons.picture_as_pdf, size: 16, color: Color(0xFF2DD4A8)),
+                  label: Text(
+                    'Report',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF2DD4A8),
+                    ),
                   ),
-                  tooltip: 'Print PDF',
-                ),
-
-                const SizedBox(width: 8),
-                // Theme Toggle
-                GestureDetector(
-                  onTap: () {
-                    final themeNotifier = Provider.of<ThemeNotifier>(
-                      context,
-                      listen: false,
-                    );
-                    themeNotifier.toggle();
-                  },
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: appColors.card,
-                      border: Border.all(
-                        color: appColors.cardBorder,
-                        width: 0.5,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Provider.of<ThemeNotifier>(context).isDark
-                          ? Icons.wb_sunny
-                          : Icons.nights_stay,
-                      size: 18,
-                      color: appColors.text1,
-                    ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: const Color(0xFF2DD4A8).withValues(alpha: 0.1),
+                    side: BorderSide(color: const Color(0xFF2DD4A8).withValues(alpha: 0.3), width: 0.8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // 3. SCORE HERO CARD
+            // 2. SCORE HERO CARD (Psychology Framed: No 0% shame)
             _GlassCard(
               theme: appColors.theme,
-              glowColor: appColors.gold,
+              glowColor: record.percent > 0 ? appColors.gold : appColors.emerald,
               radius: 20,
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
               child: Column(
                 children: [
                   Text(
-                    "TODAY'S SCORE",
+                    "TODAY'S MOMENTUM",
                     style: GoogleFonts.dmSans(
-                      fontSize: 11,
+                      fontSize: 10,
                       letterSpacing: 2,
                       fontWeight: FontWeight.w700,
                       color: appColors.text3,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    '${record.percent}%',
-                    style: GoogleFonts.syne(
-                      fontSize: 48,
-                      fontWeight: FontWeight.w800,
-                      color: record.percent >= 50
-                          ? appColors.emerald
-                          : (record.percent > 0
-                                ? appColors.gold
-                                : appColors.text3),
+                  if (record.percent == 0) ...[
+                    Text(
+                      "Let's Start Today",
+                      style: GoogleFonts.syne(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: appColors.text1,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${record.doneTotal} of ${record.total} completed',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      color: appColors.text2,
+                    const SizedBox(height: 4),
+                    Text(
+                      'Check off your first habit or prayer to ignite your score',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: appColors.text3,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
+                  ] else ...[
+                    Text(
+                      '${record.percent}%',
+                      style: GoogleFonts.syne(
+                        fontSize: 46,
+                        fontWeight: FontWeight.w800,
+                        color: record.percent >= 50
+                            ? appColors.emerald
+                            : appColors.gold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${record.doneTotal} of 9 core goals completed',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: appColors.text2,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
-                  // Custom Progress Bar
+                  // Progress Bar
                   Stack(
                     children: [
                       Container(
@@ -6042,32 +6035,40 @@ class _HabitsScreenState extends State<HabitsScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 4. DAY STRIP
+            // 3. DAY STRIP
             _buildDayStrip(appColors),
             const SizedBox(height: 20),
 
-            // 5. PRAYERS MODULE
+            // 4. PRAYERS MODULE
             _buildSection(
               title: 'Prayers',
               rightText:
-                  "Prayers ${record.prayers.entries.where((e) => e.key != 'Tahajjud' && e.value == true).length}/5",
+                  "Prayers ${record.prayers.entries.where((e) => e.key != 'Tahajjud' && e.value == true).length}/5 (Fard)",
               rightColor: appColors.emerald,
               appColors: appColors,
-              child: Row(
-                children: [
-                  for (final prayer in [
-                    'Fajr',
-                    'Dhuhr',
-                    'Asr',
-                    'Maghrib',
-                    'Isha',
-                  ])
-                    _buildPrayerCard(prayer, record, appColors),
-                ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final prayer in [
+                      'Fajr',
+                      'Dhuhr',
+                      'Asr',
+                      'Maghrib',
+                      'Isha',
+                      'Tahajjud',
+                    ])
+                      Container(
+                        width: 72,
+                        margin: const EdgeInsets.only(right: 6),
+                        child: _buildPrayerCard(prayer, record, appColors),
+                      ),
+                  ],
+                ),
               ),
             ),
 
-            // 6. TASKS MODULE
+            // 5. TASKS MODULE
             _buildSection(
               title: 'Tasks',
               rightText: 'Tasks ${record.taskDone}/${kTodayTasks.length}',
@@ -6097,18 +6098,14 @@ class _HabitsScreenState extends State<HabitsScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: done
-                                ? const Color(
-                                    0xFFFF007F,
-                                  ).withValues(alpha: 0.08)
+                                ? const Color(0xFF2DD4A8).withValues(alpha: 0.1)
                                 : appColors.theme.isDark
                                 ? const Color(0x06FFFFFF)
                                 : appColors.theme.bg,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: done
-                                  ? const Color(
-                                      0xFFFF007F,
-                                    ).withValues(alpha: 0.4)
+                                  ? const Color(0xFF2DD4A8).withValues(alpha: 0.5)
                                   : appColors.cardBorder,
                               width: 0.5,
                             ),
@@ -6121,7 +6118,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                                 height: 6,
                                 decoration: BoxDecoration(
                                   color: done
-                                      ? const Color(0xFFFF007F)
+                                      ? const Color(0xFF2DD4A8)
                                       : appColors.text3,
                                   shape: BoxShape.circle,
                                 ),
@@ -6135,7 +6132,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                                       ? FontWeight.w600
                                       : FontWeight.normal,
                                   color: done
-                                      ? const Color(0xFFFF007F)
+                                      ? const Color(0xFF2DD4A8)
                                       : appColors.text2,
                                 ),
                               ),
@@ -6146,58 +6143,59 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     ),
             ),
 
-            // 7. WORKOUT MODULE
+            // 6. WORKOUT MODULE (No 0% shame when no workout)
             _buildSection(
               title: 'Workout',
-              rightText: workoutStatus == 'Not started'
-                  ? 'Ready to start'
+              rightText: workoutTotalSets == 0
+                  ? 'Off / Rest Day'
                   : workoutStatus,
-              rightColor: workoutStatus == 'Completed'
-                  ? appColors.emerald
-                  : appColors.gold,
+              rightColor: workoutTotalSets == 0
+                  ? appColors.text3
+                  : (workoutStatus == 'Completed'
+                      ? appColors.emerald
+                      : appColors.gold),
               appColors: appColors,
               child: Row(
                 children: [
-                  // Progress Ring
-                  SizedBox(
+                  Container(
                     width: 44,
                     height: 44,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          value: workoutTotalSets == 0
-                              ? 0.0
-                              : (workoutSetsCompleted / workoutTotalSets).clamp(
-                                  0.0,
-                                  1.0,
-                                ),
-                          strokeWidth: 4,
-                          backgroundColor: appColors.track,
-                          valueColor: AlwaysStoppedAnimation<Color>(theme.teal),
-                        ),
-                        Text(
-                          workoutTotalSets == 0
-                              ? '0%'
-                              : '${(workoutSetsCompleted / workoutTotalSets * 100).round()}%',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: appColors.text1,
-                          ),
-                        ),
-                      ],
+                    decoration: BoxDecoration(
+                      color: appColors.card,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: appColors.cardBorder, width: 0.5),
                     ),
+                    alignment: Alignment.center,
+                    child: workoutTotalSets == 0
+                        ? Icon(Icons.fitness_center, size: 20, color: appColors.text3)
+                        : Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                value: (workoutSetsCompleted / workoutTotalSets).clamp(0.0, 1.0),
+                                strokeWidth: 4,
+                                backgroundColor: appColors.track,
+                                valueColor: AlwaysStoppedAnimation<Color>(appColors.emerald),
+                              ),
+                              Text(
+                                '${(workoutSetsCompleted / workoutTotalSets * 100).round()}%',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: appColors.text1,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                   const SizedBox(width: 16),
-                  // Workout details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           workoutTotalSets == 0
-                              ? 'No workout scheduled'
+                              ? 'Rest Day / Off'
                               : workoutName,
                           style: GoogleFonts.syne(
                             fontSize: 15,
@@ -6208,11 +6206,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
                         const SizedBox(height: 2),
                         Text(
                           workoutTotalSets == 0
-                              ? 'Tap to select routine'
+                              ? 'Tap to start or log workout'
                               : '$workoutSetsCompleted of $workoutTotalSets sets completed',
                           style: GoogleFonts.dmSans(
                             fontSize: 12,
-                            color: appColors.text2,
+                            color: appColors.text3,
                           ),
                         ),
                       ],
@@ -6222,62 +6220,90 @@ class _HabitsScreenState extends State<HabitsScreen> {
               ),
             ),
 
-            // 8. INCOME MODULE
+            // 7. INCOME MODULE (Compact if zero)
             _buildSection(
               title: 'Income',
-              rightText: 'Net: ${netIncome >= 0 ? '+' : ''}₹$netIncome',
-              rightColor: netIncome > 0
-                  ? appColors.emerald
-                  : (netIncome < 0 ? appColors.red : appColors.text3),
+              rightText: (earned == 0 && spent == 0)
+                  ? 'Tap to log'
+                  : 'Net: ${netIncome >= 0 ? '+' : ''}₹$netIncome',
+              rightColor: (earned == 0 && spent == 0)
+                  ? appColors.text3
+                  : (netIncome > 0
+                      ? appColors.emerald
+                      : (netIncome < 0 ? appColors.red : appColors.text3)),
               appColors: appColors,
-              child: Row(
-                children: [
-                  _buildMiniCard(
-                    label: 'Earned',
-                    value: '₹$earned',
-                    valueColor: earned > 0
-                        ? appColors.emerald
-                        : appColors.text3,
-                    appColors: appColors,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMiniCard(
-                    label: 'Spent',
-                    value: '₹$spent',
-                    valueColor: spent > 0 ? appColors.red : appColors.text3,
-                    appColors: appColors,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildMiniCard(
-                    label: 'Net',
-                    value: '${netIncome >= 0 ? '+' : ''}₹$netIncome',
-                    valueColor: netIncome != 0
-                        ? appColors.gold
-                        : appColors.text3,
-                    appColors: appColors,
-                  ),
-                ],
-              ),
+              child: (earned == 0 && spent == 0)
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: appColors.card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: appColors.cardBorder, width: 0.5),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.account_balance_wallet_outlined, size: 16, color: appColors.text3),
+                              const SizedBox(width: 8),
+                              Text(
+                                'No transactions logged today',
+                                style: GoogleFonts.dmSans(fontSize: 12, color: appColors.text3),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '+₹0',
+                            style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w700, color: appColors.text3),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        _buildMiniCard(
+                          label: 'Earned',
+                          value: '₹$earned',
+                          valueColor: earned > 0 ? appColors.emerald : appColors.text3,
+                          appColors: appColors,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildMiniCard(
+                          label: 'Spent',
+                          value: '₹$spent',
+                          valueColor: spent > 0 ? appColors.red : appColors.text3,
+                          appColors: appColors,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildMiniCard(
+                          label: 'Net',
+                          value: '${netIncome >= 0 ? '+' : ''}₹$netIncome',
+                          valueColor: netIncome != 0 ? appColors.gold : appColors.text3,
+                          appColors: appColors,
+                        ),
+                      ],
+                    ),
             ),
 
-            // 9. WATER MODULE
+            // 8. WATER MODULE (Single clear metric: glasses)
             _buildSection(
               title: 'Water',
-              rightText: '${waterVolume.toStringAsFixed(1)} / 2.5 L',
-              rightColor: theme.blue,
+              rightText: '${waterVolume.toStringAsFixed(1)} L · 250ml/glass',
+              rightColor: appColors.emerald,
               appColors: appColors,
               child: Row(
                 children: [
                   _buildMiniCard(
-                    label: 'Glasses',
-                    value: '$_selectedWaterGlasses/10',
-                    valueColor: theme.blue,
+                    label: 'Target',
+                    value: '$_selectedWaterGlasses / 10 glasses',
+                    valueColor: const Color(0xFF2DD4A8),
                     appColors: appColors,
                   ),
                   const SizedBox(width: 8),
                   _buildMiniCard(
-                    label: 'Progress',
-                    value: '${(_selectedWaterGlasses / 10 * 100).round()}%',
+                    label: 'Intake',
+                    value: '${waterVolume.toStringAsFixed(1)} / 2.5 L',
                     valueColor: appColors.text1,
                     appColors: appColors,
                   ),
@@ -6285,25 +6311,26 @@ class _HabitsScreenState extends State<HabitsScreen> {
               ),
             ),
 
+            // 9. FASTING MODULE
             _buildSection(
               title: 'Fasting',
               rightText: fastingHeaderStatus == 'Not logged'
-                  ? 'Tap to log'
+                  ? 'Opt-in only'
                   : fastingHeaderStatus,
               rightColor: fastingHeaderStatus == 'Logged'
                   ? appColors.emerald
-                  : appColors.gold,
+                  : appColors.text3,
               appColors: appColors,
               child: Row(
                 children: [
                   _buildMiniCard(
                     label: 'Status',
-                    value: fastingCardStatus == '-'
+                    value: fastingCardStatus == '—' || fastingCardStatus == '-'
                         ? 'Not Fasting Today'
                         : fastingCardStatus,
                     valueColor: fastingCardStatus == 'Completed'
                         ? appColors.emerald
-                        : appColors.gold,
+                        : (fastingCardStatus == 'Fasting' ? appColors.gold : appColors.text3),
                     appColors: appColors,
                   ),
                 ],
