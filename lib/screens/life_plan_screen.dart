@@ -254,19 +254,19 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 children: [
                   Text(
                     'Add New Goal',
-                    style: TextStyle(
+                    style: GoogleFonts.syne(
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                       color: widget.theme.text1,
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: titleCtrl,
-                    style: TextStyle(color: widget.theme.text1),
+                    style: GoogleFonts.dmSans(color: widget.theme.text1, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
                       labelText: 'Goal Title',
-                      labelStyle: TextStyle(color: widget.theme.text3),
+                      labelStyle: GoogleFonts.dmSans(color: widget.theme.text3),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: widget.theme.border),
@@ -280,10 +280,10 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: dateCtrl,
-                    style: TextStyle(color: widget.theme.text1),
+                    style: GoogleFonts.dmSans(color: widget.theme.text1, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
                       labelText: 'Target Date (e.g. Dec 2025)',
-                      labelStyle: TextStyle(color: widget.theme.text3),
+                      labelStyle: GoogleFonts.dmSans(color: widget.theme.text3),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: widget.theme.border),
@@ -370,11 +370,11 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                           }
                         });
                       },
-                      child: const Text(
+                      child: Text(
                         'Add Goal',
-                        style: TextStyle(
+                        style: GoogleFonts.syne(
                           color: Colors.black,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                           fontSize: 16,
                         ),
                       ),

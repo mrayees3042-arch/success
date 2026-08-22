@@ -1373,11 +1373,11 @@ class _BottomNavBarState extends State<_BottomNavBar>
                         Text(
                           _labels[i],
                           maxLines: 1,
-                          style: TextStyle(
+                          style: GoogleFonts.dmSans(
                             fontSize: 10,
                             fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             letterSpacing: 0.3,
                             color: isSelected ? bubbleColor : inactiveColor,
                           ),
@@ -1439,7 +1439,7 @@ class ScoreRing extends StatelessWidget {
                     children: [
                       Text(
                         '$score',
-                        style: TextStyle(
+                        style: GoogleFonts.syne(
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
                           color: theme.gold,
@@ -1449,10 +1449,11 @@ class ScoreRing extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'DAILY SCORE',
-                        style: TextStyle(
+                        style: GoogleFonts.dmSans(
                           fontSize: 10,
                           color: theme.text4,
                           fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
                         ),
                       ),
                     ],
@@ -1518,7 +1519,7 @@ class _TaskEditSheetState extends State<_TaskEditSheet> {
         children: [
           Text(
             isEditing ? 'Edit daily task' : 'Add daily task',
-            style: TextStyle(
+            style: GoogleFonts.syne(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: widget.theme.text1,
@@ -1528,9 +1529,10 @@ class _TaskEditSheetState extends State<_TaskEditSheet> {
           TextField(
             controller: _titleCtrl,
             autofocus: true,
-            style: TextStyle(color: widget.theme.text1),
+            style: GoogleFonts.dmSans(color: widget.theme.text1, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               labelText: 'Task name',
+              labelStyle: GoogleFonts.dmSans(color: widget.theme.text3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -1539,9 +1541,10 @@ class _TaskEditSheetState extends State<_TaskEditSheet> {
           const SizedBox(height: 12),
           TextField(
             controller: _tagCtrl,
-            style: TextStyle(color: widget.theme.text1),
+            style: GoogleFonts.dmSans(color: widget.theme.text1, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               labelText: 'Time / condition subtitle',
+              labelStyle: GoogleFonts.dmSans(color: widget.theme.text3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -2632,9 +2635,10 @@ class _TodayScreenState extends State<TodayScreen>
       ),
       child: Text(
         digit,
-        style: GoogleFonts.shareTechMono(
+        style: GoogleFonts.syne(
           fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w800,
+          fontFeatures: const [FontFeature.tabularFigures()],
           color: const Color(0xFFE8B84B),
         ),
       ),
@@ -2775,19 +2779,19 @@ class _TodayScreenState extends State<TodayScreen>
               _buildDigitalMeterGroup('years', ageData['years']!),
               Text(
                 ':',
-                style: GoogleFonts.shareTechMono(
+                style: GoogleFonts.syne(
                   fontSize: 20,
                   color: widget.theme.text3,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               _buildDigitalMeterGroup('months', ageData['months']!),
               Text(
                 ':',
-                style: GoogleFonts.shareTechMono(
+                style: GoogleFonts.syne(
                   fontSize: 20,
                   color: widget.theme.text3,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               _buildDigitalMeterGroup('days', ageData['days']!),
@@ -4079,8 +4083,7 @@ class _TodayScreenState extends State<TodayScreen>
                 quote.arabic,
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: 'NotoNaskhArabic',
+                style: GoogleFonts.amiri(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: widget.theme.isDark
@@ -4099,7 +4102,7 @@ class _TodayScreenState extends State<TodayScreen>
               Text(
                 quote.translation,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: GoogleFonts.dmSans(
                   fontSize: 12,
                   color: widget.theme.text2,
                   fontStyle: FontStyle.italic,
@@ -4168,8 +4171,7 @@ class _TodayScreenState extends State<TodayScreen>
                 quote.arabic,
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: 'NotoNaskhArabic',
+                style: GoogleFonts.amiri(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: widget.theme.isDark
@@ -4188,7 +4190,7 @@ class _TodayScreenState extends State<TodayScreen>
               Text(
                 quote.translation,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: GoogleFonts.dmSans(
                   fontSize: 12,
                   color: widget.theme.text2,
                   fontStyle: FontStyle.italic,
@@ -6697,24 +6699,25 @@ class DayHistoryCard extends StatelessWidget {
             children: [
               Text(
                 'Update Income & Expenses',
-                style: TextStyle(
+                style: GoogleFonts.syne(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   color: theme.text1,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 shortDate(date),
-                style: TextStyle(fontSize: 14, color: theme.text3),
+                style: GoogleFonts.dmSans(fontSize: 14, color: theme.text3),
               ),
               const SizedBox(height: 20),
               TextField(
                 controller: incomeCtrl,
                 keyboardType: TextInputType.number,
-                style: TextStyle(color: theme.text1),
+                style: GoogleFonts.dmSans(color: theme.text1, fontWeight: FontWeight.w500),
                 decoration: InputDecoration(
                   labelText: 'Income Earned Today',
+                  labelStyle: GoogleFonts.dmSans(color: theme.text3),
                   prefixIcon: const Icon(Icons.trending_up, color: kTeal),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -6725,9 +6728,10 @@ class DayHistoryCard extends StatelessWidget {
               TextField(
                 controller: expenseCtrl,
                 keyboardType: TextInputType.number,
-                style: TextStyle(color: theme.text1),
+                style: GoogleFonts.dmSans(color: theme.text1, fontWeight: FontWeight.w500),
                 decoration: InputDecoration(
                   labelText: 'Amount Spent Today',
+                  labelStyle: GoogleFonts.dmSans(color: theme.text3),
                   prefixIcon: const Icon(Icons.trending_down, color: kRed),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -6759,11 +6763,11 @@ class DayHistoryCard extends StatelessWidget {
                       onSetExpense(date, expense + e);
                     });
                   },
-                  child: const Text(
+                  child: Text(
                     'Save',
-                    style: TextStyle(
+                    style: GoogleFonts.syne(
                       color: Colors.black,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
                   ),
@@ -6793,16 +6797,16 @@ class DayHistoryCard extends StatelessWidget {
             children: [
               Text(
                 'Workout summary',
-                style: TextStyle(
+                style: GoogleFonts.syne(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   color: theme.text1,
                 ),
               ),
               const SizedBox(height: 10),
               Text(
                 summary.workoutName,
-                style: TextStyle(
+                style: GoogleFonts.dmSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: theme.text2,
@@ -6811,7 +6815,7 @@ class DayHistoryCard extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 '${summary.exercisesCompleted}/${summary.totalExercises} exercises - ${summary.setsCompleted}/${summary.totalSets} sets',
-                style: TextStyle(color: theme.text3, height: 1.5),
+                style: GoogleFonts.dmSans(color: theme.text3, height: 1.5),
               ),
               const SizedBox(height: 16),
               ...summary.setsPerExercise.entries.map((entry) {
@@ -6823,12 +6827,12 @@ class DayHistoryCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           entry.key,
-                          style: TextStyle(color: theme.text1),
+                          style: GoogleFonts.dmSans(color: theme.text1, fontWeight: FontWeight.w500),
                         ),
                       ),
                       Text(
                         '${entry.value} sets',
-                        style: TextStyle(color: theme.text3),
+                        style: GoogleFonts.dmSans(color: theme.text3),
                       ),
                     ],
                   ),
@@ -6845,7 +6849,7 @@ class DayHistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10), // Use cCard
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.card,
@@ -6864,8 +6868,8 @@ class DayHistoryCard extends StatelessWidget {
             children: [
               Text(
                 shortDate(date),
-                style: TextStyle(
-                  fontSize: 15, // Use Syne
+                style: GoogleFonts.syne(
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: theme.text1,
                 ),
@@ -6875,8 +6879,8 @@ class DayHistoryCard extends StatelessWidget {
                 children: [
                   Text(
                     '${record.doneTotal}/${record.total}',
-                    style: TextStyle(
-                      fontSize: 13, // Use Syne
+                    style: GoogleFonts.syne(
+                      fontSize: 13,
                       fontWeight: FontWeight.w800,
                       color: theme.gold,
                     ),
@@ -6896,18 +6900,18 @@ class DayHistoryCard extends StatelessWidget {
                             backgroundColor: theme.bg,
                             title: Text(
                               'Reset Day Data?',
-                              style: TextStyle(color: theme.text1),
+                              style: GoogleFonts.syne(color: theme.text1, fontWeight: FontWeight.w700),
                             ),
                             content: Text(
                               'This will permanently clear all tasks, prayers, fasting log, and financial data for ${shortDate(date)}.',
-                              style: TextStyle(color: theme.text2),
+                              style: GoogleFonts.dmSans(color: theme.text2),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(dialogContext),
                                 child: Text(
                                   'Cancel',
-                                  style: TextStyle(color: theme.text3),
+                                  style: GoogleFonts.dmSans(color: theme.text3),
                                 ),
                               ),
                               TextButton(
@@ -6915,9 +6919,9 @@ class DayHistoryCard extends StatelessWidget {
                                   Navigator.pop(dialogContext);
                                   onResetDay(date);
                                 },
-                                child: const Text(
+                                child: Text(
                                   'Reset',
-                                  style: TextStyle(color: Colors.red),
+                                  style: GoogleFonts.dmSans(color: Colors.red, fontWeight: FontWeight.w700),
                                 ),
                               ),
                             ],
@@ -6991,9 +6995,9 @@ class DayHistoryCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           'Workout',
-                          style: TextStyle(
+                          style: GoogleFonts.syne(
                             fontSize: 13,
-                            fontWeight: FontWeight.w700, // Use Syne
+                            fontWeight: FontWeight.w700,
                             color: theme.text1,
                           ),
                         ),
@@ -7009,7 +7013,7 @@ class DayHistoryCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.card, // Use cCard
+                color: theme.card,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: theme.border, width: 0.5),
               ),
@@ -7024,20 +7028,20 @@ class DayHistoryCard extends StatelessWidget {
                         color: Color(0xFFD4AF37),
                       ),
                       const SizedBox(width: 4),
-                      const Text(
+                      Text(
                         'INCOME',
-                        style: TextStyle(
+                        style: GoogleFonts.dmSans(
                           fontSize: 12,
                           color: kMuted,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           letterSpacing: 1.2,
                         ),
                       ),
                       const Spacer(),
                       Text(
                         'Tap to edit',
-                        style: TextStyle(
-                          fontSize: 12, // Use DM Sans
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
                           color: theme.text4,
                           fontWeight: FontWeight.w600,
                         ),
@@ -7049,7 +7053,7 @@ class DayHistoryCard extends StatelessWidget {
                     children: [
                       _IncomeMiniCard(
                         label: 'EARNED',
-                        amount: income, // Use cEmerald
+                        amount: income,
                         color: cEmerald,
                         isNet: false,
                         theme: theme,
@@ -7057,7 +7061,7 @@ class DayHistoryCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       _IncomeMiniCard(
                         label: 'SPENT',
-                        amount: expense, // Use cRose
+                        amount: expense,
                         color: cRose,
                         isNet: false,
                         theme: theme,
@@ -7065,7 +7069,7 @@ class DayHistoryCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       _IncomeMiniCard(
                         label: 'NET',
-                        amount: income - expense, // Use cEmerald and cRose
+                        amount: income - expense,
                         color: (income - expense) >= 0 ? cEmerald : cRose,
                         isNet: true,
                         theme: theme,
@@ -7106,16 +7110,16 @@ class _IncomeMiniCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         decoration: BoxDecoration(
           color: theme.navBg,
-          borderRadius: BorderRadius.circular(8), // Use cBg
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: theme.border, width: 0.5),
         ),
         child: Column(
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12, // Use Syne
-                fontWeight: FontWeight.w800,
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
                 color: theme.text4,
                 letterSpacing: 0.5,
               ),
@@ -7123,10 +7127,9 @@ class _IncomeMiniCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '$prefix\u20B9${absAmount.toStringAsFixed(0)}',
-              style: TextStyle(
-                fontFamily: 'Roboto',
+              style: GoogleFonts.syne(
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: color,
               ),
               maxLines: 1,
@@ -7161,7 +7164,7 @@ class StatusChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: done ? color.withValues(alpha: 0.15) : const Color(0x08FFFFFF),
-        borderRadius: BorderRadius.circular(9), // Use cCard
+        borderRadius: BorderRadius.circular(9),
         border: Border.all(
           color: done ? color.withValues(alpha: 0.42) : const Color(0x12FFFFFF),
         ),
@@ -7184,8 +7187,8 @@ class StatusChip extends StatelessWidget {
                 Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13, // Use Syne
+                  style: GoogleFonts.syne(
+                    fontSize: 13,
                     color: done ? theme.text1 : theme.text3,
                     fontWeight: FontWeight.w700,
                   ),
@@ -7198,7 +7201,7 @@ class StatusChip extends StatelessWidget {
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       color: cSub2,
-                    ), // Use DM Sans and cSub2
+                    ),
                   ),
                 ],
               ],
@@ -7238,7 +7241,6 @@ class MonitorRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: done ? color.withValues(alpha: 0.07) : theme.card,
         border: Border.all(
-          // Use cCardBorder
           color: done ? color.withValues(alpha: 0.38) : const Color(0x17FFFFFF),
           width: 0.5,
         ),
@@ -7263,16 +7265,16 @@ class MonitorRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 15, // Use Syne
+                  style: GoogleFonts.syne(
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: theme.text1,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12, // Use DM Sans
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
                     color: theme.text3,
                     fontWeight: FontWeight.w600,
                   ),
@@ -13016,10 +13018,10 @@ class _IncomeScreenState extends State<IncomeScreen>
       statusText = '${_money(dailyAvg.round())}/day · On track';
     } else if (dailyAvg > 0) {
       statusColor = colors.gold;
-      statusText = '${_money(dailyAvg.round())}/day · Target: ₹${_money(targetVal)}';
+      statusText = '${_money(dailyAvg.round())}/day · Target: ${_money(targetVal)}';
     } else {
       statusColor = colors.text3;
-      statusText = 'Target: ₹${_money(targetVal)}/day';
+      statusText = 'Target: ${_money(targetVal)}/day';
     }
 
     return Container(
@@ -13053,6 +13055,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.speed, size: 14, color: colors.emerald),
                   const SizedBox(width: 6),
@@ -13067,28 +13070,35 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ),
                 ],
               ),
-              GestureDetector(
-                onTap: _editDailyTargetDialog,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: colors.emerald2,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: colors.emerald.withValues(alpha: 0.3), width: 0.5),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        statusText,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: statusColor,
+              const SizedBox(width: 8),
+              Flexible(
+                child: GestureDetector(
+                  onTap: _editDailyTargetDialog,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: colors.emerald2,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: colors.emerald.withValues(alpha: 0.3), width: 0.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            statusText,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: statusColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(Icons.edit_outlined, size: 11, color: statusColor),
-                    ],
+                        const SizedBox(width: 4),
+                        Icon(Icons.edit_outlined, size: 11, color: statusColor),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -13139,22 +13149,33 @@ class _IncomeScreenState extends State<IncomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Today: ₹$todayEarned',
-                style: GoogleFonts.dmSans(fontSize: 11, color: colors.text3),
-              ),
-              Text(
-                'Avg: ₹${dailyAvg.round()}/day',
-                style: GoogleFonts.dmSans(fontSize: 11, color: colors.text2, fontWeight: FontWeight.w600),
-              ),
-              GestureDetector(
-                onTap: _editDailyTargetDialog,
+              Flexible(
                 child: Text(
-                  'Goal: ₹$targetVal/day',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: colors.emerald,
+                  'Today: ${_money(todayEarned)}',
+                  style: GoogleFonts.dmSans(fontSize: 11, color: colors.text3),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Avg: ${_money(dailyAvg.round())}/day',
+                  style: GoogleFonts.dmSans(fontSize: 11, color: colors.text2, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: GestureDetector(
+                  onTap: _editDailyTargetDialog,
+                  child: Text(
+                    'Goal: ${_money(targetVal)}/day',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: colors.emerald,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
@@ -13228,6 +13249,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.account_balance_wallet,
@@ -13281,39 +13303,42 @@ class _IncomeScreenState extends State<IncomeScreen>
                 ),
               ),
               const SizedBox(width: 4),
-              TweenAnimationBuilder<double>(
-                key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
-                tween: Tween<double>(
-                  begin: 0.0,
-                  end: netBalance.toDouble(),
+              Expanded(
+                child: TweenAnimationBuilder<double>(
+                  key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
+                  tween: Tween<double>(
+                    begin: 0.0,
+                    end: netBalance.toDouble(),
+                  ),
+                  duration: const Duration(milliseconds: 1200),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, value, _) {
+                    final display = value
+                        .round()
+                        .abs()
+                        .toString()
+                        .replaceAllMapped(
+                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                          (m) => '${m[1]},',
+                        );
+                    final isNegative = netBalance < 0;
+                    return Text(
+                      '${isNegative ? "-" : ""}${netBalance == 0 ? "0" : display}',
+                      style: GoogleFonts.syne(
+                        fontSize: 38,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        fontFeatures: const [
+                          FontFeature.tabularFigures(),
+                        ],
+                        color: isNegative
+                            ? colors.red
+                            : (netBalance == 0 ? colors.text3 : colors.text1),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    );
+                  },
                 ),
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeOutCubic,
-                builder: (_, value, _) {
-                  final display = value
-                      .round()
-                      .abs()
-                      .toString()
-                      .replaceAllMapped(
-                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                        (m) => '${m[1]},',
-                      );
-                  final isNegative = netBalance < 0;
-                  return Text(
-                    '${isNegative ? "-" : ""}${netBalance == 0 ? "0" : display}',
-                    style: GoogleFonts.syne(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      fontFeatures: const [
-                        FontFeature.tabularFigures(),
-                      ],
-                      color: isNegative
-                          ? colors.red
-                          : (netBalance == 0 ? colors.text3 : colors.text1),
-                    ),
-                  );
-                },
               ),
             ],
           ),
@@ -13352,6 +13377,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                               ? colors.emerald
                               : colors.text3,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (totalEarned > 0) ...[
                         const SizedBox(height: 2),
@@ -13361,6 +13387,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                             fontSize: 11,
                             color: colors.text2,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ],
@@ -13397,6 +13424,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           fontWeight: FontWeight.w700,
                           color: totalSpent > 0 ? colors.text1 : colors.text3,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (totalSpent > 0) ...[
                         const SizedBox(height: 2),
@@ -13406,6 +13434,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                             fontSize: 11,
                             color: colors.text2,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ],
@@ -13420,12 +13449,13 @@ class _IncomeScreenState extends State<IncomeScreen>
             child: Text(
               daysLogged >= 7
                   ? 'Projected monthly income: ${_money(projected)}'
-                  : '₹$totalEarned earned so far · Log ${7 - daysLogged} more days for projection',
+                  : '${_money(totalEarned)} earned so far · Log ${7 - daysLogged} more days for projection',
               style: GoogleFonts.dmSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: daysLogged >= 7 ? colors.emerald : colors.text3,
               ),
+              textAlign: TextAlign.center,
             ),
           ),
         ],
@@ -14497,7 +14527,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                   ),
                                 ),
                                 Text(
-                                  '$prefix₹${_money(e.amount)}',
+                                  '$prefix${_money(e.amount)}',
                                   style: GoogleFonts.syne(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,

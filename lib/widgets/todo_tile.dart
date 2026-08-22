@@ -110,7 +110,7 @@ class TodoTile extends StatelessWidget {
                   children: [
                     Text(
                       task.title,
-                      style: TextStyle(
+                      style: GoogleFonts.dmSans(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: task.isCompleted ? theme.text4 : theme.text1,
@@ -122,7 +122,7 @@ class TodoTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _formatDate(task.createdAt),
-                      style: TextStyle(
+                      style: GoogleFonts.dmSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: theme.text3.withValues(alpha: 0.8),
