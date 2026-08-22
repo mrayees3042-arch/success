@@ -10132,58 +10132,77 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             ),
                             const SizedBox(height: 24),
 
-                            // 3. RPE SELECTOR (HOW HARD WAS THAT?)
+                            // 3. RPE SELECTOR (HOW HARD WAS THAT?) - ALL 10 BUTTONS FULLY VISIBLE
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Padding(
-                                  padding: const EdgeInsets.only(left: 4, bottom: 10),
-                                  child: Text(
-                                    'HOW HARD WAS THAT? (RPE)',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.5,
-                                      color: textMuted,
-                                    ),
+                                  padding: const EdgeInsets.only(left: 4, bottom: 8),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'HOW HARD WAS THAT? (RPE)',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 1.2,
+                                          color: textMuted,
+                                        ),
+                                      ),
+                                      if (_selectedRpe != null)
+                                        Text(
+                                          _selectedRpe! <= 4
+                                              ? 'Light / Warm-up'
+                                              : _selectedRpe! <= 6
+                                                  ? 'Moderate (3-4 RIR)'
+                                                  : _selectedRpe! <= 8
+                                                      ? 'Hard (1-2 RIR)'
+                                                      : 'Maximum Effort / 10',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: solarGold,
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const BouncingScrollPhysics(),
-                                  child: Row(
-                                    children: List.generate(10, (idx) {
-                                      final rpe = idx + 1;
-                                      final isSelected = _selectedRpe == rpe;
-                                      return GestureDetector(
+                                Row(
+                                  children: List.generate(10, (idx) {
+                                    final rpe = idx + 1;
+                                    final isSelected = _selectedRpe == rpe;
+                                    return Expanded(
+                                      child: GestureDetector(
                                         onTap: () {
                                           HapticService.selection();
                                           setState(() => _selectedRpe = rpe);
+                                          _savePreferences();
                                         },
                                         child: Container(
-                                          width: 44,
-                                          height: 44,
-                                          margin: EdgeInsets.only(right: idx < 9 ? 6 : 0),
+                                          height: 38,
+                                          margin: EdgeInsets.symmetric(horizontal: idx == 0 || idx == 9 ? 1 : 2),
                                           decoration: BoxDecoration(
                                             color: isSelected
-                                                ? solarGold.withOpacity(theme.isDark ? 0.2 : 0.15)
+                                                ? solarGold.withOpacity(theme.isDark ? 0.3 : 0.2)
                                                 : (theme.isDark
-                                                    ? Colors.white.withOpacity(0.04)
-                                                    : Colors.white.withOpacity(0.75)),
-                                            borderRadius: BorderRadius.circular(12),
+                                                    ? Colors.white.withOpacity(0.05)
+                                                    : Colors.white.withOpacity(0.85)),
+                                            borderRadius: BorderRadius.circular(10),
                                             border: Border.all(
                                               color: isSelected
                                                   ? solarGold
                                                   : (theme.isDark
-                                                      ? Colors.white.withOpacity(0.06)
-                                                      : Colors.black.withOpacity(0.06)),
-                                              width: isSelected ? 1.5 : 1,
+                                                      ? Colors.white.withOpacity(0.08)
+                                                      : Colors.black.withOpacity(0.08)),
+                                              width: isSelected ? 1.5 : 0.8,
                                             ),
-                                            boxShadow: isSelected && theme.isDark
+                                            boxShadow: isSelected
                                                 ? [
                                                     BoxShadow(
-                                                      color: solarGold.withOpacity(0.2),
-                                                      blurRadius: 10,
+                                                      color: solarGold.withOpacity(0.3),
+                                                      blurRadius: 8,
+                                                      offset: const Offset(0, 2),
                                                     ),
                                                   ]
                                                 : null,
@@ -10192,19 +10211,19 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                           child: Text(
                                             '$rpe',
                                             style: GoogleFonts.dmSans(
-                                              fontSize: 15,
-                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                                              fontSize: 13,
+                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                                               color: isSelected ? solarGold : textSec,
                                             ),
                                           ),
                                         ),
-                                      );
-                                    }),
-                                  ),
+                                      ),
+                                    );
+                                  }),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 18),
 
                             // 4. FORM GUIDANCE
                             Container(
