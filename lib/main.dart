@@ -221,7 +221,11 @@ class DayRecord {
 
   factory DayRecord.empty() {
     return DayRecord(
-      tasks: List<bool>.filled(kTodayTasks.length, false, growable: true),
+      tasks: List<bool>.generate(
+        kTodayTasks.length,
+        (i) => i < 2, // Endowed progress: first 2 default tasks pre-completed
+        growable: true,
+      ),
       prayers: {for (final name in kPrayerNames) name: false},
       workoutSummary: null,
     );
@@ -394,7 +398,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   final Map<String, int> _incomeLog = {};
   final Map<String, int> _expenseLog = {};
   WorkoutProgressSnapshot? _workoutProgress;
-  int _waterGlasses = 0;
+  int _waterGlasses = 1;
 
   String _userName = '';
   int _userGoalYear = 2027;
@@ -727,7 +731,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       final key = 'water_${dayKey(DateTime.now())}';
       final raw = await _channel.invokeMethod<String>('getString', key);
       if (!mounted) return;
-      final value = int.tryParse(raw ?? '') ?? 0;
+      final value = (raw != null && raw.isNotEmpty) ? (int.tryParse(raw) ?? 1) : 1;
       if (mounted) {
         setState(() => _waterGlasses = value.clamp(0, 10));
       } else {
@@ -1574,7 +1578,10 @@ class _TodayScreenState extends State<TodayScreen>
   String _day = '';
   int _daysLeft = 0;
   int _countdownTick = 0;
-  String _fastStatus = 'fasting';
+  String _fastStatus = 'none';
+  String _fastType = 'Sunnah Fast';
+  String _fastStartTime = '';
+  String _fastBrokenTime = '';
 
   int get _dayOfYearIndex {
     final now = DateTime.now();
@@ -2012,7 +2019,7 @@ class _TodayScreenState extends State<TodayScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '💧 Water Intake',
+                '💧 Water Intake · $glasses / 8 glasses',
                 style: GoogleFonts.dmSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -2123,13 +2130,21 @@ class _TodayScreenState extends State<TodayScreen>
     return (elapsed / const Duration(hours: 14).inSeconds).clamp(0.0, 1.0);
   }
 
+  String _getNextSunnahDayName() {
+    final d = DateTime.now().weekday;
+    if (d < DateTime.thursday) return 'Thursday';
+    return 'Monday';
+  }
+
   Future<void> _loadFastStatus() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
+    final key = dayKey(DateTime.now());
     setState(() {
-      _fastStatus =
-          prefs.getString('fast_status_${dayKey(DateTime.now())}') ??
-          (_isSunnahDay() ? 'fasting' : 'none');
+      _fastStatus = prefs.getString('fast_status_$key') ?? 'none';
+      _fastType = prefs.getString('fast_type_$key') ?? (_isSunnahDay() ? 'Sunnah Fast' : 'Voluntary Fast');
+      _fastStartTime = prefs.getString('fast_start_time_$key') ?? 'Fajr';
+      _fastBrokenTime = prefs.getString('fast_broken_time_$key') ?? '';
     });
   }
 
@@ -2137,7 +2152,219 @@ class _TodayScreenState extends State<TodayScreen>
     HapticFeedback.selectionClick();
     setState(() => _fastStatus = status);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('fast_status_${dayKey(DateTime.now())}', status);
+    final key = dayKey(DateTime.now());
+    await prefs.setString('fast_status_$key', status);
+  }
+
+  Future<void> _startFast(String fastType) async {
+    HapticService.selection();
+    final now = DateTime.now();
+    final hour12 = now.hour == 0 ? 12 : (now.hour > 12 ? now.hour - 12 : now.hour);
+    final ampm = now.hour < 12 ? 'AM' : 'PM';
+    final timeStr = '$hour12:${now.minute.toString().padLeft(2, '0')} $ampm';
+
+    setState(() {
+      _fastStatus = 'fasting';
+      _fastType = fastType;
+      _fastStartTime = timeStr;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final key = dayKey(DateTime.now());
+    await prefs.setString('fast_status_$key', 'fasting');
+    await prefs.setString('fast_type_$key', fastType);
+    await prefs.setString('fast_start_time_$key', timeStr);
+  }
+
+  Future<void> _breakFast() async {
+    HapticService.selection();
+    final now = DateTime.now();
+    final hour12 = now.hour == 0 ? 12 : (now.hour > 12 ? now.hour - 12 : now.hour);
+    final ampm = now.hour < 12 ? 'AM' : 'PM';
+    final timeStr = '$hour12:${now.minute.toString().padLeft(2, '0')} $ampm';
+
+    setState(() {
+      _fastStatus = 'broke';
+      _fastBrokenTime = timeStr;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final key = dayKey(DateTime.now());
+    await prefs.setString('fast_status_$key', 'broke');
+    await prefs.setString('fast_broken_time_$key', timeStr);
+  }
+
+  void _showStartFastSheet() {
+    HapticService.tapFeedback();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final isDark = widget.theme.isDark;
+        final isSunnah = _isSunnahDay();
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(
+              color: isDark ? Colors.white12 : Colors.black12,
+              width: 0.5,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black26,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  const Text('🌙', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Start Fast',
+                    style: GoogleFonts.syne(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: widget.theme.text1,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Fasting is voluntary and deliberate worship. Choose your intention:',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: widget.theme.text3,
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (isSunnah)
+                _fastChoiceItem(
+                  title: 'Start Sunnah Fast',
+                  subtitle: '${_fastingDayName()} • Recommended Sunnah',
+                  color: const Color(0xFFD4A843),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _startFast('Sunnah Fast');
+                  },
+                ),
+              _fastChoiceItem(
+                title: 'Start Voluntary Fast',
+                subtitle: 'Nafl devotion on any day',
+                color: widget.theme.teal,
+                onTap: () {
+                  Navigator.pop(context);
+                  _startFast('Voluntary Fast');
+                },
+              ),
+              _fastChoiceItem(
+                title: 'Start Ramadan / Qada Fast',
+                subtitle: 'Obligatory or make-up fast',
+                color: const Color(0xFF38BDF8),
+                onTap: () {
+                  Navigator.pop(context);
+                  _startFast('Ramadan / Qada Fast');
+                },
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _setFastStatus('none');
+                  },
+                  child: Text(
+                    'Skip Today',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: widget.theme.text3,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _fastChoiceItem({
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDark = widget.theme.isDark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: color.withValues(alpha: 0.3),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: widget.theme.text1,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: widget.theme.text3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 13,
+              color: widget.theme.text3,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   int? _noFapLastReset;
@@ -2368,18 +2595,110 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
+  Map<String, String> _getMementoMoriQuote() {
+    final now = DateTime.now();
+    final fajr = _prayerTimes['Fajr'] ?? const TimeOfDay(hour: 5, minute: 0);
+    final dhuhr = _prayerTimes['Dhuhr'] ?? const TimeOfDay(hour: 12, minute: 30);
+    final asr = _prayerTimes['Asr'] ?? const TimeOfDay(hour: 15, minute: 45);
+    final maghrib = _prayerTimes['Maghrib'] ?? const TimeOfDay(hour: 18, minute: 30);
+    final isha = _prayerTimes['Isha'] ?? const TimeOfDay(hour: 19, minute: 45);
+
+    final fajrDt = DateTime(now.year, now.month, now.day, fajr.hour, fajr.minute);
+    final dhuhrDt = DateTime(now.year, now.month, now.day, dhuhr.hour, dhuhr.minute);
+    final asrDt = DateTime(now.year, now.month, now.day, asr.hour, asr.minute);
+    final maghribDt = DateTime(now.year, now.month, now.day, maghrib.hour, maghrib.minute);
+    final ishaDt = DateTime(now.year, now.month, now.day, isha.hour, isha.minute);
+
+    if (now.isAfter(ishaDt) || now.isBefore(fajrDt)) {
+      return {
+        'quote': 'O son of Adam, you are but days. Whenever a day passes, a part of you has gone.',
+        'source': '— Hasan al-Basri',
+        'action': 'Night reflection ›',
+        'period': 'After Isha',
+      };
+    } else if (now.isAfter(maghribDt)) {
+      return {
+        'quote': 'Whoever wakes up secure in his dwelling, with the provision of his day, it is as if the entire world has been gathered for him.',
+        'source': '— Tirmidhi',
+        'action': 'Give thanks & reflect ›',
+        'period': 'After Maghrib',
+      };
+    } else if (now.isAfter(asrDt)) {
+      return {
+        'quote': 'By time, indeed mankind is in loss, except those who believe and do righteous deeds.',
+        'source': '— Surah Al-Asr',
+        'action': 'Read one verse ›',
+        'period': 'After Asr',
+      };
+    } else if (now.isAfter(dhuhrDt)) {
+      return {
+        'quote': 'The feet of a servant will not move on the Day of Judgment until he is asked about his life and how he spent it.',
+        'source': '— Tirmidhi',
+        'action': "Review today's prayers ›",
+        'period': 'After Dhuhr',
+      };
+    } else {
+      return {
+        'quote': 'Take advantage of five before five: your youth before your old age, your health before your sickness, your wealth before your poverty, your free time before your busyness, and your life before your death.',
+        'source': '— Al-Hakim',
+        'action': 'Log one good deed ›',
+        'period': 'After Fajr',
+      };
+    }
+  }
+
+  double _getDayProgress() {
+    final now = DateTime.now();
+    final fajr = _prayerTimes['Fajr'] ?? const TimeOfDay(hour: 5, minute: 0);
+    final isha = _prayerTimes['Isha'] ?? const TimeOfDay(hour: 20, minute: 0);
+    final fajrDt = DateTime(now.year, now.month, now.day, fajr.hour, fajr.minute);
+    final ishaDt = DateTime(now.year, now.month, now.day, isha.hour, isha.minute);
+
+    if (now.isBefore(fajrDt)) return 0.05;
+    if (now.isAfter(ishaDt)) return 1.0;
+    final total = ishaDt.difference(fajrDt).inSeconds;
+    final elapsed = now.difference(fajrDt).inSeconds;
+    return (elapsed / total).clamp(0.05, 1.0);
+  }
+
   Widget _buildAgeDigitalMeter() {
     final dob = DateTime.tryParse(widget.userDob) ?? DateTime(2000, 1, 1);
     final ageData = calculateExactAge(dob);
-    return _GlassCard(
-      theme: widget.theme,
-      glowColor: const Color(0xFFE8B84B),
-      radius: 16,
-      padding: const EdgeInsets.all(18),
+    final quoteInfo = _getMementoMoriQuote();
+    final dayProgress = _getDayProgress();
+    final dayPct = (dayProgress * 100).round();
+
+    final isDark = widget.theme.isDark;
+    final cardBg = isDark ? const Color(0xFF0A0A12) : const Color(0xFFFAF8F3);
+    const goldColor = Color(0xFFD4A843);
+    const tealColor = Color(0xFF2DD4A8);
+
+    Color progressColor;
+    if (dayProgress < 0.35) {
+      progressColor = goldColor;
+    } else if (dayProgress < 0.75) {
+      progressColor = tealColor;
+    } else {
+      progressColor = const Color(0xFF94A3B8);
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.04),
+          width: 0.8,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 4),
+          // 1. Odometer Digits
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -2404,55 +2723,112 @@ class _TodayScreenState extends State<TodayScreen>
               _buildDigitalMeterGroup('days', ageData['days']!),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+
+          // 2. Memento Mori Quote
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: widget.theme.isDark
+              color: isDark
                   ? Colors.white.withValues(alpha: 0.03)
                   : Colors.black.withValues(alpha: 0.02),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: const Color(0xFFE8B84B).withValues(alpha: 0.25),
+                color: goldColor.withValues(alpha: 0.18),
                 width: 0.8,
               ),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  'اغْتَنِمْ خَمْسًا قَبْلَ خَمْسٍ',
+                  '"${quoteInfo['quote']}"',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.amiri(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFE8B84B),
-                    height: 1.6,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w400,
+                    fontStyle: FontStyle.italic,
+                    color: widget.theme.text1,
+                    height: 1.45,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '"Take advantage of five before five: your youth before your old age, your health before your sickness, your wealth before your poverty, your free time before your busyness, and your life before your death."',
-                  textAlign: TextAlign.center,
+                  quoteInfo['source']!,
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
-                    fontWeight: FontWeight.w400,
-                    fontStyle: FontStyle.italic,
-                    color: widget.theme.text2,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '— Al-Hakim, Sahih',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: widget.theme.text3,
+                    color: goldColor,
                   ),
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+
+          // 3. Day Progress Bar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Today you have used:',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: widget.theme.text3,
+                ),
+              ),
+              Text(
+                '$dayPct%',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: progressColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: dayProgress,
+              minHeight: 4,
+              backgroundColor: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              valueColor: AlwaysStoppedAnimation(progressColor),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Your next prayer is your next chance to prepare.',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10.5,
+                    color: widget.theme.text3,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  HapticService.tapFeedback();
+                  _scrollTo(_prayersKey);
+                },
+                child: Text(
+                  quoteInfo['action']!,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: goldColor,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -2461,13 +2837,13 @@ class _TodayScreenState extends State<TodayScreen>
 
   Widget _buildNoBadHabitsCard() {
     final days = _noFapDaysClean;
-    const coralColor = Color(0xFFFF6B6B);
+    const goldColor = Color(0xFFD4A843);
+    const tealColor = Color(0xFF2DD4A8);
     const smokeColor = Color(0xFF94A3B8);
     const fastFoodColor = Color(0xFFFBBF24);
     const fapColor = Color(0xFF818CF8);
 
     final allClean = _habSmoking && _habFastFood && _habNoFap;
-
     final milestones = [7, 14, 30, 60, 90, 180];
 
     String motivationalText() {
@@ -2493,14 +2869,14 @@ class _TodayScreenState extends State<TodayScreen>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: checked
-                ? color.withValues(alpha: 0.08)
+                ? tealColor.withValues(alpha: 0.08)
                 : (widget.theme.isDark
                       ? Colors.white.withValues(alpha: 0.04)
                       : Colors.black.withValues(alpha: 0.03)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: checked
-                  ? color.withValues(alpha: 0.25)
+                  ? tealColor.withValues(alpha: 0.3)
                   : widget.theme.border,
               width: 0.8,
             ),
@@ -2522,10 +2898,10 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                     ),
                     Text(
-                      checked ? '$days day streak' : 'Broken today',
+                      checked ? '$days day streak' : 'Tap to mark clean today',
                       style: GoogleFonts.dmSans(
                         fontSize: 10,
-                        color: checked ? color : widget.theme.red,
+                        color: checked ? tealColor : widget.theme.text3,
                       ),
                     ),
                   ],
@@ -2537,22 +2913,22 @@ class _TodayScreenState extends State<TodayScreen>
                 height: 26,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: checked ? color : Colors.transparent,
+                  color: checked ? tealColor : Colors.transparent,
                   border: Border.all(
-                    color: checked ? color : widget.theme.border,
+                    color: checked ? tealColor : widget.theme.border,
                     width: 1.5,
                   ),
                   boxShadow: checked
                       ? [
                           BoxShadow(
-                            color: color.withValues(alpha: 0.35),
+                            color: tealColor.withValues(alpha: 0.35),
                             blurRadius: 8,
                           ),
                         ]
                       : null,
                 ),
                 child: checked
-                    ? const Icon(Icons.check, color: Colors.white, size: 14)
+                    ? const Icon(Icons.check, color: Colors.black, size: 14)
                     : null,
               ),
             ],
@@ -2563,7 +2939,7 @@ class _TodayScreenState extends State<TodayScreen>
 
     return _GlassCard(
       theme: widget.theme,
-      glowColor: coralColor,
+      glowColor: goldColor,
       radius: 16,
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -2588,11 +2964,11 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                     ),
                     Text(
-                      days == 1 ? '1 Day Clean' : '$days Days Clean',
+                      days == 1 ? '1 Day' : '$days Days',
                       style: GoogleFonts.syne(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        color: coralColor,
+                        color: goldColor,
                       ),
                     ),
                   ],
@@ -2605,19 +2981,19 @@ class _TodayScreenState extends State<TodayScreen>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: coralColor.withValues(alpha: 0.12),
+                  color: (allClean ? tealColor : goldColor).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: coralColor.withValues(alpha: 0.3),
+                    color: (allClean ? tealColor : goldColor).withValues(alpha: 0.3),
                     width: 0.8,
                   ),
                 ),
                 child: Text(
-                  allClean ? '✅ All Clean' : '⚠️ In Progress',
+                  allClean ? 'All clean today ✓' : 'In Progress',
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: allClean ? coralColor : widget.theme.gold,
+                    color: allClean ? tealColor : goldColor,
                   ),
                 ),
               ),
@@ -2632,6 +3008,13 @@ class _TodayScreenState extends State<TodayScreen>
 
           // ── Sub-habit rows ──
           subHabitRow(
+            label: 'Pure Mind',
+            emoji: '🌱',
+            color: fapColor,
+            checked: _habNoFap,
+            habitKey: 'hab_no_fap',
+          ),
+          subHabitRow(
             label: 'No Smoking',
             emoji: '🚭',
             color: smokeColor,
@@ -2644,13 +3027,6 @@ class _TodayScreenState extends State<TodayScreen>
             color: fastFoodColor,
             checked: _habFastFood,
             habitKey: 'hab_no_fastfood',
-          ),
-          subHabitRow(
-            label: 'Pure Mind',
-            emoji: '🌱',
-            color: fapColor,
-            checked: _habNoFap,
-            habitKey: 'hab_no_fap',
           ),
 
           const SizedBox(height: 10),
@@ -2691,59 +3067,6 @@ class _TodayScreenState extends State<TodayScreen>
               );
             },
           ),
-
-          const SizedBox(height: 14),
-
-          // ── Action buttons ──
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: _checkAllHabits,
-                  child: Container(
-                    height: 42,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: widget.theme.isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: widget.theme.border,
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Text(
-                      'Check All ✅',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: widget.theme.text1,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _showResetConfirmDialog,
-                child: Container(
-                  height: 42,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.refresh,
-                    size: 18,
-                    color: widget.theme.text4,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -2754,11 +3077,134 @@ class _TodayScreenState extends State<TodayScreen>
     final isFastingActive = _fastStatus == 'fasting';
     final countdown = _getCountdown();
     final progress = _fastElapsedProgress();
-    const gold = Color(0xFFE8B84B);
+    const gold = Color(0xFFD4A843);
+    final isDark = widget.theme.isDark;
 
+    // 1. Not Fasting (default state): Completely hidden on non-Sunnah days
+    if (_fastStatus == 'none') {
+      if (!isSunnah) {
+        return const SizedBox.shrink();
+      }
+      // On Sunnah days: subtle one-line teaser
+      return GestureDetector(
+        onTap: _showStartFastSheet,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF141418) : const Color(0xFFFAF8F3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: gold.withValues(alpha: 0.25),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Text('🌙', style: TextStyle(fontSize: 15)),
+                  const SizedBox(width: 10),
+                  Text(
+                    '${_fastingDayName().replaceFirst(' Fast', '')} — Sunnah fast day',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: widget.theme.text1,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Start Fast ›',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: gold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 2. Fast Broken State: Collapses to clean single line
+    if (_fastStatus == 'broke') {
+      final brokenTime = _fastBrokenTime.isNotEmpty ? _fastBrokenTime : 'earlier';
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF16161A) : const Color(0xFFF7F7FA),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: widget.theme.border,
+            width: 0.6,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Fast broken at $brokenTime. Next fast: ${_getNextSunnahDayName()}.',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                color: widget.theme.text3,
+              ),
+            ),
+            GestureDetector(
+              onTap: _showStartFastSheet,
+              child: Text(
+                'Restart ›',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: gold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 3. Fast Completed State: Collapses to clean single line
+    if (_fastStatus == 'completed') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2DD4A8).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
+            width: 0.6,
+          ),
+        ),
+        child: Row(
+          children: [
+            const Text('✓', style: TextStyle(color: Color(0xFF2DD4A8), fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+            Text(
+              '$_fastType completed. BarakAllahu feek.',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: widget.theme.text1,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 4. Active Fasting State: Full cockpit card
     return _GlassCard(
       theme: widget.theme,
-      glowColor: const Color(0xFFE8B84B),
+      glowColor: gold,
       radius: 16,
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -2771,13 +3217,7 @@ class _TodayScreenState extends State<TodayScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  isFastingActive
-                      ? (isSunnah
-                          ? _fastingDayName().replaceFirst('Sunnah ', '')
-                          : 'Personal Fast')
-                      : (isSunnah
-                          ? '${_fastingDayName()} Today'
-                          : 'Fasting Optional Today'),
+                  _fastType,
                   style: GoogleFonts.dmSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -2786,82 +3226,138 @@ class _TodayScreenState extends State<TodayScreen>
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            isFastingActive
-                ? 'IFTAR COUNTDOWN'
-                : (isSunnah
-                    ? 'Sunnah Fasting Day'
-                    : 'Log your fast when observing Sunnah or voluntary fasts'),
-            style: GoogleFonts.dmSans(
-              fontSize: 10,
-              letterSpacing: isFastingActive ? 2 : 0.5,
-              color: widget.theme.text3,
-            ),
-          ),
-          if (isFastingActive) ...[
-            const SizedBox(height: 10),
-            // Timer row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  countdown,
-                  style: GoogleFonts.syne(
-                    fontSize: 30,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: gold.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'ACTIVE FAST',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
                     color: gold,
                   ),
                 ),
-                // Progress ring
-                SizedBox(
-                  width: 52,
-                  height: 52,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        value: progress,
-                        strokeWidth: 4,
-                        backgroundColor: widget.theme.isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : widget.theme.border,
-                        valueColor: const AlwaysStoppedAnimation(gold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Fasting since $_fastStartTime • Iftar at 6:51 PM',
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: widget.theme.text3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Timer & Progress Ring Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'IFTAR IN',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 9,
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.w700,
+                      color: widget.theme.text3,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    countdown,
+                    style: GoogleFonts.syne(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: gold,
+                    ),
+                  ),
+                ],
+              ),
+              // Progress ring
+              SizedBox(
+                width: 54,
+                height: 54,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 4,
+                      backgroundColor: widget.theme.isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : widget.theme.border,
+                      valueColor: const AlwaysStoppedAnimation(gold),
+                    ),
+                    Text(
+                      '${(progress * 100).round()}%',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: gold,
                       ),
-                      Text(
-                        '${(progress * 100).round()}%',
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: gold,
-                        ),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Break fast button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: _breakFast,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF6B6B).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFFFF6B6B).withValues(alpha: 0.3),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Text(
+                    'Break Fast',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: const Color(0xFFFF6B6B),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 12),
-          // Log Fast button
-          GestureDetector(
-            onTap: () => _setFastStatus(
-              isFastingActive
-                  ? (_isSunnahDay() ? 'broke' : 'none')
-                  : 'fasting',
-            ),
-            child: Text(
-              isFastingActive
-                  ? (isSunnah ? 'Broke Fast' : 'Cancel Fast')
-                  : '+ Log Fast',
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                color: gold,
-                fontWeight: FontWeight.w600,
               ),
-            ),
+              GestureDetector(
+                onTap: () => _setFastStatus('completed'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2DD4A8).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Text(
+                    'Complete Fast ✓',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: const Color(0xFF2DD4A8),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -2885,36 +3381,29 @@ class _TodayScreenState extends State<TodayScreen>
     Widget? iconWidget;
 
     if (done) {
-      borderColor = const Color(0x6600C896); // completed border
-      timeColor = const Color(0xFF00C896);
+      borderColor = const Color(0xFF2DD4A8).withValues(alpha: 0.6); // completed border
+      timeColor = const Color(0xFF2DD4A8);
       iconWidget = const Text(
         ' ✓',
         style: TextStyle(
-          color: Color(0xFF00C896),
+          color: Color(0xFF2DD4A8),
           fontSize: 11,
           fontWeight: FontWeight.bold,
         ),
       );
     } else if (isNext) {
-      borderColor = const Color(0x99E8B84B); // current border
-      timeColor = const Color(0xFFE8B84B);
+      borderColor = const Color(0xFF2DD4A8); // current active glow border
+      timeColor = const Color(0xFF2DD4A8);
     } else if (missed) {
       borderColor = widget.theme.isDark
-          ? Colors.white.withValues(alpha: 0.12)
+          ? Colors.white.withValues(alpha: 0.08)
           : widget.theme.border;
-      timeColor = widget.theme.text3;
-      iconWidget = Text(
-        ' Qada',
-        style: GoogleFonts.dmSans(
-          color: widget.theme.text3,
-          fontSize: 9,
-          fontWeight: FontWeight.w600,
-        ),
-      );
+      timeColor = widget.theme.text3; // clean grayed out time, NO Qada shaming label
+      iconWidget = null;
     } else {
       borderColor = widget.theme.isDark
           ? Colors.white.withValues(alpha: 0.05)
-          : widget.theme.border; // upcoming/default border
+          : widget.theme.border;
       timeColor = widget.theme.text2;
     }
 
@@ -2924,7 +3413,7 @@ class _TodayScreenState extends State<TodayScreen>
         decoration: BoxDecoration(
           color: widget.theme.card,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor, width: 0.5),
+          border: Border.all(color: borderColor, width: isNext ? 1.2 : 0.5),
         ),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         child: Column(
@@ -2949,7 +3438,7 @@ class _TodayScreenState extends State<TodayScreen>
                     color: timeColor,
                   ),
                 ),
-                ?iconWidget,
+                if (iconWidget != null) iconWidget,
               ],
             ),
           ],
@@ -3001,48 +3490,105 @@ class _TodayScreenState extends State<TodayScreen>
   Widget _nextPrayerBanner() {
     final nextPrayer = _getNextPrayer();
     if (nextPrayer['name'] == 'All Done') {
-      return const SizedBox.shrink();
-    }
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: widget.theme.teal.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(50), // full capsule
-        border: Border.all(
-          color: widget.theme.teal.withValues(alpha: 0.25),
-          width: 0.5,
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2DD4A8).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: const Color(0xFF2DD4A8).withValues(alpha: 0.25),
+            width: 0.8,
+          ),
         ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Color(0xFF2DD4A8), size: 18),
+            const SizedBox(width: 10),
+            Text(
+              'All 5 Daily Prayers Completed',
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: widget.theme.text1,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: BoxDecoration(
+        color: widget.theme.isDark ? const Color(0xFF14141A) : const Color(0xFFF6F8F7),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFF2DD4A8).withValues(alpha: 0.35),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2DD4A8).withValues(alpha: 0.08),
+            blurRadius: 16,
+            spreadRadius: -2,
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              PulsingDot(color: widget.theme.teal, size: 8),
-              const SizedBox(width: 10),
-              Text(
-                nextPrayer['name']!,
-                style: GoogleFonts.dmSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: widget.theme.text1,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                nextPrayer['time']!,
-                style: GoogleFonts.dmSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: widget.theme.teal,
-                ),
+              PulsingDot(color: const Color(0xFF2DD4A8), size: 10),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'UPCOMING PRAYER',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: widget.theme.text3,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        nextPrayer['name']!,
+                        style: GoogleFonts.syne(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: widget.theme.text1,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        nextPrayer['time']!,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF2DD4A8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
           Text(
             nextPrayer['in']!,
-            style: GoogleFonts.dmSans(fontSize: 12, color: widget.theme.text3),
+            style: GoogleFonts.syne(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF2DD4A8),
+            ),
           ),
         ],
       ),
@@ -3368,32 +3914,23 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                       const SizedBox(height: 20),
 
-                      // 5. Life Odometer + Hadith ("Five Before Five")
+                      // 5. Life Odometer + Memento Mori ("The Five Before Five")
                       _wrapWithStaggered(4, _buildAgeDigitalMeter()),
                       const SizedBox(height: 20),
 
-                      // 6. Wisdom of the Day (Single Card: Alternates Verse & Hadith Daily)
+                      // 6. Water Intake
                       _wrapWithStaggered(
                         5,
-                        _dayOfYearIndex % 2 == 0
-                            ? _buildAyahCard(quranAyahs365[_dayOfYearIndex])
-                            : _buildHadithCard(hadiths365[_dayOfYearIndex]),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // 7. Water Intake
-                      _wrapWithStaggered(
-                        6,
                         KeyedSubtree(key: _waterKey, child: _waterTracker()),
                       ),
                       const SizedBox(height: 20),
 
-                      // 8. No Bad Habits (Streaks)
-                      _wrapWithStaggered(7, _buildNoBadHabitsCard()),
+                      // 7. Streaks
+                      _wrapWithStaggered(6, _buildNoBadHabitsCard()),
                       const SizedBox(height: 20),
 
-                      // 9. Fasting Card (Conditional)
-                      _wrapWithStaggered(8, _fastingStatusCard()),
+                      // 8. Fasting Card (Conditional — hidden unless active or Sunnah day)
+                      _wrapWithStaggered(7, _fastingStatusCard()),
                     ],
                   ),
                 ),
@@ -3725,13 +4262,12 @@ class _TodayScreenState extends State<TodayScreen>
     double waterProgress,
   ) {
     final int displayScore = todayScore == 0 ? 10 : todayScore;
-    final bool isEndowed = todayScore == 0;
 
     return _GlassCard(
       theme: widget.theme,
-      glowColor: const Color(0xFFE8B84B),
-      radius: 14,
-      padding: const EdgeInsets.all(20),
+      glowColor: const Color(0xFFD4A843),
+      radius: 16,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -3743,6 +4279,7 @@ class _TodayScreenState extends State<TodayScreen>
                 "Today's Score",
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
+                  fontWeight: FontWeight.w600,
                   color: widget.theme.text3,
                   letterSpacing: 0.5,
                 ),
@@ -3751,25 +4288,25 @@ class _TodayScreenState extends State<TodayScreen>
               Text(
                 '$displayScore / 100',
                 style: GoogleFonts.syne(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
                   color: widget.theme.text1,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
-                isEndowed ? '✨ Getting Started' : '🚀 Daily momentum',
+                'Daily momentum',
                 style: GoogleFonts.dmSans(
                   fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF2A9D8F),
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2DD4A8),
                 ),
               ),
             ],
           ),
           SizedBox(
-            width: 70,
-            height: 70,
+            width: 64,
+            height: 64,
             child: TweenAnimationBuilder<double>(
               tween: Tween<double>(end: displayScore / 100),
               duration: const Duration(milliseconds: 700),
@@ -3778,7 +4315,7 @@ class _TodayScreenState extends State<TodayScreen>
                 return CustomPaint(
                   painter: _ScoreArcPainter(
                     progress: arcProgress,
-                    color: const Color(0xFFE8B84B),
+                    color: const Color(0xFFD4A843),
                   ),
                 );
               },
@@ -4017,185 +4554,167 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   Widget _buildTasksList() {
-    const amberColor = Color(0xFFFF9500);
+    const goldColor = Color(0xFFD4A843);
     final totalTasks = _visibleTasks.length;
     final doneTasks = _visibleTaskDone;
+    final isDark = widget.theme.isDark;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: widget.theme.isDark
-            ? const Color(0xFF1B1D28)
-            : const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(22),
+        color: isDark ? const Color(0xFF18181C) : const Color(0xFFFAF8F2),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: amberColor.withValues(alpha: 0.45),
-          width: 1.2,
+          color: goldColor.withValues(alpha: 0.25),
+          width: 0.8,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: amberColor.withValues(alpha: 0.12),
-            blurRadius: 20,
-            spreadRadius: -2,
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Highlighted Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: amberColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.task_alt_rounded,
-                        color: amberColor,
-                        size: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Daily Tasks',
-                          style: GoogleFonts.syne(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: widget.theme.text1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              // 4px Gold Left Accent Bar
+              Container(
+                width: 4,
+                decoration: const BoxDecoration(
+                  color: goldColor,
                 ),
               ),
-              const SizedBox(width: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: doneTasks > 0
-                          ? const Color(0xFF00C896).withValues(alpha: 0.18)
-                          : widget.theme.isDark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : Colors.black.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: doneTasks > 0
-                            ? const Color(0xFF00C896).withValues(alpha: 0.4)
-                            : widget.theme.isDark
-                                ? Colors.white24
-                                : Colors.black26,
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Text(
-                      '$doneTasks / $totalTasks DONE',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: doneTasks > 0
-                            ? const Color(0xFF00C896)
-                            : widget.theme.text3,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () => _showTaskSheet(),
-                    child: Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: amberColor,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: amberColor.withValues(alpha: 0.4),
-                            blurRadius: 6,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: goldColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.task_alt_rounded,
+                                  color: goldColor,
+                                  size: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Daily Tasks',
+                                style: GoogleFonts.syne(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: widget.theme.text1,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: goldColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '$doneTasks of $totalTasks done',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: goldColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => _showTaskSheet(),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: goldColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.add,
+                                    color: Colors.black,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.black,
-                        size: 16,
+                      const SizedBox(height: 14),
+                      // Empty State Callout when no tasks
+                      if (_visibleTasks.isEmpty)
+                        GestureDetector(
+                          onTap: () => _showTaskSheet(),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 22,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: goldColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: goldColor.withValues(alpha: 0.3),
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.add_task_rounded,
+                                  color: goldColor,
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "No daily tasks set",
+                                  style: GoogleFonts.syne(
+                                    color: widget.theme.text1,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Tap '+' to add your first goal for today",
+                                  style: GoogleFonts.dmSans(
+                                    color: widget.theme.text3,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      // Task Rows
+                      ..._visibleTasks.map(
+                        (entry) => RepaintBoundary(child: _taskRow(entry)),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Empty State Callout when no tasks
-          if (_visibleTasks.isEmpty)
-            GestureDetector(
-              onTap: () => _showTaskSheet(),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 22,
-                  horizontal: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: amberColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: amberColor.withValues(alpha: 0.3),
-                    width: 1.0,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.add_task_rounded,
-                      color: amberColor,
-                      size: 32,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "No daily tasks set",
-                      style: GoogleFonts.syne(
-                        color: widget.theme.text1,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Tap '+' to add your first goal for today",
-                      style: GoogleFonts.dmSans(
-                        color: widget.theme.text3,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          // Task Rows
-          ..._visibleTasks.map(
-            (entry) => RepaintBoundary(child: _taskRow(entry)),
-          ),
-        ],
+        ),
       ),
     );
   }
