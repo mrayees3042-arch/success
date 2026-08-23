@@ -25,6 +25,7 @@ import 'package:success/core/islamic_data.dart';
 import 'package:printing/printing.dart';
 import 'package:success/services/psychology_report_service.dart';
 import 'package:success/services/app_open_service.dart';
+import 'package:success/core/app_fonts.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -302,36 +303,41 @@ final darkTheme = _appTheme(Brightness.dark);
 
 ThemeData _appTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
+  final textColor = isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E);
+  final textMuted = isDark ? const Color(0xFF9090BB) : const Color(0xFF8A8580);
+
   final baseTextTheme = TextTheme(
-    bodyLarge: TextStyle(
-      fontSize: 15,
-      color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
-    ),
-    bodyMedium: TextStyle(
-      fontSize: 13,
-      color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
-    ),
-    bodySmall: TextStyle(
-      fontSize: 12,
-      color: isDark ? const Color(0xFF9090BB) : const Color(0xFF8A8580),
-    ),
-    titleMedium: TextStyle(
-      fontSize: 15,
-      fontWeight: FontWeight.w600,
-      color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
-    ),
-    titleLarge: TextStyle(
-      fontSize: 18,
-      fontWeight: FontWeight.w700,
-      color: isDark ? const Color(0xFFF2F2FF) : const Color(0xFF1A1A2E),
-    ),
+    displayLarge: AppFonts.display(fontSize: 32, fontWeight: FontWeight.w800, color: textColor),
+    displayMedium: AppFonts.display(fontSize: 28, fontWeight: FontWeight.w700, color: textColor),
+    displaySmall: AppFonts.display(fontSize: 24, fontWeight: FontWeight.w700, color: textColor),
+    headlineLarge: AppFonts.display(fontSize: 22, fontWeight: FontWeight.w700, color: textColor),
+    headlineMedium: AppFonts.display(fontSize: 20, fontWeight: FontWeight.w600, color: textColor),
+    headlineSmall: AppFonts.text(fontSize: 18, fontWeight: FontWeight.w600, color: textColor),
+    titleLarge: AppFonts.text(fontSize: 16, fontWeight: FontWeight.w600, color: textColor),
+    titleMedium: AppFonts.text(fontSize: 14, fontWeight: FontWeight.w600, color: textColor),
+    titleSmall: AppFonts.text(fontSize: 13, fontWeight: FontWeight.w500, color: textMuted),
+    bodyLarge: AppFonts.text(fontSize: 15, fontWeight: FontWeight.w400, color: textColor),
+    bodyMedium: AppFonts.text(fontSize: 13, fontWeight: FontWeight.w400, color: textColor),
+    bodySmall: AppFonts.text(fontSize: 11, fontWeight: FontWeight.w400, color: textMuted),
+    labelLarge: AppFonts.compact(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
+    labelMedium: AppFonts.compact(fontSize: 11, fontWeight: FontWeight.w600, color: textMuted),
+    labelSmall: AppFonts.compact(fontSize: 10, fontWeight: FontWeight.w600, color: textMuted),
   );
 
   return ThemeData(
     brightness: brightness,
-    textTheme: GoogleFonts.plusJakartaSansTextTheme(
-      _withArabicFallback(baseTextTheme),
-    ),
+    fontFamily: 'SF Pro Text',
+    fontFamilyFallback: const [
+      'SF Pro Text',
+      'SF Pro Display',
+      'SF Pro',
+      '-apple-system',
+      'BlinkMacSystemFont',
+      'Inter',
+      'Roboto',
+      'sans-serif',
+    ],
+    textTheme: _withArabicFallback(baseTextTheme),
     scaffoldBackgroundColor: isDark
         ? const Color(0xFF1C1C2E)
         : const Color(0xFFF5F0E8),
@@ -1737,7 +1743,7 @@ class _TodayScreenState extends State<TodayScreen>
     super.initState();
     _updateTime(); // Initial update
     _loadFastStatus();
-    _loadNoFapStreak();
+    _loadCleanStreaks();
     _loadNoBadHabitsState();
 
     _animCtrl = AnimationController(
@@ -2029,61 +2035,7 @@ class _TodayScreenState extends State<TodayScreen>
 
   Widget _waterTracker() {
     final int glasses = widget.waterGlasses;
-    final double consumed = (glasses * 0.26).clamp(0.0, 2.6);
-
-    final morningDone = glasses.clamp(0, 3);
-    final afternoonDone = (glasses - 3).clamp(0, 3);
-    final eveningDone = (glasses - 6).clamp(0, 2);
-
-    Widget chunkButton(String label, int current, int max, int targetCount) {
-      final isComplete = current >= max;
-      return Expanded(
-        child: GestureDetector(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            widget.onWaterChange(targetCount);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            decoration: BoxDecoration(
-              color: isComplete
-                  ? widget.theme.blue.withValues(alpha: 0.15)
-                  : (widget.theme.isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.black.withValues(alpha: 0.03)),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isComplete
-                    ? widget.theme.blue.withValues(alpha: 0.5)
-                    : widget.theme.border,
-                width: isComplete ? 1.0 : 0.5,
-              ),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isComplete ? widget.theme.blue : widget.theme.text2,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$current/$max',
-                  style: GoogleFonts.syne(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isComplete ? widget.theme.blue : widget.theme.text3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    final double consumed = (glasses * 0.25).clamp(0.0, 2.5);
 
     return _GlassCard(
       theme: widget.theme,
@@ -2091,25 +2043,43 @@ class _TodayScreenState extends State<TodayScreen>
       radius: 16,
       padding: const EdgeInsets.all(18),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '💧 Water Intake · $glasses / 8 glasses',
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: widget.theme.text1,
-                ),
+              Row(
+                children: [
+                  const Text('💧', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Water Intake',
+                    style: AppFonts.display(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: widget.theme.text1,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                '${consumed.toStringAsFixed(1)} L / 2.6 L',
-                style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: widget.theme.blue,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF38BDF8).withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
+                ),
+                child: Text(
+                  '$glasses/10 glasses · ${consumed.toStringAsFixed(1)}L / 2.5L',
+                  style: AppFonts.compact(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF38BDF8),
+                  ),
                 ),
               ),
             ],
@@ -2119,26 +2089,157 @@ class _TodayScreenState extends State<TodayScreen>
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: (glasses / 8.0).clamp(0.0, 1.0),
-              minHeight: 6,
+              value: (glasses / 10.0).clamp(0.0, 1.0),
+              minHeight: 5,
               backgroundColor: widget.theme.isDark
                   ? Colors.white.withValues(alpha: 0.08)
                   : widget.theme.border,
-              valueColor: AlwaysStoppedAnimation(widget.theme.blue),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF38BDF8)),
             ),
           ),
           const SizedBox(height: 14),
-          // 3 Chunk Buttons
+
+          // ── Interactive Selectable 10 Water Glasses ──
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final double itemWidth =
+                  ((constraints.maxWidth - (9 * 5)) / 10).clamp(24.0, 36.0);
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(10, (index) {
+                  final glassNum = index + 1;
+                  final isFilled = glassNum <= glasses;
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticService.selection();
+                      SoundManager.playTapClick();
+                      if (glasses == glassNum) {
+                        widget.onWaterChange(glassNum - 1);
+                      } else {
+                        widget.onWaterChange(glassNum);
+                      }
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      width: itemWidth,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isFilled
+                            ? const Color(0xFF38BDF8).withValues(alpha: 0.20)
+                            : (widget.theme.isDark
+                                ? Colors.white.withValues(alpha: 0.04)
+                                : Colors.black.withValues(alpha: 0.03)),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isFilled
+                              ? const Color(0xFF38BDF8).withValues(alpha: 0.7)
+                              : (widget.theme.isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.06)),
+                          width: isFilled ? 1.0 : 0.5,
+                        ),
+                        boxShadow: isFilled
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isFilled
+                                ? Icons.water_drop_rounded
+                                : Icons.water_drop_outlined,
+                            size: 15,
+                            color: isFilled
+                                ? const Color(0xFF38BDF8)
+                                : widget.theme.text3,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '$glassNum',
+                            style: AppFonts.compact(
+                              fontSize: 10,
+                              fontWeight:
+                                  isFilled ? FontWeight.w800 : FontWeight.w600,
+                              color: isFilled
+                                  ? const Color(0xFF38BDF8)
+                                  : widget.theme.text3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Quick chunk shortcuts
           Row(
             children: [
-              chunkButton('Morning', morningDone, 3, 3),
-              const SizedBox(width: 8),
-              chunkButton('Afternoon', afternoonDone, 3, 6),
-              const SizedBox(width: 8),
-              chunkButton('Evening', eveningDone, 2, 8),
+              _waterQuickChip(label: 'Morning (3)', count: 3, activeCount: glasses),
+              const SizedBox(width: 6),
+              _waterQuickChip(label: 'Mid-day (6)', count: 6, activeCount: glasses),
+              const SizedBox(width: 6),
+              _waterQuickChip(label: 'Evening (8)', count: 8, activeCount: glasses),
+              const SizedBox(width: 6),
+              _waterQuickChip(label: 'Full (10)', count: 10, activeCount: glasses),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _waterQuickChip({
+    required String label,
+    required int count,
+    required int activeCount,
+  }) {
+    final isActive = activeCount >= count;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticService.selection();
+          SoundManager.playTapClick();
+          widget.onWaterChange(count);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isActive
+                ? const Color(0xFF38BDF8).withValues(alpha: 0.14)
+                : (widget.theme.isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.02)),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isActive
+                  ? const Color(0xFF38BDF8).withValues(alpha: 0.4)
+                  : widget.theme.border,
+              width: 0.5,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppFonts.compact(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w600,
+              color: isActive ? const Color(0xFF38BDF8) : widget.theme.text2,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -2445,10 +2546,12 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
-  int? _noFapLastReset;
+  int? _pureMindLastReset;
+  int? _noBadHabitsLastReset;
+  int? _noFastFoodLastReset;
 
-  // No Bad Habits — 3 sub-habits
-  bool _habSmoking = true;
+  // 3 Clean Habits
+  bool _habNoBadHabits = true;
   bool _habFastFood = true;
   bool _habNoFap = true;
 
@@ -2456,7 +2559,7 @@ class _TodayScreenState extends State<TodayScreen>
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _habSmoking = prefs.getBool('hab_no_smoking') ?? true;
+      _habNoBadHabits = prefs.getBool('hab_no_bad_habits') ?? prefs.getBool('hab_no_smoking') ?? true;
       _habFastFood = prefs.getBool('hab_no_fastfood') ?? true;
       _habNoFap = prefs.getBool('hab_no_fap') ?? true;
     });
@@ -2472,7 +2575,7 @@ class _TodayScreenState extends State<TodayScreen>
     final next = !current;
     _saveHabit(key, next);
     setState(() {
-      if (key == 'hab_no_smoking') _habSmoking = next;
+      if (key == 'hab_no_bad_habits' || key == 'hab_no_smoking') _habNoBadHabits = next;
       if (key == 'hab_no_fastfood') _habFastFood = next;
       if (key == 'hab_no_fap') _habNoFap = next;
     });
@@ -2480,62 +2583,72 @@ class _TodayScreenState extends State<TodayScreen>
 
   void _checkAllHabits() {
     HapticService.tapFeedback();
+    _saveHabit('hab_no_bad_habits', true);
     _saveHabit('hab_no_smoking', true);
     _saveHabit('hab_no_fastfood', true);
     _saveHabit('hab_no_fap', true);
     setState(() {
-      _habSmoking = true;
+      _habNoBadHabits = true;
       _habFastFood = true;
       _habNoFap = true;
     });
   }
 
-  Future<void> _loadNoFapStreak() async {
+  Future<void> _loadCleanStreaks() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
     setState(() {
-      _noFapLastReset = prefs.getInt('nofap_last_reset');
-      if (_noFapLastReset == null) {
-        final nowMs = DateTime.now().millisecondsSinceEpoch;
-        _noFapLastReset = nowMs;
-        prefs.setInt('nofap_last_reset', nowMs);
-      }
+      _pureMindLastReset = prefs.getInt('pure_mind_last_reset') ?? prefs.getInt('nofap_last_reset') ?? nowMs;
+      _noBadHabitsLastReset = prefs.getInt('no_bad_habits_last_reset') ?? prefs.getInt('smoking_last_reset') ?? nowMs;
+      _noFastFoodLastReset = prefs.getInt('no_fastfood_last_reset') ?? nowMs;
+
+      // Ensure keys are persisted
+      prefs.setInt('pure_mind_last_reset', _pureMindLastReset!);
+      prefs.setInt('no_bad_habits_last_reset', _noBadHabitsLastReset!);
+      prefs.setInt('no_fastfood_last_reset', _noFastFoodLastReset!);
     });
   }
 
-  int get _noFapDaysClean {
-    if (_noFapLastReset == null) return 0;
-    final lastReset = DateTime.fromMillisecondsSinceEpoch(_noFapLastReset!);
+  int _calculateDaysClean(int? lastResetMs) {
+    if (lastResetMs == null) return 0;
+    final lastReset = DateTime.fromMillisecondsSinceEpoch(lastResetMs);
     final now = DateTime.now();
-    final lastResetDate = DateTime(
-      lastReset.year,
-      lastReset.month,
-      lastReset.day,
-    );
+    final lastResetDate = DateTime(lastReset.year, lastReset.month, lastReset.day);
     final nowDate = DateTime(now.year, now.month, now.day);
     return nowDate.difference(lastResetDate).inDays;
   }
 
-  Future<void> _resetNoFapStreak() async {
+  int get _pureMindDaysClean => _calculateDaysClean(_pureMindLastReset);
+  int get _noBadHabitsDaysClean => _calculateDaysClean(_noBadHabitsLastReset);
+  int get _noFastFoodDaysClean => _calculateDaysClean(_noFastFoodLastReset);
+
+  Future<void> _resetHabitStreak(String habitKey, String habitName) async {
     final prefs = await SharedPreferences.getInstance();
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    await prefs.setInt('nofap_last_reset', nowMs);
+    await prefs.setInt(habitKey, nowMs);
+    if (habitKey == 'pure_mind_last_reset') await prefs.setInt('nofap_last_reset', nowMs);
+    if (habitKey == 'no_bad_habits_last_reset') await prefs.setInt('smoking_last_reset', nowMs);
+
     HapticService.tapFeedback();
     SoundManager.playTapClick();
     if (mounted) {
       setState(() {
-        _noFapLastReset = nowMs;
+        if (habitKey == 'pure_mind_last_reset') _pureMindLastReset = nowMs;
+        if (habitKey == 'no_bad_habits_last_reset') _noBadHabitsLastReset = nowMs;
+        if (habitKey == 'no_fastfood_last_reset') _noFastFoodLastReset = nowMs;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Streak reset to 0 days. Keep strong! 💪'),
+          content: Text('$habitName streak reset to 0 days. Keep strong! 💪'),
           backgroundColor: widget.theme.red,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
   }
 
-  void _showResetConfirmDialog() {
+  void _showHabitResetDialog(String habitName, String habitKey) {
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -2543,18 +2656,21 @@ class _TodayScreenState extends State<TodayScreen>
           backgroundColor: widget.theme.card,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: widget.theme.border, width: 0.5),
+            side: BorderSide(
+              color: widget.theme.isDark ? Colors.white12 : Colors.black12,
+              width: 0.5,
+            ),
           ),
           title: Text(
-            'Confirm Reset',
+            'Reset $habitName?',
             style: GoogleFonts.syne(
               fontWeight: FontWeight.w800,
               color: widget.theme.text1,
             ),
           ),
           content: Text(
-            'Are you sure you want to reset your streak to 0 days?',
-            style: TextStyle(color: widget.theme.text2),
+            'Are you sure you want to reset your $habitName streak to 0 days?',
+            style: GoogleFonts.dmSans(color: widget.theme.text2),
           ),
           actions: [
             TextButton(
@@ -2570,7 +2686,7 @@ class _TodayScreenState extends State<TodayScreen>
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
-                _resetNoFapStreak();
+                _resetHabitStreak(habitKey, habitName);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: widget.theme.red,
@@ -2894,22 +3010,22 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   Widget _buildNoBadHabitsCard() {
-    final days = _noFapDaysClean;
+    final maxStreak = math.max(_pureMindDaysClean, math.max(_noBadHabitsDaysClean, _noFastFoodDaysClean));
     const goldColor = Color(0xFFD4A843);
     const tealColor = Color(0xFF2DD4A8);
-    const smokeColor = Color(0xFF94A3B8);
+    const badHabitColor = Color(0xFF94A3B8);
     const fastFoodColor = Color(0xFFFBBF24);
     const fapColor = Color(0xFF818CF8);
 
-    final allClean = _habSmoking && _habFastFood && _habNoFap;
+    final allClean = _habNoBadHabits && _habFastFood && _habNoFap;
     final milestones = [7, 14, 30, 60, 90, 180];
 
     String motivationalText() {
-      if (days >= 180) return 'Half a year! You are legendary 👑';
-      if (days >= 90) return 'Three months strong! 🏆';
-      if (days >= 30) return 'Incredible self-control! 🌟';
-      if (days >= 14) return 'Two weeks! Keep pushing 🚀';
-      if (days >= 7) return 'One week down, stay strong! 💪';
+      if (maxStreak >= 180) return 'Half a year! You are legendary 👑';
+      if (maxStreak >= 90) return 'Three months strong! 🏆';
+      if (maxStreak >= 30) return 'Incredible self-control! 🌟';
+      if (maxStreak >= 14) return 'Two weeks! Keep pushing 🚀';
+      if (maxStreak >= 7) return 'One week down, stay strong! 💪';
       return 'Every day is a victory. Stay clean! 🔥';
     }
 
@@ -2919,53 +3035,84 @@ class _TodayScreenState extends State<TodayScreen>
       required Color color,
       required bool checked,
       required String habitKey,
+      required int streakDays,
+      required String resetKey,
     }) {
-      return GestureDetector(
-        onTap: () => _toggleHabit(habitKey, checked),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: checked
+              ? tealColor.withValues(alpha: 0.08)
+              : (widget.theme.isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.black.withValues(alpha: 0.03)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
             color: checked
-                ? tealColor.withValues(alpha: 0.08)
-                : (widget.theme.isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : Colors.black.withValues(alpha: 0.03)),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: checked
-                  ? tealColor.withValues(alpha: 0.3)
-                  : widget.theme.border,
-              width: 0.8,
-            ),
+                ? tealColor.withValues(alpha: 0.3)
+                : widget.theme.border,
+            width: 0.8,
           ),
-          child: Row(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 16)),
-              const SizedBox(width: 10),
-              Expanded(
+        ),
+        child: Row(
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _toggleHabit(habitKey, checked),
+              child: Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            ),
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _toggleHabit(habitKey, checked),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       label,
                       style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
                         color: widget.theme.text1,
                       ),
                     ),
                     Text(
-                      checked ? '$days day streak' : 'Tap to mark clean today',
+                      checked
+                          ? '$streakDays day streak · Clean today'
+                          : '$streakDays day streak · Tap to mark clean',
                       style: GoogleFonts.dmSans(
-                        fontSize: 10,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
                         color: checked ? tealColor : widget.theme.text3,
                       ),
                     ),
                   ],
                 ),
               ),
-              AnimatedContainer(
+            ),
+            // Reset Streak Button
+            Tooltip(
+              message: 'Reset $label streak',
+              child: IconButton(
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.all(6),
+                constraints: const BoxConstraints(),
+                color: widget.theme.text3,
+                onPressed: () => _showHabitResetDialog(label, resetKey),
+              ),
+            ),
+            const SizedBox(width: 6),
+            // Checkmark Toggle Circle
+            GestureDetector(
+              onTap: () => _toggleHabit(habitKey, checked),
+              child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 width: 26,
                 height: 26,
@@ -2989,8 +3136,8 @@ class _TodayScreenState extends State<TodayScreen>
                     ? const Icon(Icons.check, color: Colors.black, size: 14)
                     : null,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
@@ -3013,7 +3160,7 @@ class _TodayScreenState extends State<TodayScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'STREAKS',
+                      'CLEAN STREAKS',
                       style: GoogleFonts.dmSans(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
@@ -3022,7 +3169,7 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                     ),
                     Text(
-                      days == 1 ? '1 Day' : '$days Days',
+                      maxStreak == 1 ? '1 Day' : '$maxStreak Days',
                       style: GoogleFonts.syne(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -3064,20 +3211,24 @@ class _TodayScreenState extends State<TodayScreen>
           ),
           const SizedBox(height: 14),
 
-          // ── Sub-habit rows ──
+          // ── Sub-habit rows with individual reset buttons ──
           subHabitRow(
             label: 'Pure Mind',
             emoji: '🌱',
             color: fapColor,
             checked: _habNoFap,
             habitKey: 'hab_no_fap',
+            streakDays: _pureMindDaysClean,
+            resetKey: 'pure_mind_last_reset',
           ),
           subHabitRow(
-            label: 'No Smoking',
-            emoji: '🚭',
-            color: smokeColor,
-            checked: _habSmoking,
-            habitKey: 'hab_no_smoking',
+            label: 'No Bad Habits',
+            emoji: '🚫',
+            color: badHabitColor,
+            checked: _habNoBadHabits,
+            habitKey: 'hab_no_bad_habits',
+            streakDays: _noBadHabitsDaysClean,
+            resetKey: 'no_bad_habits_last_reset',
           ),
           subHabitRow(
             label: 'No Fast Food',
@@ -3085,6 +3236,8 @@ class _TodayScreenState extends State<TodayScreen>
             color: fastFoodColor,
             checked: _habFastFood,
             habitKey: 'hab_no_fastfood',
+            streakDays: _noFastFoodDaysClean,
+            resetKey: 'no_fastfood_last_reset',
           ),
 
           const SizedBox(height: 10),
@@ -3093,10 +3246,10 @@ class _TodayScreenState extends State<TodayScreen>
           Builder(
             builder: (context) {
               final nextM = milestones.firstWhere(
-                (m) => m > days,
+                (m) => m > maxStreak,
                 orElse: () => 180,
               );
-              final remaining = nextM - days;
+              final remaining = nextM - maxStreak;
               return Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -5635,6 +5788,23 @@ class _HabitsScreenState extends State<HabitsScreen> {
     });
   }
 
+  Future<void> _setWaterGlassesForSelectedDate(int count) async {
+    final dateStr = dayKey(_selectedDate);
+    final clamped = count.clamp(0, 10);
+    HapticService.selection();
+    SoundManager.playTapClick();
+    setState(() {
+      _selectedWaterGlasses = clamped;
+    });
+    try {
+      final MethodChannel channel = const MethodChannel('rayees.history/storage');
+      await channel.invokeMethod('setString', {
+        'key': 'water_$dateStr',
+        'value': '$clamped',
+      });
+    } catch (_) {}
+  }
+
   bool _isPrayerPassed(String prayer, DateTime selectedDate) {
     if (prayer == 'Tahajjud') return false;
 
@@ -6234,26 +6404,115 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     ),
             ),
 
-            // 8. WATER MODULE (Single clear metric: glasses)
+            // 8. WATER MODULE (Interactive Selectable Glass Icons)
             _buildSection(
               title: 'Water',
               rightText: '${waterVolume.toStringAsFixed(1)} L · 250ml/glass',
               rightColor: appColors.emerald,
               appColors: appColors,
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildMiniCard(
-                    label: 'Target',
-                    value: '$_selectedWaterGlasses / 10 glasses',
-                    valueColor: const Color(0xFF2DD4A8),
-                    appColors: appColors,
+                  Row(
+                    children: [
+                      _buildMiniCard(
+                        label: 'Target',
+                        value: '$_selectedWaterGlasses / 10 glasses',
+                        valueColor: const Color(0xFF2DD4A8),
+                        appColors: appColors,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildMiniCard(
+                        label: 'Intake',
+                        value: '${waterVolume.toStringAsFixed(1)} / 2.5 L',
+                        valueColor: appColors.text1,
+                        appColors: appColors,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _buildMiniCard(
-                    label: 'Intake',
-                    value: '${waterVolume.toStringAsFixed(1)} / 2.5 L',
-                    valueColor: appColors.text1,
-                    appColors: appColors,
+                  const SizedBox(height: 12),
+                  // Interactive 10 glass icons row
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double itemWidth =
+                          ((constraints.maxWidth - (9 * 5)) / 10).clamp(24.0, 36.0);
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: List.generate(10, (index) {
+                          final glassNum = index + 1;
+                          final isFilled = glassNum <= _selectedWaterGlasses;
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (_selectedWaterGlasses == glassNum) {
+                                _setWaterGlassesForSelectedDate(glassNum - 1);
+                              } else {
+                                _setWaterGlassesForSelectedDate(glassNum);
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOutCubic,
+                              width: itemWidth,
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isFilled
+                                    ? const Color(0xFF38BDF8).withValues(alpha: 0.20)
+                                    : (widget.theme.isDark
+                                        ? Colors.white.withValues(alpha: 0.04)
+                                        : Colors.black.withValues(alpha: 0.03)),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isFilled
+                                      ? const Color(0xFF38BDF8).withValues(alpha: 0.7)
+                                      : (widget.theme.isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : Colors.black.withValues(alpha: 0.06)),
+                                  width: isFilled ? 1.0 : 0.5,
+                                ),
+                                boxShadow: isFilled
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF38BDF8)
+                                              .withValues(alpha: 0.25),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isFilled
+                                        ? Icons.water_drop_rounded
+                                        : Icons.water_drop_outlined,
+                                    size: 15,
+                                    color: isFilled
+                                        ? const Color(0xFF38BDF8)
+                                        : appColors.text3,
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '$glassNum',
+                                    style: AppFonts.compact(
+                                      fontSize: 10,
+                                      fontWeight: isFilled
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                      color: isFilled
+                                          ? const Color(0xFF38BDF8)
+                                          : appColors.text3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      );
+                    },
                   ),
                 ],
               ),

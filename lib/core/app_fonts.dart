@@ -1,0 +1,212 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+/// San Francisco (SF) Typography System for Muttaqin
+///
+/// Variants:
+/// - SF Pro Display: Headlines & Large sizes (>= 20pt)
+/// - SF Pro Text: Small sizes (< 20pt), body text, labels
+/// - SF Pro: General System UI
+/// - SF Mono: Code editors, terminal, tabular numbers
+/// - SF Compact: WatchOS, tight spaces, badges & pills
+class AppFonts {
+  static const List<String> _displayFallbacks = [
+    'SF Pro Display',
+    'SF Pro',
+    '-apple-system',
+    'BlinkMacSystemFont',
+    'Inter',
+    'Segoe UI',
+    'Roboto',
+    'sans-serif',
+  ];
+
+  static const List<String> _textFallbacks = [
+    'SF Pro Text',
+    'SF Pro',
+    '-apple-system',
+    'BlinkMacSystemFont',
+    'Inter',
+    'Segoe UI',
+    'Roboto',
+    'sans-serif',
+  ];
+
+  static const List<String> _monoFallbacks = [
+    'SF Mono',
+    'Menlo',
+    'Monaco',
+    'Consolas',
+    'Courier New',
+    'monospace',
+  ];
+
+  static const List<String> _compactFallbacks = [
+    'SF Compact',
+    'SF Compact Text',
+    'SF Compact Display',
+    'SF Pro Text',
+    'SF Pro',
+    '-apple-system',
+    'sans-serif',
+  ];
+
+  static const List<String> _arabicFallbacks = [
+    'NotoNaskhArabic',
+    'Amiri',
+    'Traditional Arabic',
+    'serif',
+  ];
+
+  /// SF Pro Display: For large sizes (>= 20pt), headlines, hero numbers
+  static TextStyle display({
+    double fontSize = 22,
+    FontWeight fontWeight = FontWeight.w700,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+    TextDecoration? decoration,
+  }) {
+    return TextStyle(
+      fontFamily: 'SF Pro Display',
+      fontFamilyFallback: _displayFallbacks,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+      decoration: decoration,
+    );
+  }
+
+  /// SF Pro Text: For small sizes (< 20pt), body text, subtitles, descriptions
+  static TextStyle text({
+    double fontSize = 13,
+    FontWeight fontWeight = FontWeight.w400,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+    TextDecoration? decoration,
+  }) {
+    return TextStyle(
+      fontFamily: 'SF Pro Text',
+      fontFamilyFallback: _textFallbacks,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+      decoration: decoration,
+    );
+  }
+
+  /// SF Pro: General System UI
+  static TextStyle sfPro({
+    double fontSize = 14,
+    FontWeight fontWeight = FontWeight.w500,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+    TextDecoration? decoration,
+  }) {
+    return TextStyle(
+      fontFamily: 'SF Pro',
+      fontFamilyFallback: _textFallbacks,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+      decoration: decoration,
+    );
+  }
+
+  /// SF Mono: For tabular numbers, currency counters, code, terminals
+  static TextStyle mono({
+    double fontSize = 13,
+    FontWeight fontWeight = FontWeight.w500,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+    TextDecoration? decoration,
+  }) {
+    return TextStyle(
+      fontFamily: 'SF Mono',
+      fontFamilyFallback: _monoFallbacks,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+      decoration: decoration,
+    );
+  }
+
+  /// SF Compact: For tight spaces, badges, pills, compact metrics
+  static TextStyle compact({
+    double fontSize = 10.5,
+    FontWeight fontWeight = FontWeight.w600,
+    Color? color,
+    double? letterSpacing = 0.5,
+    double? height,
+    TextDecoration? decoration,
+  }) {
+    return TextStyle(
+      fontFamily: 'SF Compact',
+      fontFamilyFallback: _compactFallbacks,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+      decoration: decoration,
+    );
+  }
+
+  /// Arabic typography with NotoNaskhArabic / Amiri fallbacks
+  static TextStyle arabic({
+    double fontSize = 18,
+    FontWeight fontWeight = FontWeight.w400,
+    Color? color,
+    double? height = 1.6,
+  }) {
+    return TextStyle(
+      fontFamily: 'NotoNaskhArabic',
+      fontFamilyFallback: _arabicFallbacks,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+    );
+  }
+
+  /// Adaptive helper: auto-selects SF Pro Display if fontSize >= 20, else SF Pro Text
+  static TextStyle auto({
+    required double fontSize,
+    FontWeight fontWeight = FontWeight.normal,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+    TextDecoration? decoration,
+  }) {
+    if (fontSize >= 20) {
+      return display(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+        letterSpacing: letterSpacing,
+        height: height,
+        decoration: decoration,
+      );
+    } else {
+      return text(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+        letterSpacing: letterSpacing,
+        height: height,
+        decoration: decoration,
+      );
+    }
+  }
+}
