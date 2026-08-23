@@ -51,16 +51,55 @@ class HabitReportData {
   final DateTime startDate;
   final DateTime endDate;
   final List<DailyHabitData> days;
+  final Set<String>? openDates;
+  final int? customAppOpens;
 
   HabitReportData({
     required this.userName,
     required this.startDate,
     required this.endDate,
     required this.days,
+    this.openDates,
+    this.customAppOpens,
   });
 
-  int get totalDays => days.isEmpty ? 1 : days.length;
-  int get appOpens => days.length;
+  int get totalDays {
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final end = DateTime(endDate.year, endDate.month, endDate.day);
+    final diff = end.difference(start).inDays + 1;
+    return diff > 0 ? diff : (days.isEmpty ? 1 : days.length);
+  }
+
+  int get appOpens {
+    if (customAppOpens != null) {
+      return customAppOpens!.clamp(0, totalDays);
+    }
+    if (openDates != null) {
+      final start = DateTime(startDate.year, startDate.month, startDate.day);
+      final end = DateTime(endDate.year, endDate.month, endDate.day);
+      int count = 0;
+      final daysCount = end.difference(start).inDays + 1;
+      for (int i = 0; i < daysCount; i++) {
+        final d = start.add(Duration(days: i));
+        final key =
+            '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+        if (openDates!.contains(key)) {
+          count++;
+        }
+      }
+      return count;
+    }
+    // If no explicit open tracker data is provided, count days with actual logged user progress
+    final loggedDays = days
+        .where((d) => d.score > 0 || d.tasksDone > 0 || d.prayersDone > 0)
+        .length;
+    return loggedDays;
+  }
+
+  int get attendancePercent {
+    if (totalDays <= 0) return 0;
+    return ((appOpens / totalDays) * 100).round().clamp(0, 100);
+  }
 
   int get bestDayScore {
     if (days.isEmpty) return 0;
@@ -304,7 +343,7 @@ class PsychologyReportService {
     cards.add(_WinItem(
       title: 'App Opens',
       value: '${data.appOpens}/${data.totalDays}',
-      subtitle: '100% attendance',
+      subtitle: '${data.attendancePercent}% attendance',
       color: ReportColors.teal,
     ));
 

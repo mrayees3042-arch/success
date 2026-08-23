@@ -24,6 +24,7 @@ import 'package:success/widgets/stick_figure_painter.dart';
 import 'package:success/core/islamic_data.dart';
 import 'package:printing/printing.dart';
 import 'package:success/services/psychology_report_service.dart';
+import 'package:success/services/app_open_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -415,6 +416,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    AppOpenService.recordAppOpen();
     _loadUserProfile();
     _loadAppData();
     _loadIncome();
@@ -1075,11 +1077,14 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         );
       }
 
+      final openDates = await AppOpenService.getAppOpenDates();
+
       final reportData = HabitReportData(
         userName: _userName.isNotEmpty ? _userName : 'Rayees',
         startDate: startDate,
         endDate: now,
         days: days,
+        openDates: openDates,
       );
 
       final pdfBytes = await PsychologyReportService.generatePdfBytes(reportData);

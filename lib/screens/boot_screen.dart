@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:success/main.dart';
 import 'package:success/providers/theme_provider.dart';
 import 'package:success/screens/onboarding_screen.dart';
+import 'package:success/services/app_open_service.dart';
 import 'package:success/services/audio_service.dart';
 
 class BootScreen extends StatefulWidget {
@@ -43,6 +44,9 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _loadUserName();
+
+    // Record verified user app launch event
+    AppOpenService.recordAppOpen();
 
     // 1. App Launch sound (Triggered instantly since native player is pre-warmed)
     AudioService.playLaunch();
