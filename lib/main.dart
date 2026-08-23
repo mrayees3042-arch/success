@@ -3757,7 +3757,7 @@ class _TodayScreenState extends State<TodayScreen>
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: widget.theme.isDark ? const Color(0xFF18181C) : Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -3769,9 +3769,10 @@ class _TodayScreenState extends State<TodayScreen>
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           PulsingDot(color: const Color(0xFF2DD4A8), size: 10),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -3779,7 +3780,7 @@ class _TodayScreenState extends State<TodayScreen>
               children: [
                 Text(
                   isTomorrow ? 'TOMORROW\'S FIRST PRAYER' : 'UPCOMING PRAYER',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.compact(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.2,
@@ -3787,21 +3788,23 @@ class _TodayScreenState extends State<TodayScreen>
                   ),
                 ),
                 const SizedBox(height: 3),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 2,
                   children: [
                     Text(
                       nextPrayer['name']!,
-                      style: GoogleFonts.syne(
-                        fontSize: 18,
+                      style: AppFonts.display(
+                        fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: widget.theme.text1,
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Text(
                       nextPrayer['time']!,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
+                      style: AppFonts.text(
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF2DD4A8),
                       ),
@@ -3811,21 +3814,21 @@ class _TodayScreenState extends State<TodayScreen>
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: const Color(0xFF2DD4A8).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
-                width: 0.8,
+                width: 0.5,
               ),
             ),
             child: Text(
               nextPrayer['in']!,
-              style: GoogleFonts.syne(
-                fontSize: 14,
+              style: AppFonts.compact(
+                fontSize: 12.5,
                 fontWeight: FontWeight.w800,
                 color: const Color(0xFF2DD4A8),
               ),
@@ -3852,43 +3855,50 @@ class _TodayScreenState extends State<TodayScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'As-salamu alaykum',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: widget.theme.text3,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Color(0xFFD4A843), Color(0xFFF5D78E)],
-                  ).createShader(bounds),
-                  child: Text(
-                    displayUserName,
-                    style: GoogleFonts.syne(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'As-salamu alaykum',
+                    style: AppFonts.text(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: widget.theme.text3,
                     ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${_hijriApprox()} • ${shortDate(now)}',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: widget.theme.text3,
+                  const SizedBox(height: 2),
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Color(0xFFD4A843), Color(0xFFF5D78E)],
+                    ).createShader(bounds),
+                    child: Text(
+                      displayUserName,
+                      style: AppFonts.display(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_hijriApprox()} • ${shortDate(now)}',
+                    style: AppFonts.text(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: widget.theme.text3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
