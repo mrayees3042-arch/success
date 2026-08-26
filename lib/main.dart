@@ -2121,7 +2121,7 @@ class _TodayScreenState extends State<TodayScreen>
           LayoutBuilder(
             builder: (context, constraints) {
               final double itemWidth =
-                  ((constraints.maxWidth - (9 * 5)) / 10).clamp(24.0, 36.0);
+                  ((constraints.maxWidth - (9 * 6)) / 10).clamp(26.0, 38.0);
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: List.generate(10, (index) {
@@ -2142,7 +2142,7 @@ class _TodayScreenState extends State<TodayScreen>
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
                       width: itemWidth,
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
                         color: isFilled
                             ? const Color(0xFF38BDF8).withValues(alpha: 0.20)
@@ -2175,16 +2175,16 @@ class _TodayScreenState extends State<TodayScreen>
                             isFilled
                                 ? Icons.water_drop_rounded
                                 : Icons.water_drop_outlined,
-                            size: 15,
+                            size: 16,
                             color: isFilled
                                 ? const Color(0xFF38BDF8)
                                 : widget.theme.text3,
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 4),
                           Text(
                             '$glassNum',
                             style: AppFonts.compact(
-                              fontSize: 10,
+                              fontSize: 10.5,
                               fontWeight:
                                   isFilled ? FontWeight.w800 : FontWeight.w600,
                               color: isFilled
@@ -2200,64 +2200,7 @@ class _TodayScreenState extends State<TodayScreen>
               );
             },
           ),
-          const SizedBox(height: 12),
-
-          // Quick chunk shortcuts
-          Row(
-            children: [
-              _waterQuickChip(label: 'Morning (3)', count: 3, activeCount: glasses),
-              const SizedBox(width: 6),
-              _waterQuickChip(label: 'Mid-day (6)', count: 6, activeCount: glasses),
-              const SizedBox(width: 6),
-              _waterQuickChip(label: 'Evening (8)', count: 8, activeCount: glasses),
-              const SizedBox(width: 6),
-              _waterQuickChip(label: 'Full (10)', count: 10, activeCount: glasses),
-            ],
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _waterQuickChip({
-    required String label,
-    required int count,
-    required int activeCount,
-  }) {
-    final isActive = activeCount >= count;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          HapticService.selection();
-          SoundManager.playTapClick();
-          widget.onWaterChange(count);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isActive
-                ? const Color(0xFF38BDF8).withValues(alpha: 0.14)
-                : (widget.theme.isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.02)),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isActive
-                  ? const Color(0xFF38BDF8).withValues(alpha: 0.4)
-                  : widget.theme.border,
-              width: 0.5,
-            ),
-          ),
-          child: Text(
-            label,
-            style: AppFonts.compact(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w600,
-              color: isActive ? const Color(0xFF38BDF8) : widget.theme.text2,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -2882,7 +2825,7 @@ class _TodayScreenState extends State<TodayScreen>
     final dayPct = (dayProgress * 100).round();
 
     final isDark = widget.theme.isDark;
-    final cardBg = isDark ? const Color(0xFF0A0A12) : const Color(0xFFFAF8F3);
+    final cardBg = isDark ? const Color(0xFF14141E) : Colors.white;
     const goldColor = Color(0xFFD4A843);
     const tealColor = Color(0xFF2DD4A8);
 
@@ -2903,42 +2846,53 @@ class _TodayScreenState extends State<TodayScreen>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.04),
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
           width: 0.8,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Odometer Digits
+          // 1. Header
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildDigitalMeterGroup('years', ageData['years']!),
-              Text(
-                ':',
-                style: AppFonts.display(
-                  fontSize: 20,
-                  color: widget.theme.text3,
-                  fontWeight: FontWeight.w700,
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome, size: 14, color: goldColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'DAILY REFLECTION',
+                    style: AppFonts.compact(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: widget.theme.text3,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: goldColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${ageData['years']}y ${ageData['months']}m',
+                  style: AppFonts.compact(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: goldColor,
+                  ),
                 ),
               ),
-              _buildDigitalMeterGroup('months', ageData['months']!),
-              Text(
-                ':',
-                style: AppFonts.display(
-                  fontSize: 20,
-                  color: widget.theme.text3,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              _buildDigitalMeterGroup('days', ageData['days']!),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
 
-          // 2. Memento Mori Quote
+          // 2. Wisdom Quote
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -2959,18 +2913,18 @@ class _TodayScreenState extends State<TodayScreen>
                   '"${quoteInfo['quote']}"',
                   textAlign: TextAlign.center,
                   style: AppFonts.text(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w400,
                     fontStyle: FontStyle.italic,
                     color: widget.theme.text1,
-                    height: 1.45,
+                    height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   quoteInfo['source']!,
-                  style: AppFonts.text(
-                    fontSize: 10,
+                  style: AppFonts.compact(
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: goldColor,
                   ),
@@ -2980,12 +2934,12 @@ class _TodayScreenState extends State<TodayScreen>
           ),
           const SizedBox(height: 16),
 
-          // 3. Day Progress Bar
+          // 3. Daylight Progress Bar (Unambiguous referent)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Today you have used:',
+                'Daylight elapsed today (Fajr → Isha):',
                 style: AppFonts.text(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
@@ -2994,7 +2948,7 @@ class _TodayScreenState extends State<TodayScreen>
               ),
               Text(
                 '$dayPct%',
-                style: AppFonts.text(
+                style: AppFonts.compact(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: progressColor,
@@ -3007,19 +2961,11 @@ class _TodayScreenState extends State<TodayScreen>
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: dayProgress,
-              minHeight: 4,
+              minHeight: 5,
               backgroundColor: isDark
                   ? Colors.white.withValues(alpha: 0.08)
                   : Colors.black.withValues(alpha: 0.06),
               valueColor: AlwaysStoppedAnimation(progressColor),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Your next prayer is your next chance to prepare.',
-            style: AppFonts.text(
-              fontSize: 10.5,
-              color: widget.theme.text3,
             ),
           ),
         ],
@@ -3044,13 +2990,14 @@ class _TodayScreenState extends State<TodayScreen>
       if (maxStreak >= 30) return 'Incredible self-control! 🌟';
       if (maxStreak >= 14) return 'Two weeks! Keep pushing 🚀';
       if (maxStreak >= 7) return 'One week down, stay strong! 💪';
-      return 'Every day is a victory. Stay clean! 🔥';
+      if (maxStreak >= 1) return 'Streak active. Keep going strong! 🔥';
+      return 'Today is a clean slate. Stay focused! 🌱';
     }
 
     Widget subHabitRow({
       required String label,
-      required String emoji,
-      required Color color,
+      required IconData icon,
+      required Color iconColor,
       required bool checked,
       required String habitKey,
       required int streakDays,
@@ -3058,7 +3005,7 @@ class _TodayScreenState extends State<TodayScreen>
     }) {
       return Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           color: checked
               ? tealColor.withValues(alpha: 0.08)
@@ -3075,20 +3022,22 @@ class _TodayScreenState extends State<TodayScreen>
         ),
         child: Row(
           children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _toggleHabit(habitKey, checked),
-              child: Row(
-                children: [
-                  Text(emoji, style: const TextStyle(fontSize: 16)),
-                  const SizedBox(width: 10),
-                ],
+            // Unified Vector Icon in Badge
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
               ),
+              child: Icon(icon, color: iconColor, size: 16),
             ),
+            const SizedBox(width: 10),
             Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _toggleHabit(habitKey, checked),
+                onLongPress: () => _showHabitResetDialog(label, resetKey),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -3102,8 +3051,8 @@ class _TodayScreenState extends State<TodayScreen>
                     ),
                     Text(
                       checked
-                          ? '$streakDays day streak · Clean today'
-                          : '$streakDays day streak · Tap to mark clean',
+                          ? '${streakDays > 0 ? "$streakDays day streak · " : ""}Clean today ✓'
+                          : '${streakDays > 0 ? "$streakDays day streak · " : ""}Tap to mark clean',
                       style: AppFonts.text(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w500,
@@ -3114,26 +3063,13 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
               ),
             ),
-            // Reset Streak Button
-            Tooltip(
-              message: 'Reset $label streak',
-              child: IconButton(
-                icon: const Icon(Icons.refresh_rounded, size: 16),
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.all(6),
-                constraints: const BoxConstraints(),
-                color: widget.theme.text3,
-                onPressed: () => _showHabitResetDialog(label, resetKey),
-              ),
-            ),
-            const SizedBox(width: 6),
-            // Checkmark Toggle Circle
+            // Checkmark Toggle Circle (Safely isolated on trailing edge)
             GestureDetector(
               onTap: () => _toggleHabit(habitKey, checked),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: 26,
-                height: 26,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: checked ? tealColor : Colors.transparent,
@@ -3151,13 +3087,22 @@ class _TodayScreenState extends State<TodayScreen>
                       : null,
                 ),
                 child: checked
-                    ? const Icon(Icons.check, color: Colors.black, size: 14)
+                    ? const Icon(Icons.check_rounded, color: Colors.black, size: 16)
                     : null,
               ),
             ),
           ],
         ),
       );
+    }
+
+    String streakDisplay;
+    if (maxStreak == 0) {
+      streakDisplay = allClean ? 'Day 1 (Clean)' : 'Today Started';
+    } else if (maxStreak == 1) {
+      streakDisplay = '1 Day';
+    } else {
+      streakDisplay = '$maxStreak Days';
     }
 
     return _GlassCard(
@@ -3171,25 +3116,33 @@ class _TodayScreenState extends State<TodayScreen>
           // ── Header ──
           Row(
             children: [
-              const Text('🔥', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: 8),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: goldColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.local_fire_department_rounded, color: goldColor, size: 20),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'CLEAN STREAKS',
-                      style: AppFonts.text(
+                      style: AppFonts.compact(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 2.0,
+                        letterSpacing: 1.5,
                         color: widget.theme.text3,
                       ),
                     ),
                     Text(
-                      maxStreak == 1 ? '1 Day' : '$maxStreak Days',
+                      streakDisplay,
                       style: AppFonts.display(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: goldColor,
                       ),
@@ -3197,7 +3150,7 @@ class _TodayScreenState extends State<TodayScreen>
                   ],
                 ),
               ),
-              // Streak badge
+              // Streak status badge
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -3213,7 +3166,7 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
                 child: Text(
                   allClean ? 'All clean today ✓' : 'In Progress',
-                  style: AppFonts.text(
+                  style: AppFonts.compact(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: allClean ? tealColor : goldColor,
@@ -3222,18 +3175,18 @@ class _TodayScreenState extends State<TodayScreen>
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             motivationalText(),
-            style: AppFonts.text(fontSize: 11, color: widget.theme.text3),
+            style: AppFonts.text(fontSize: 11.5, color: widget.theme.text3),
           ),
           const SizedBox(height: 14),
 
-          // ── Sub-habit rows with individual reset buttons ──
+          // ── Sub-habit rows with unified vector icons ──
           subHabitRow(
             label: 'Pure Mind',
-            emoji: '🌱',
-            color: fapColor,
+            icon: Icons.spa_rounded,
+            iconColor: tealColor,
             checked: _habNoFap,
             habitKey: 'hab_no_fap',
             streakDays: _pureMindDaysClean,
@@ -3241,17 +3194,17 @@ class _TodayScreenState extends State<TodayScreen>
           ),
           subHabitRow(
             label: 'No Bad Habits',
-            emoji: '🚫',
-            color: badHabitColor,
+            icon: Icons.block_rounded,
+            iconColor: const Color(0xFFF87171),
             checked: _habNoBadHabits,
             habitKey: 'hab_no_bad_habits',
             streakDays: _noBadHabitsDaysClean,
             resetKey: 'no_bad_habits_last_reset',
           ),
           subHabitRow(
-            label: 'No Fast Food',
-            emoji: '🍔',
-            color: fastFoodColor,
+            label: 'Clean Eating (No Fast Food)',
+            icon: Icons.restaurant_rounded,
+            iconColor: fastFoodColor,
             checked: _habFastFood,
             habitKey: 'hab_no_fastfood',
             streakDays: _noFastFoodDaysClean,
@@ -3279,11 +3232,11 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
                 child: Row(
                   children: [
-                    const Text('🎯', style: TextStyle(fontSize: 12)),
+                    const Icon(Icons.flag_rounded, size: 14, color: goldColor),
                     const SizedBox(width: 8),
                     Text(
                       remaining > 0
-                          ? '$remaining days until your $nextM-day milestone'
+                          ? 'Reach a $nextM-day streak in $remaining more days'
                           : 'Milestone reached! Legend! 🏆',
                       style: AppFonts.text(
                         fontSize: 11,
@@ -3866,7 +3819,8 @@ class _TodayScreenState extends State<TodayScreen>
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+      color: widget.theme.bg,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
       child: SafeArea(
         bottom: false,
         child: Row(
@@ -4528,7 +4482,8 @@ class _TodayScreenState extends State<TodayScreen>
     double taskProgress,
     double waterProgress,
   ) {
-    final int displayScore = todayScore == 0 ? 10 : todayScore;
+    final bool hasStarted = todayScore > 0;
+    final int displayScore = todayScore;
 
     return _GlassCard(
       theme: widget.theme,
@@ -4538,51 +4493,57 @@ class _TodayScreenState extends State<TodayScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Today's Score",
-                style: AppFonts.text(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: widget.theme.text3,
-                  letterSpacing: 0.5,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "DAILY MOMENTUM",
+                  style: AppFonts.compact(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: widget.theme.text3,
+                    letterSpacing: 1.5,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$displayScore / 100',
-                style: AppFonts.display(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: widget.theme.text1,
+                const SizedBox(height: 4),
+                Text(
+                  hasStarted ? '$displayScore / 100' : 'Start Today',
+                  style: AppFonts.display(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: widget.theme.text1,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Daily momentum',
-                style: AppFonts.text(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2DD4A8),
+                const SizedBox(height: 2),
+                Text(
+                  hasStarted
+                      ? '${(todayScore).round()}% daily goals completed'
+                      : 'Check off your first prayer or task',
+                  style: AppFonts.text(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: hasStarted ? const Color(0xFF2DD4A8) : widget.theme.text3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 12),
           SizedBox(
-            width: 64,
-            height: 64,
+            width: 56,
+            height: 56,
             child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(end: displayScore / 100),
+              tween: Tween<double>(end: hasStarted ? (displayScore / 100).clamp(0.05, 1.0) : 0.05),
               duration: const Duration(milliseconds: 700),
               curve: Curves.easeOutCubic,
               builder: (context, arcProgress, child) {
                 return CustomPaint(
                   painter: _ScoreArcPainter(
                     progress: arcProgress,
-                    color: const Color(0xFFD4A843),
+                    color: hasStarted ? const Color(0xFFD4A843) : widget.theme.border,
                   ),
                 );
               },
