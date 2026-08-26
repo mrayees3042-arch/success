@@ -1316,9 +1316,17 @@ class _BottomNavBar extends StatefulWidget {
 
 class _BottomNavBarState extends State<_BottomNavBar>
     with SingleTickerProviderStateMixin {
-  static const _icons = [
+  static const _activeIcons = [
+    Icons.home_rounded,
+    Icons.check_circle_rounded,
+    Icons.fitness_center_rounded,
+    Icons.account_balance_wallet_rounded,
+    Icons.flag_rounded,
+  ];
+
+  static const _inactiveIcons = [
     Icons.home_outlined,
-    Icons.check_circle_outline,
+    Icons.check_circle_outline_rounded,
     Icons.fitness_center_outlined,
     Icons.account_balance_wallet_outlined,
     Icons.flag_outlined,
@@ -1331,7 +1339,7 @@ class _BottomNavBarState extends State<_BottomNavBar>
     final theme = widget.theme;
     final navBg = theme.isDark ? cBg : theme.navBg;
     final bubbleColor = theme.teal; // matches active theme color
-    final inactiveColor = theme.isDark ? Colors.white38 : Colors.black38;
+    final inactiveColor = theme.isDark ? const Color(0xFF9898AC) : const Color(0xFF64748B);
 
     return SafeArea(
       child: ClipRect(
@@ -1351,7 +1359,7 @@ class _BottomNavBarState extends State<_BottomNavBar>
               ),
             ),
             child: Row(
-              children: List.generate(_icons.length, (i) {
+              children: List.generate(_labels.length, (i) {
                 final isSelected = widget.selectedIndex == i;
                 return Expanded(
                   child: InkWell(
@@ -1367,30 +1375,40 @@ class _BottomNavBarState extends State<_BottomNavBar>
                       children: [
                         AnimatedPadding(
                           duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOutBack, // spring easing
-                          padding: EdgeInsets.only(bottom: isSelected ? 4 : 0),
+                          curve: Curves.easeOutBack,
+                          padding: EdgeInsets.only(bottom: isSelected ? 3 : 0),
                           child: AnimatedScale(
-                            scale: isSelected ? 1.15 : 0.95,
+                            scale: isSelected ? 1.12 : 0.96,
                             duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOutBack, // spring easing
+                            curve: Curves.easeOutBack,
                             child: Icon(
-                              _icons[i],
+                              isSelected ? _activeIcons[i] : _inactiveIcons[i],
                               size: 22,
                               color: isSelected ? bubbleColor : inactiveColor,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
                           _labels[i],
                           maxLines: 1,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 10,
+                          style: AppFonts.compact(
+                            fontSize: 10.5,
                             fontWeight: isSelected
-                                ? FontWeight.w700
+                                ? FontWeight.w800
                                 : FontWeight.w500,
-                            letterSpacing: 0.3,
+                            letterSpacing: isSelected ? 0.4 : 0.2,
                             color: isSelected ? bubbleColor : inactiveColor,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: isSelected ? 4 : 0,
+                          height: isSelected ? 4 : 0,
+                          decoration: BoxDecoration(
+                            color: bubbleColor,
+                            shape: BoxShape.circle,
                           ),
                         ),
                       ],
@@ -6731,22 +6749,22 @@ class _HabitsScreenState extends State<HabitsScreen> {
   }
 
   Widget _buildDayStrip(AppColors appColors) {
-    final today = DateTime.now();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final days = List.generate(
       7,
-      (i) => DateTime(
-        today.year,
-        today.month,
-        today.day,
-      ).subtract(Duration(days: 6 - i)),
+      (i) => today.subtract(Duration(days: 6 - i)),
     );
 
     return Row(
       children: List.generate(7, (index) {
         final date = days[index];
         final isSelected = dayKey(date) == dayKey(_selectedDate);
+        final isToday = dayKey(date) == dayKey(today);
+        final hasRecord = widget.history.containsKey(dayKey(date));
         final record = recordFor(widget.history, date);
         final percent = record.percent;
+        final isTracked = hasRecord && record.doneTotal > 0;
 
         final shortDayName = [
           'Mon',
@@ -6758,9 +6776,20 @@ class _HabitsScreenState extends State<HabitsScreen> {
           'Sun',
         ][date.weekday - 1];
         final dayNumber = date.day.toString();
-        final scoreColor = percent >= 50
-            ? appColors.emerald
-            : (percent > 0 ? appColors.gold : appColors.text3);
+
+        String statusLabel;
+        Color scoreColor;
+
+        if (isTracked) {
+          statusLabel = '$percent%';
+          scoreColor = percent >= 50 ? appColors.emerald : appColors.gold;
+        } else if (isToday) {
+          statusLabel = percent > 0 ? '$percent%' : 'Today';
+          scoreColor = percent > 0 ? appColors.emerald : appColors.gold;
+        } else {
+          statusLabel = '—';
+          scoreColor = appColors.text3;
+        }
 
         return Expanded(
           child: GestureDetector(
@@ -6789,7 +6818,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       shortDayName,
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.compact(
                         fontSize: 10.5,
                         fontWeight: isSelected
                             ? FontWeight.w700
@@ -6803,7 +6832,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       dayNumber,
-                      style: GoogleFonts.syne(
+                      style: AppFonts.display(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: isSelected ? appColors.text1 : appColors.text2,
@@ -6814,8 +6843,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      '$percent%',
-                      style: GoogleFonts.dmSans(
+                      statusLabel,
+                      style: AppFonts.compact(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w700,
                         color: scoreColor,
@@ -8672,46 +8701,50 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               // Apple Fitness+ Segmented Step Indicator
               Row(
                 children: List.generate(exercisesCount, (idx) {
-                  final isActive = idx == 0;
+                  final ex = _selectedSplit.exercises[idx];
+                  final k = '${_selectedSplit.title}|${ex[0]}';
+                  final isDone = _exerciseStates[k]?.completed == true;
+                  final isCurrent = idx == 0 && !isDone;
                   return Expanded(
                     child: Container(
-                      height: 3.5,
+                      height: 4,
                       margin: EdgeInsets.only(right: idx < exercisesCount - 1 ? 5 : 0),
                       decoration: BoxDecoration(
-                        color: isActive
+                        color: isDone
                             ? (theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488))
-                            : (theme.isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06)),
+                            : (isCurrent
+                                ? (theme.isDark ? const Color(0xFF2DD4A8).withValues(alpha: 0.5) : const Color(0xFF0D9488).withValues(alpha: 0.5))
+                                : (theme.isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.06))),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   );
                 }),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
-              // The Mission Title
+              // The Session Focus Title
               Text(
-                '${normalizeExerciseName(firstEx[0])} First',
-                style: GoogleFonts.dmSans(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w300,
+                _selectedSplit.title,
+                style: AppFonts.display(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
                   color: theme.text1,
-                  letterSpacing: -0.5,
+                  letterSpacing: -0.3,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                '$sets × $reps reps',
-                style: GoogleFonts.dmSans(
-                  fontSize: 15,
-                  color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: -0.24,
+                '$exercisesCount Exercises · Est. 25 min · Bodyweight',
+                style: AppFonts.text(
+                  fontSize: 13.5,
+                  color: theme.isDark ? const Color(0xFFA0A0B5) : const Color(0xFF475569),
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 18),
 
-              // Apple 50px Primary Action Button
+              // Single Primary Action Button
               GestureDetector(
                 onTap: _startTodayWorkout,
                 child: Container(
@@ -8719,10 +8752,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: (theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488)).withOpacity(0.25),
+                        color: (theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488)).withValues(alpha: 0.25),
                         blurRadius: 14,
                         offset: const Offset(0, 4),
                       ),
@@ -8735,15 +8768,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       Icon(
                         Icons.play_arrow_rounded,
                         color: theme.isDark ? Colors.black : Colors.white,
-                        size: 20,
+                        size: 22,
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Start First Set',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.41,
+                        'Start Workout',
+                        style: AppFonts.display(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                           color: theme.isDark ? Colors.black : Colors.white,
                         ),
                       ),
@@ -13095,10 +13127,16 @@ class _IncomeScreenState extends State<IncomeScreen>
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: colors.gold.withValues(alpha: 0.10),
+                  color: streak > 0
+                      ? colors.emerald.withValues(alpha: 0.12)
+                      : (colors.theme.isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.04)),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: colors.gold.withValues(alpha: 0.20),
+                    color: streak > 0
+                        ? colors.emerald.withValues(alpha: 0.3)
+                        : colors.cardBorder,
                     width: 0.5,
                   ),
                 ),
@@ -13112,10 +13150,10 @@ class _IncomeScreenState extends State<IncomeScreen>
                     const SizedBox(width: 4),
                     Text(
                       streak > 0 ? '$streak days logged' : 'Log daily',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.compact(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: colors.gold,
+                        color: streak > 0 ? colors.emerald : colors.text2,
                       ),
                     ),
                   ],
@@ -13505,57 +13543,38 @@ class _IncomeScreenState extends State<IncomeScreen>
             ],
           ),
           const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                '₹',
-                style: GoogleFonts.syne(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: netBalance == 0 ? colors.text3 : colors.text2,
+          TweenAnimationBuilder<double>(
+            key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
+            tween: Tween<double>(
+              begin: 0.0,
+              end: netBalance.toDouble(),
+            ),
+            duration: const Duration(milliseconds: 1200),
+            curve: Curves.easeOutCubic,
+            builder: (_, value, _) {
+              final display = value
+                  .round()
+                  .abs()
+                  .toString()
+                  .replaceAllMapped(
+                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                    (m) => '${m[1]},',
+                  );
+              final isNegative = netBalance < 0;
+              return Text(
+                '${isNegative ? "-" : ""}₹${netBalance == 0 ? "0" : display}',
+                style: AppFonts.display(
+                  fontSize: 38,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: isNegative
+                      ? colors.red
+                      : (netBalance == 0 ? colors.text3 : colors.text1),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: TweenAnimationBuilder<double>(
-                  key: ValueKey('$_selectedMonth-$_selectedYear-$netBalance'),
-                  tween: Tween<double>(
-                    begin: 0.0,
-                    end: netBalance.toDouble(),
-                  ),
-                  duration: const Duration(milliseconds: 1200),
-                  curve: Curves.easeOutCubic,
-                  builder: (_, value, _) {
-                    final display = value
-                        .round()
-                        .abs()
-                        .toString()
-                        .replaceAllMapped(
-                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                          (m) => '${m[1]},',
-                        );
-                    final isNegative = netBalance < 0;
-                    return Text(
-                      '${isNegative ? "-" : ""}${netBalance == 0 ? "0" : display}',
-                      style: GoogleFonts.syne(
-                        fontSize: 38,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                        fontFeatures: const [
-                          FontFeature.tabularFigures(),
-                        ],
-                        color: isNegative
-                            ? colors.red
-                            : (netBalance == 0 ? colors.text3 : colors.text1),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    );
-                  },
-                ),
-              ),
-            ],
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              );
+            },
           ),
           const SizedBox(height: 14),
 

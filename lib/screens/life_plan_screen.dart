@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../app_theme.dart';
+import '../core/app_fonts.dart';
 import '../services/haptic_service.dart';
 import '../services/audio_service.dart';
 
@@ -506,34 +507,50 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     // Empty state helper
     Widget buildEmptyState() {
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 40),
+        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
         width: double.infinity,
+        decoration: BoxDecoration(
+          color: theme.isDark ? const Color(0x06FFFFFF) : const Color(0x05000000),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cardBorder, width: 0.5),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Opacity(
-              opacity: 0.3,
-              child: Text(
-                '🎯',
-                style: TextStyle(fontSize: 48),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: goldColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: goldColor.withValues(alpha: 0.25),
+                  width: 0.8,
+                ),
+              ),
+              child: Icon(
+                Icons.track_changes_rounded,
+                size: 28,
+                color: goldColor,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
-              'No tasks yet',
-              style: GoogleFonts.dmSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
+              'No goals set yet',
+              style: AppFonts.display(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
                 color: text1,
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              'Add your first task to start tracking',
-              style: GoogleFonts.dmSans(
+              'Add a goal to build your long-term focus list',
+              style: AppFonts.text(
                 fontSize: 13,
                 color: text3,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -936,38 +953,43 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     Widget buildQuickAddCard() {
       return GestureDetector(
         onTap: _showAddGoalSheet,
-        child: CustomPaint(
-          painter: DashedBorderPainter(color: cardBorder),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.add,
-                  size: 20,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+          decoration: BoxDecoration(
+            color: theme.isDark ? const Color(0x0AFFFFFF) : const Color(0x06000000),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: goldColor.withValues(alpha: 0.25),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: goldColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add_rounded,
+                  size: 18,
                   color: goldColor,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Add Task',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: text1,
-                  ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Add New Goal',
+                style: AppFonts.display(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: text1,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Set a new task for your list',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    color: text3,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );

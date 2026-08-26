@@ -23,8 +23,8 @@ const cRose = Color(0xFFE74C3C);
 const cCard = Color(0x14FFFFFF);
 const cCardBorder = Color(0x18FFFFFF);
 const cText = Color(0xFFF0F0F5);
-const cSub = Color(0xFF8A8A9A);
-const cSub2 = Color(0xFF5A5A6A);
+const cSub = Color(0xFF9898AC);
+const cSub2 = Color(0xFF808096);
 
 const kMuted = cSub;
 
@@ -77,9 +77,9 @@ ThemeColors getTheme() {
       divider: Color(0xFFDDD8CC),
       navBg: Color(0xFFF9F7F2),
       text1: Color(0xFF1A1A2E),
-      text2: Color(0xFF2A2A3E),
-      text3: Color(0xFF8A8580),
-      text4: Color(0xFF9A9585),
+      text2: Color(0xFF334155),
+      text3: Color(0xFF475569),
+      text4: Color(0xFF64748B),
       gold: Color(0xFFB8860B),
       teal: Color(0xFF0A7A5A),
       blue: Color(0xFF1A6FA0),
@@ -96,7 +96,7 @@ ThemeColors getTheme() {
     divider: cCardBorder,
     navBg: cBg,
     text1: cText,
-    text2: cText,
+    text2: Color(0xFFA0A0B5),
     text3: cSub,
     text4: cSub2,
     gold: cGold,
@@ -124,24 +124,24 @@ class AppColors {
   Color get red => theme.isDark ? const Color(0xFFE74C3C) : const Color(0xFFC0392B);
   Color get red2 => theme.isDark ? const Color(0x14E74C3C) : const Color(0x14C0392B);
   Color get text1 => theme.isDark ? const Color(0xFFF0F0F5) : const Color(0xFF1A1A2E);
-  Color get text2 => theme.isDark ? const Color(0xFF8A8A9A) : const Color(0x80000000);
-  Color get text3 => theme.isDark ? const Color(0xFF5A5A6A) : const Color(0x4D000000);
-  Color get text4 => theme.isDark ? const Color(0x19FFFFFF) : const Color(0x1F000000);
+  Color get text2 => theme.isDark ? const Color(0xFFA0A0B5) : const Color(0xFF334155);
+  Color get text3 => theme.isDark ? const Color(0xFF8E8EA8) : const Color(0xFF475569);
+  Color get text4 => theme.isDark ? const Color(0xFF75758C) : const Color(0xFF64748B);
   Color get track => theme.isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000);
   Color get pink => const Color(0xFFFF007F);
 
   // ── Antigravity Workout Tokens ──
-  Color get auroraText => theme.isDark ? const Color(0xFFE8E8F0) : const Color(0xFF1C1914);
-  Color get auroraTextSec => theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560);
-  Color get auroraTextMuted => theme.isDark ? const Color(0xFF4A4A5A) : const Color(0xFFA8A29D);
+  Color get auroraText => theme.isDark ? const Color(0xFFF0F0F5) : const Color(0xFF1C1914);
+  Color get auroraTextSec => theme.isDark ? const Color(0xFFA0A0B5) : const Color(0xFF475569);
+  Color get auroraTextMuted => theme.isDark ? const Color(0xFF8E8EA8) : const Color(0xFF64748B);
   Color get auroraTeal => theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488);
   Color get auroraTealSoft => theme.isDark ? const Color(0x262DD4A8) : const Color(0x1F0D9488);
   Color get solarGold => theme.isDark ? const Color(0xFFD4A843) : const Color(0xFFB48A2A);
   Color get solarGoldSoft => theme.isDark ? const Color(0x1FD4A843) : const Color(0x1AB48A2A);
   Color get auroraCoral => theme.isDark ? const Color(0xFFF87171) : const Color(0xFFDC584C);
   Color get glassSurface => theme.isDark ? const Color(0xFF141423).withOpacity(0.65) : Colors.white.withOpacity(0.72);
-  Color get glassBorder => theme.isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.85);
-  Color get glassBorderBottom => theme.isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.04);
+  Color get glassBorder => theme.isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.85);
+  Color get glassBorderBottom => theme.isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.04);
   Color get voidBg => theme.isDark ? const Color(0xFF0B0B14) : const Color(0xFFF0EDE6);
 
   List<BoxShadow>? get shadow {
