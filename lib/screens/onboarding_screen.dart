@@ -1,3 +1,4 @@
+import '../core/app_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -244,7 +245,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     _currentStep == 0
                         ? 'GET STARTED →'
                         : (_currentStep == 3 ? 'COMPLETE SETUP 🎉' : 'CONTINUE →'),
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
@@ -292,7 +293,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 28),
           Text(
             'Muttaqin',
-            style: GoogleFonts.syne(
+            style: AppFonts.display(
               fontSize: 32,
               fontWeight: FontWeight.w800,
               color: textColor,
@@ -303,7 +304,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             'Your personal life odometer, habit tracker, and workout companion.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(
+            style: AppFonts.text(
               fontSize: 15,
               color: textMuted,
               height: 1.5,
@@ -324,7 +325,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Expanded(
                   child: Text(
                     '100% Offline & Private · Zero tracking or registration required.',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: textColor,
@@ -358,7 +359,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           Text(
             'What is your name?',
-            style: GoogleFonts.syne(
+            style: AppFonts.display(
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: textColor,
@@ -367,7 +368,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 8),
           Text(
             'This will personalize your splash screen and dashboard experience.',
-            style: GoogleFonts.dmSans(fontSize: 14, color: textMuted),
+            style: AppFonts.text(fontSize: 14, color: textMuted),
           ),
           const SizedBox(height: 28),
 
@@ -382,7 +383,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: TextField(
               controller: _nameController,
               autofocus: true,
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: textColor,
@@ -391,7 +392,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: 'Enter your name (e.g. Rayees)',
-                hintStyle: GoogleFonts.dmSans(
+                hintStyle: AppFonts.text(
                   fontSize: 16,
                   color: textMuted.withValues(alpha: 0.6),
                 ),
@@ -415,7 +416,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               children: [
                 Text(
                   'SPLASH PREVIEW',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 2.0,
@@ -425,7 +426,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const SizedBox(height: 12),
                 Text(
                   'BUILT FOR',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 9,
                     letterSpacing: 3,
                     color: textMuted,
@@ -434,7 +435,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const SizedBox(height: 4),
                 Text(
                   previewName,
-                  style: GoogleFonts.syne(
+                  style: AppFonts.display(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 4,
@@ -473,7 +474,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           Text(
             'When were you born?',
-            style: GoogleFonts.syne(
+            style: AppFonts.display(
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: textColor,
@@ -482,7 +483,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 8),
           Text(
             'Your Date of Birth powers the exact Life Odometer countdown.',
-            style: GoogleFonts.dmSans(fontSize: 14, color: textMuted),
+            style: AppFonts.text(fontSize: 14, color: textMuted),
           ),
           const SizedBox(height: 28),
 
@@ -506,7 +507,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       children: [
                         Text(
                           'Date of Birth',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 11,
                             color: textMuted,
                             fontWeight: FontWeight.w600,
@@ -515,7 +516,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         const SizedBox(height: 2),
                         Text(
                           formattedDob,
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: textColor,
@@ -553,7 +554,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     children: [
                       Text(
                         'CURRENT AGE PREVIEW',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.5,
@@ -563,7 +564,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       const SizedBox(height: 4),
                       Text(
                         '$age Years Old',
-                        style: GoogleFonts.syne(
+                        style: AppFonts.display(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                           color: textColor,
@@ -597,7 +598,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         children: [
           Text(
             'Target Horizon',
-            style: GoogleFonts.syne(
+            style: AppFonts.display(
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: textColor,
@@ -606,7 +607,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 8),
           Text(
             'Choose your primary milestone year for daily progress tracking.',
-            style: GoogleFonts.dmSans(fontSize: 14, color: textMuted),
+            style: AppFonts.text(fontSize: 14, color: textMuted),
           ),
           const SizedBox(height: 28),
 
@@ -647,7 +648,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       const SizedBox(width: 14),
                       Text(
                         'Goal Year $year',
-                        style: GoogleFonts.syne(
+                        style: AppFonts.display(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: isSelected
@@ -666,7 +667,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                           child: Text(
                             'RECOMMENDED',
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,

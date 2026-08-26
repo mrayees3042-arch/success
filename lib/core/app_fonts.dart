@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// San Francisco (SF) Typography System for Muttaqin
 ///
@@ -9,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 /// - SF Pro: General System UI
 /// - SF Mono: Code editors, terminal, tabular numbers
 /// - SF Compact: WatchOS, tight spaces, badges & pills
+/// - SF Arabic: Arabic Quranic & Dhikr text
 class AppFonts {
   static const List<String> _displayFallbacks = [
     'SF Pro Display',
@@ -65,7 +65,12 @@ class AppFonts {
     Color? color,
     double? letterSpacing,
     double? height,
+    FontStyle? fontStyle,
+    List<FontFeature>? fontFeatures,
+    List<Shadow>? shadows,
     TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
   }) {
     return TextStyle(
       fontFamily: 'SF Pro Display',
@@ -75,7 +80,12 @@ class AppFonts {
       color: color,
       letterSpacing: letterSpacing,
       height: height,
+      fontStyle: fontStyle,
+      fontFeatures: fontFeatures,
+      shadows: shadows,
       decoration: decoration,
+      decorationColor: decorationColor,
+      decorationStyle: decorationStyle,
     );
   }
 
@@ -86,7 +96,12 @@ class AppFonts {
     Color? color,
     double? letterSpacing,
     double? height,
+    FontStyle? fontStyle,
+    List<FontFeature>? fontFeatures,
+    List<Shadow>? shadows,
     TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
   }) {
     return TextStyle(
       fontFamily: 'SF Pro Text',
@@ -96,7 +111,12 @@ class AppFonts {
       color: color,
       letterSpacing: letterSpacing,
       height: height,
+      fontStyle: fontStyle,
+      fontFeatures: fontFeatures,
+      shadows: shadows,
       decoration: decoration,
+      decorationColor: decorationColor,
+      decorationStyle: decorationStyle,
     );
   }
 
@@ -107,7 +127,12 @@ class AppFonts {
     Color? color,
     double? letterSpacing,
     double? height,
+    FontStyle? fontStyle,
+    List<FontFeature>? fontFeatures,
+    List<Shadow>? shadows,
     TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
   }) {
     return TextStyle(
       fontFamily: 'SF Pro',
@@ -117,7 +142,12 @@ class AppFonts {
       color: color,
       letterSpacing: letterSpacing,
       height: height,
+      fontStyle: fontStyle,
+      fontFeatures: fontFeatures,
+      shadows: shadows,
       decoration: decoration,
+      decorationColor: decorationColor,
+      decorationStyle: decorationStyle,
     );
   }
 
@@ -128,7 +158,12 @@ class AppFonts {
     Color? color,
     double? letterSpacing,
     double? height,
+    FontStyle? fontStyle,
+    List<FontFeature>? fontFeatures,
+    List<Shadow>? shadows,
     TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
   }) {
     return TextStyle(
       fontFamily: 'SF Mono',
@@ -138,7 +173,12 @@ class AppFonts {
       color: color,
       letterSpacing: letterSpacing,
       height: height,
+      fontStyle: fontStyle,
+      fontFeatures: fontFeatures,
+      shadows: shadows,
       decoration: decoration,
+      decorationColor: decorationColor,
+      decorationStyle: decorationStyle,
     );
   }
 
@@ -149,7 +189,12 @@ class AppFonts {
     Color? color,
     double? letterSpacing = 0.5,
     double? height,
+    FontStyle? fontStyle,
+    List<FontFeature>? fontFeatures,
+    List<Shadow>? shadows,
     TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
   }) {
     return TextStyle(
       fontFamily: 'SF Compact',
@@ -159,7 +204,12 @@ class AppFonts {
       color: color,
       letterSpacing: letterSpacing,
       height: height,
+      fontStyle: fontStyle,
+      fontFeatures: fontFeatures,
+      shadows: shadows,
       decoration: decoration,
+      decorationColor: decorationColor,
+      decorationStyle: decorationStyle,
     );
   }
 
@@ -168,7 +218,11 @@ class AppFonts {
     double fontSize = 18,
     FontWeight fontWeight = FontWeight.w400,
     Color? color,
+    double? letterSpacing,
     double? height = 1.6,
+    FontStyle? fontStyle,
+    List<Shadow>? shadows,
+    TextDecoration? decoration,
   }) {
     return TextStyle(
       fontFamily: 'NotoNaskhArabic',
@@ -176,7 +230,11 @@ class AppFonts {
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
+      letterSpacing: letterSpacing,
       height: height,
+      fontStyle: fontStyle,
+      shadows: shadows,
+      decoration: decoration,
     );
   }
 
@@ -187,7 +245,12 @@ class AppFonts {
     Color? color,
     double? letterSpacing,
     double? height,
+    FontStyle? fontStyle,
+    List<FontFeature>? fontFeatures,
+    List<Shadow>? shadows,
     TextDecoration? decoration,
+    Color? decorationColor,
+    TextDecorationStyle? decorationStyle,
   }) {
     if (fontSize >= 20) {
       return display(
@@ -196,7 +259,12 @@ class AppFonts {
         color: color,
         letterSpacing: letterSpacing,
         height: height,
+        fontStyle: fontStyle,
+        fontFeatures: fontFeatures,
+        shadows: shadows,
         decoration: decoration,
+        decorationColor: decorationColor,
+        decorationStyle: decorationStyle,
       );
     } else {
       return text(
@@ -205,7 +273,12 @@ class AppFonts {
         color: color,
         letterSpacing: letterSpacing,
         height: height,
+        fontStyle: fontStyle,
+        fontFeatures: fontFeatures,
+        shadows: shadows,
         decoration: decoration,
+        decorationColor: decorationColor,
+        decorationStyle: decorationStyle,
       );
     }
   }

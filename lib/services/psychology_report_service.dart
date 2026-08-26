@@ -1,3 +1,4 @@
+import '../core/app_fonts.dart';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';

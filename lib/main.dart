@@ -1468,7 +1468,7 @@ class ScoreRing extends StatelessWidget {
                     children: [
                       Text(
                         '$score',
-                        style: GoogleFonts.syne(
+                        style: AppFonts.display(
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
                           color: theme.gold,
@@ -1478,7 +1478,7 @@ class ScoreRing extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'DAILY SCORE',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 10,
                           color: theme.text4,
                           fontWeight: FontWeight.w700,
@@ -1548,7 +1548,7 @@ class _TaskEditSheetState extends State<_TaskEditSheet> {
         children: [
           Text(
             isEditing ? 'Edit daily task' : 'Add daily task',
-            style: GoogleFonts.syne(
+            style: AppFonts.display(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: widget.theme.text1,
@@ -1558,10 +1558,10 @@ class _TaskEditSheetState extends State<_TaskEditSheet> {
           TextField(
             controller: _titleCtrl,
             autofocus: true,
-            style: GoogleFonts.dmSans(color: widget.theme.text1, fontWeight: FontWeight.w500),
+            style: AppFonts.text(color: widget.theme.text1, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               labelText: 'Task name',
-              labelStyle: GoogleFonts.dmSans(color: widget.theme.text3),
+              labelStyle: AppFonts.text(color: widget.theme.text3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -1570,10 +1570,10 @@ class _TaskEditSheetState extends State<_TaskEditSheet> {
           const SizedBox(height: 12),
           TextField(
             controller: _tagCtrl,
-            style: GoogleFonts.dmSans(color: widget.theme.text1, fontWeight: FontWeight.w500),
+            style: AppFonts.text(color: widget.theme.text1, fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               labelText: 'Time / condition subtitle',
-              labelStyle: GoogleFonts.dmSans(color: widget.theme.text3),
+              labelStyle: AppFonts.text(color: widget.theme.text3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -2018,7 +2018,7 @@ class _TodayScreenState extends State<TodayScreen>
                 children: [
                   Text(
                     task.title,
-                    style: GoogleFonts.syne(
+                    style: AppFonts.display(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: done ? widget.theme.text3 : widget.theme.text1,
@@ -2028,7 +2028,7 @@ class _TodayScreenState extends State<TodayScreen>
                   const SizedBox(height: 2),
                   Text(
                     _taskSubtitle(entry),
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       color: done ? widget.theme.text4 : widget.theme.text2,
                     ),
@@ -2431,7 +2431,7 @@ class _TodayScreenState extends State<TodayScreen>
                   const SizedBox(width: 10),
                   Text(
                     'Start Fast',
-                    style: GoogleFonts.syne(
+                    style: AppFonts.display(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: widget.theme.text1,
@@ -2442,7 +2442,7 @@ class _TodayScreenState extends State<TodayScreen>
               const SizedBox(height: 6),
               Text(
                 'Fasting is voluntary and deliberate worship. Choose your intention:',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 13,
                   color: widget.theme.text3,
                 ),
@@ -2485,7 +2485,7 @@ class _TodayScreenState extends State<TodayScreen>
                   },
                   child: Text(
                     'Skip Today',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: widget.theme.text3,
@@ -2537,7 +2537,7 @@ class _TodayScreenState extends State<TodayScreen>
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: widget.theme.text1,
@@ -2545,7 +2545,7 @@ class _TodayScreenState extends State<TodayScreen>
                   ),
                   Text(
                     subtitle,
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       color: widget.theme.text3,
                     ),
@@ -2681,21 +2681,21 @@ class _TodayScreenState extends State<TodayScreen>
           ),
           title: Text(
             'Reset $habitName?',
-            style: GoogleFonts.syne(
+            style: AppFonts.display(
               fontWeight: FontWeight.w800,
               color: widget.theme.text1,
             ),
           ),
           content: Text(
             'Are you sure you want to reset your $habitName streak to 0 days?',
-            style: GoogleFonts.dmSans(color: widget.theme.text2),
+            style: AppFonts.text(color: widget.theme.text2),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 'Cancel',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontWeight: FontWeight.w600,
                   color: widget.theme.text3,
                 ),
@@ -2714,7 +2714,7 @@ class _TodayScreenState extends State<TodayScreen>
               ),
               child: Text(
                 'Yes, Reset',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
@@ -2774,7 +2774,7 @@ class _TodayScreenState extends State<TodayScreen>
       ),
       child: Text(
         digit,
-        style: GoogleFonts.syne(
+        style: AppFonts.display(
           fontSize: 20,
           fontWeight: FontWeight.w800,
           fontFeatures: const [FontFeature.tabularFigures()],
@@ -2797,7 +2797,7 @@ class _TodayScreenState extends State<TodayScreen>
         const SizedBox(height: 4),
         Text(
           label.toUpperCase(),
-          style: GoogleFonts.dmSans(
+          style: AppFonts.text(
             fontSize: 8,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.2,
@@ -2918,7 +2918,7 @@ class _TodayScreenState extends State<TodayScreen>
               _buildDigitalMeterGroup('years', ageData['years']!),
               Text(
                 ':',
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontSize: 20,
                   color: widget.theme.text3,
                   fontWeight: FontWeight.w700,
@@ -2927,7 +2927,7 @@ class _TodayScreenState extends State<TodayScreen>
               _buildDigitalMeterGroup('months', ageData['months']!),
               Text(
                 ':',
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontSize: 20,
                   color: widget.theme.text3,
                   fontWeight: FontWeight.w700,
@@ -2958,7 +2958,7 @@ class _TodayScreenState extends State<TodayScreen>
                 Text(
                   '"${quoteInfo['quote']}"',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w400,
                     fontStyle: FontStyle.italic,
@@ -2969,7 +2969,7 @@ class _TodayScreenState extends State<TodayScreen>
                 const SizedBox(height: 6),
                 Text(
                   quoteInfo['source']!,
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: goldColor,
@@ -2986,7 +2986,7 @@ class _TodayScreenState extends State<TodayScreen>
             children: [
               Text(
                 'Today you have used:',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                   color: widget.theme.text3,
@@ -2994,7 +2994,7 @@ class _TodayScreenState extends State<TodayScreen>
               ),
               Text(
                 '$dayPct%',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: progressColor,
@@ -3017,7 +3017,7 @@ class _TodayScreenState extends State<TodayScreen>
           const SizedBox(height: 8),
           Text(
             'Your next prayer is your next chance to prepare.',
-            style: GoogleFonts.dmSans(
+            style: AppFonts.text(
               fontSize: 10.5,
               color: widget.theme.text3,
             ),
@@ -3094,7 +3094,7 @@ class _TodayScreenState extends State<TodayScreen>
                   children: [
                     Text(
                       label,
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                         color: widget.theme.text1,
@@ -3104,7 +3104,7 @@ class _TodayScreenState extends State<TodayScreen>
                       checked
                           ? '$streakDays day streak · Clean today'
                           : '$streakDays day streak · Tap to mark clean',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w500,
                         color: checked ? tealColor : widget.theme.text3,
@@ -3179,7 +3179,7 @@ class _TodayScreenState extends State<TodayScreen>
                   children: [
                     Text(
                       'CLEAN STREAKS',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 2.0,
@@ -3188,7 +3188,7 @@ class _TodayScreenState extends State<TodayScreen>
                     ),
                     Text(
                       maxStreak == 1 ? '1 Day' : '$maxStreak Days',
-                      style: GoogleFonts.syne(
+                      style: AppFonts.display(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         color: goldColor,
@@ -3213,7 +3213,7 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
                 child: Text(
                   allClean ? 'All clean today ✓' : 'In Progress',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: allClean ? tealColor : goldColor,
@@ -3225,7 +3225,7 @@ class _TodayScreenState extends State<TodayScreen>
           const SizedBox(height: 4),
           Text(
             motivationalText(),
-            style: GoogleFonts.dmSans(fontSize: 11, color: widget.theme.text3),
+            style: AppFonts.text(fontSize: 11, color: widget.theme.text3),
           ),
           const SizedBox(height: 14),
 
@@ -3285,7 +3285,7 @@ class _TodayScreenState extends State<TodayScreen>
                       remaining > 0
                           ? '$remaining days until your $nextM-day milestone'
                           : 'Milestone reached! Legend! 🏆',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: widget.theme.text2,
@@ -3336,7 +3336,7 @@ class _TodayScreenState extends State<TodayScreen>
                   const SizedBox(width: 10),
                   Text(
                     '${_fastingDayName().replaceFirst(' Fast', '')} — Sunnah fast day',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: widget.theme.text1,
@@ -3348,7 +3348,7 @@ class _TodayScreenState extends State<TodayScreen>
                 children: [
                   Text(
                     'Start Fast ›',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: gold,
@@ -3380,7 +3380,7 @@ class _TodayScreenState extends State<TodayScreen>
           children: [
             Text(
               'Fast broken at $brokenTime. Next fast: ${_getNextSunnahDayName()}.',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 12,
                 color: widget.theme.text3,
               ),
@@ -3389,7 +3389,7 @@ class _TodayScreenState extends State<TodayScreen>
               onTap: _showStartFastSheet,
               child: Text(
                 'Restart ›',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: gold,
@@ -3419,7 +3419,7 @@ class _TodayScreenState extends State<TodayScreen>
             const SizedBox(width: 8),
             Text(
               '$_fastType completed. BarakAllahu feek.',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: widget.theme.text1,
@@ -3447,7 +3447,7 @@ class _TodayScreenState extends State<TodayScreen>
               Expanded(
                 child: Text(
                   _fastType,
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: widget.theme.text1,
@@ -3463,7 +3463,7 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
                 child: Text(
                   'ACTIVE FAST',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
@@ -3476,7 +3476,7 @@ class _TodayScreenState extends State<TodayScreen>
           const SizedBox(height: 4),
           Text(
             'Fasting since $_fastStartTime • Iftar at 6:51 PM',
-            style: GoogleFonts.dmSans(
+            style: AppFonts.text(
               fontSize: 11,
               color: widget.theme.text3,
             ),
@@ -3491,7 +3491,7 @@ class _TodayScreenState extends State<TodayScreen>
                 children: [
                   Text(
                     'IFTAR IN',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 9,
                       letterSpacing: 1.5,
                       fontWeight: FontWeight.w700,
@@ -3501,7 +3501,7 @@ class _TodayScreenState extends State<TodayScreen>
                   const SizedBox(height: 2),
                   Text(
                     countdown,
-                    style: GoogleFonts.syne(
+                    style: AppFonts.display(
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
                       color: gold,
@@ -3556,7 +3556,7 @@ class _TodayScreenState extends State<TodayScreen>
                   ),
                   child: Text(
                     'Break Fast',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 12,
                       color: const Color(0xFFFF6B6B),
                       fontWeight: FontWeight.w600,
@@ -3578,7 +3578,7 @@ class _TodayScreenState extends State<TodayScreen>
                   ),
                   child: Text(
                     'Complete Fast ✓',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 12,
                       color: const Color(0xFF2DD4A8),
                       fontWeight: FontWeight.w600,
@@ -3650,7 +3650,7 @@ class _TodayScreenState extends State<TodayScreen>
           children: [
             Text(
               prayer,
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 11,
                 color: widget.theme.text3,
               ),
@@ -3661,7 +3661,7 @@ class _TodayScreenState extends State<TodayScreen>
               children: [
                 Text(
                   timeStr,
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: timeColor,
@@ -3760,7 +3760,7 @@ class _TodayScreenState extends State<TodayScreen>
             const SizedBox(width: 10),
             Text(
               'All 5 Daily Prayers Completed',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: widget.theme.text1,
@@ -4006,7 +4006,7 @@ class _TodayScreenState extends State<TodayScreen>
                   children: [
                     Text(
                       '$_daysLeft',
-                      style: GoogleFonts.syne(
+                      style: AppFonts.display(
                         fontSize: 42,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFFE8B84B),
@@ -4014,7 +4014,7 @@ class _TodayScreenState extends State<TodayScreen>
                     ),
                     Text(
                       'Target Days Remaining',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: widget.theme.text3,
@@ -4029,7 +4029,7 @@ class _TodayScreenState extends State<TodayScreen>
         const SizedBox(height: 12),
         Text(
           '$_date \u2022 $_day',
-          style: GoogleFonts.dmSans(
+          style: AppFonts.text(
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: widget.theme.text4,
@@ -4248,7 +4248,7 @@ class _TodayScreenState extends State<TodayScreen>
                   const SizedBox(width: 6),
                   Text(
                     'VERSE OF THE DAY',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 2.0,
@@ -4264,7 +4264,7 @@ class _TodayScreenState extends State<TodayScreen>
                 quote.arabic,
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.rtl,
-                style: GoogleFonts.amiri(
+                style: AppFonts.arabic(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: widget.theme.isDark
@@ -4283,7 +4283,7 @@ class _TodayScreenState extends State<TodayScreen>
               Text(
                 quote.translation,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 12,
                   color: widget.theme.text2,
                   fontStyle: FontStyle.italic,
@@ -4293,7 +4293,7 @@ class _TodayScreenState extends State<TodayScreen>
               Text(
                 quote.reference,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontSize: 9,
                   color: widget.theme.text3,
                   fontWeight: FontWeight.w600,
@@ -4303,7 +4303,7 @@ class _TodayScreenState extends State<TodayScreen>
               const SizedBox(height: 8),
               Text(
                 'Tomorrow: Hadith of the Day →',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 10,
                   color: widget.theme.gold,
                   fontWeight: FontWeight.w500,
@@ -4338,7 +4338,7 @@ class _TodayScreenState extends State<TodayScreen>
                   const SizedBox(width: 6),
                   Text(
                     'HADITH OF THE DAY',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 2.0,
@@ -4352,7 +4352,7 @@ class _TodayScreenState extends State<TodayScreen>
                 quote.arabic,
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.rtl,
-                style: GoogleFonts.amiri(
+                style: AppFonts.arabic(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: widget.theme.isDark
@@ -4371,7 +4371,7 @@ class _TodayScreenState extends State<TodayScreen>
               Text(
                 quote.translation,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 12,
                   color: widget.theme.text2,
                   fontStyle: FontStyle.italic,
@@ -4381,7 +4381,7 @@ class _TodayScreenState extends State<TodayScreen>
               Text(
                 quote.reference,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontSize: 9,
                   color: widget.theme.text3,
                   fontWeight: FontWeight.w600,
@@ -4391,7 +4391,7 @@ class _TodayScreenState extends State<TodayScreen>
               const SizedBox(height: 8),
               Text(
                 'Tomorrow: Verse of the Day →',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 10,
                   color: widget.theme.teal,
                   fontWeight: FontWeight.w500,
@@ -4423,7 +4423,7 @@ class _TodayScreenState extends State<TodayScreen>
             const SizedBox(width: 8),
             Text(
               label,
-              style: GoogleFonts.syne(
+              style: AppFonts.display(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
                 color: widget.theme.text1,
@@ -4501,7 +4501,7 @@ class _TodayScreenState extends State<TodayScreen>
               const SizedBox(height: 8),
               Text(
                 label,
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11,
                   color: widget.theme.text3,
                 ),
@@ -4509,7 +4509,7 @@ class _TodayScreenState extends State<TodayScreen>
               const SizedBox(height: 2),
               Text(
                 '$pct%',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: fallbackColor,
@@ -4544,7 +4544,7 @@ class _TodayScreenState extends State<TodayScreen>
             children: [
               Text(
                 "Today's Score",
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: widget.theme.text3,
@@ -4554,7 +4554,7 @@ class _TodayScreenState extends State<TodayScreen>
               const SizedBox(height: 4),
               Text(
                 '$displayScore / 100',
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   color: widget.theme.text1,
@@ -4563,7 +4563,7 @@ class _TodayScreenState extends State<TodayScreen>
               const SizedBox(height: 2),
               Text(
                 'Daily momentum',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF2DD4A8),
@@ -4608,7 +4608,7 @@ class _TodayScreenState extends State<TodayScreen>
             children: [
               Text(
                 'Daily Prayers',
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
                   color: widget.theme.text1,
@@ -4630,7 +4630,7 @@ class _TodayScreenState extends State<TodayScreen>
                 ),
                 child: Text(
                   '$fardDone/5 Completed',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFFE8B84B),
@@ -4726,7 +4726,7 @@ class _TodayScreenState extends State<TodayScreen>
                         children: [
                           Text(
                             'Tahajjud',
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: widget.theme.text1,
@@ -4746,7 +4746,7 @@ class _TodayScreenState extends State<TodayScreen>
                             ),
                             child: Text(
                               'OPTIONAL / SUNNAH',
-                              style: GoogleFonts.dmSans(
+                              style: AppFonts.text(
                                 fontSize: 8,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5,
@@ -4758,7 +4758,7 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                       Text(
                         'Night prayer • $timeStr',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 11,
                           color: widget.theme.text3,
                         ),
@@ -4833,7 +4833,7 @@ class _TodayScreenState extends State<TodayScreen>
                   const SizedBox(width: 10),
                   Text(
                     'Daily Tasks',
-                    style: GoogleFonts.syne(
+                    style: AppFonts.display(
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                       color: widget.theme.text1,
@@ -4854,7 +4854,7 @@ class _TodayScreenState extends State<TodayScreen>
                     ),
                     child: Text(
                       '$doneTasks of $totalTasks done',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: goldColor,
@@ -4910,7 +4910,7 @@ class _TodayScreenState extends State<TodayScreen>
                     const SizedBox(height: 8),
                     Text(
                       "No daily tasks set",
-                      style: GoogleFonts.syne(
+                      style: AppFonts.display(
                         color: widget.theme.text1,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -4919,7 +4919,7 @@ class _TodayScreenState extends State<TodayScreen>
                     const SizedBox(height: 4),
                     Text(
                       "Tap '+' to add your first goal for today",
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         color: widget.theme.text3,
                         fontSize: 12,
                       ),
@@ -5429,7 +5429,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
             const SizedBox(height: 4),
             Text(
               'Your Today tasks are your goals',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 // Use DM Sans
                 fontSize: 14,
                 color: theme.text3,
@@ -5474,7 +5474,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                       maxStreak > 0
                           ? '$maxStreak day streak - Keep it going!'
                           : '0 day streak - Start today!',
-                      style: GoogleFonts.syne(
+                      style: AppFonts.display(
                         // Use Syne
                         color: theme.text1,
                         fontSize: 16,
@@ -5500,7 +5500,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               child: Text(
                 'Total Progress: $activeGoals/$totalGoals goals active - $avgProgress% this month',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   // Use DM Sans
                   color: theme.text3,
                   fontSize: 13,
@@ -5652,7 +5652,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                         const SizedBox(width: 12),
                         Text(
                           '${(progress * 100).round()}%',
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             // Use Syne
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
@@ -5676,7 +5676,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                             const SizedBox(width: 6),
                             Text(
                               '$streak days',
-                              style: GoogleFonts.syne(
+                              style: AppFonts.display(
                                 // Use Syne
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
@@ -5699,7 +5699,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                             ),
                             child: Text(
                               isDone ? 'Done' : 'Mark Done',
-                              style: GoogleFonts.syne(
+                              style: AppFonts.display(
                                 // Use Syne
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -5907,21 +5907,21 @@ class _HabitsScreenState extends State<HabitsScreen> {
           ),
           title: Text(
             'Reset Daily Data',
-            style: GoogleFonts.syne(
+            style: AppFonts.display(
               fontWeight: FontWeight.w800,
               color: appColors.text1,
             ),
           ),
           content: Text(
             'Reset ALL data for ${_formatSelectedDate(_selectedDate)}?\n\nThis will clear:\n• Tasks\n• Prayers\n• Workout progress\n• Water intake\n• Income entries\n• Fasting log',
-            style: GoogleFonts.dmSans(color: appColors.text2, height: 1.5),
+            style: AppFonts.text(color: appColors.text2, height: 1.5),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 'Cancel',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontWeight: FontWeight.w600,
                   color: appColors.text3,
                 ),
@@ -5942,7 +5942,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
               ),
               child: Text(
                 'Reset',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
@@ -6042,7 +6042,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     children: [
                       Text(
                         _formatSelectedDate(_selectedDate).toUpperCase(),
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 10,
                           letterSpacing: 2.0,
                           fontWeight: FontWeight.w700,
@@ -6052,7 +6052,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       const SizedBox(height: 3),
                       Text(
                         'Habits & Momentum',
-                        style: GoogleFonts.syne(
+                        style: AppFonts.display(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
                           color: appColors.text1,
@@ -6061,7 +6061,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       const SizedBox(height: 2),
                       Text(
                         'Your authentic daily progression',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 12,
                           color: appColors.text3,
                         ),
@@ -6075,7 +6075,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   icon: const Icon(Icons.picture_as_pdf, size: 16, color: Color(0xFF2DD4A8)),
                   label: Text(
                     'Report',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF2DD4A8),
@@ -6102,7 +6102,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 children: [
                   Text(
                     "TODAY'S MOMENTUM",
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 10,
                       letterSpacing: 2,
                       fontWeight: FontWeight.w700,
@@ -6113,7 +6113,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   if (record.percent == 0) ...[
                     Text(
                       "Let's Start Today",
-                      style: GoogleFonts.syne(
+                      style: AppFonts.display(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
                         color: appColors.text1,
@@ -6122,7 +6122,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Check off your first habit or prayer to ignite your score',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 12,
                         color: appColors.text3,
                       ),
@@ -6131,7 +6131,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   ] else ...[
                     Text(
                       '${record.percent}%',
-                      style: GoogleFonts.syne(
+                      style: AppFonts.display(
                         fontSize: 46,
                         fontWeight: FontWeight.w800,
                         color: record.percent >= 50
@@ -6142,7 +6142,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       '${record.doneTotal} of 9 core goals completed',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 13,
                         color: appColors.text2,
                       ),
@@ -6224,7 +6224,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                   ? Center(
                       child: Text(
                         'No tasks for today',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 13,
                           color: appColors.text3,
                         ),
@@ -6272,7 +6272,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                               const SizedBox(width: 8),
                               Text(
                                 task.title,
-                                style: GoogleFonts.dmSans(
+                                style: AppFonts.text(
                                   fontSize: 12,
                                   fontWeight: done
                                       ? FontWeight.w600
@@ -6325,7 +6325,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                               ),
                               Text(
                                 '${(workoutSetsCompleted / workoutTotalSets * 100).round()}%',
-                                style: GoogleFonts.dmSans(
+                                style: AppFonts.text(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
                                   color: appColors.text1,
@@ -6343,7 +6343,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                           workoutTotalSets == 0
                               ? 'Rest Day / Off'
                               : workoutName,
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: appColors.text1,
@@ -6354,7 +6354,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                           workoutTotalSets == 0
                               ? 'Tap to start or log workout'
                               : '$workoutSetsCompleted of $workoutTotalSets sets completed',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 12,
                             color: appColors.text3,
                           ),
@@ -6395,13 +6395,13 @@ class _HabitsScreenState extends State<HabitsScreen> {
                               const SizedBox(width: 8),
                               Text(
                                 'No transactions logged today',
-                                style: GoogleFonts.dmSans(fontSize: 12, color: appColors.text3),
+                                style: AppFonts.text(fontSize: 12, color: appColors.text3),
                               ),
                             ],
                           ),
                           Text(
                             '+₹0',
-                            style: GoogleFonts.syne(fontSize: 13, fontWeight: FontWeight.w700, color: appColors.text3),
+                            style: AppFonts.display(fontSize: 13, fontWeight: FontWeight.w700, color: appColors.text3),
                           ),
                         ],
                       ),
@@ -6592,7 +6592,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
           children: [
             Text(
               title.toUpperCase(),
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 10.5,
                 letterSpacing: 1.8,
                 fontWeight: FontWeight.w700,
@@ -6602,7 +6602,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             if (rightText != null)
               Text(
                 rightText,
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
                   color: rightColor ?? appColors.text2,
@@ -6643,7 +6643,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
           children: [
             Text(
               label.toUpperCase(),
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 9.5,
                 letterSpacing: 1.2,
                 fontWeight: FontWeight.w600,
@@ -6654,7 +6654,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             const SizedBox(height: 4),
             Text(
               value,
-              style: GoogleFonts.syne(
+              style: AppFonts.display(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: valueColor,
@@ -6698,7 +6698,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
       textColor = appColors.text3;
       statusIcon = Text(
         timeStr,
-        style: GoogleFonts.dmSans(
+        style: AppFonts.text(
           fontSize: 9.5,
           color: appColors.text3,
           fontWeight: FontWeight.w500,
@@ -6712,7 +6712,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
       textColor = appColors.text3;
       statusIcon = Text(
         timeStr,
-        style: GoogleFonts.dmSans(
+        style: AppFonts.text(
           fontSize: 9.5,
           color: appColors.text3,
           fontWeight: FontWeight.w500,
@@ -6732,7 +6732,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
         children: [
           Text(
             name,
-            style: GoogleFonts.dmSans(
+            style: AppFonts.text(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
               color: textColor,
@@ -6943,7 +6943,7 @@ class DayHistoryCard extends StatelessWidget {
             children: [
               Text(
                 'Update Income & Expenses',
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: theme.text1,
@@ -6952,16 +6952,16 @@ class DayHistoryCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 shortDate(date),
-                style: GoogleFonts.dmSans(fontSize: 14, color: theme.text3),
+                style: AppFonts.text(fontSize: 14, color: theme.text3),
               ),
               const SizedBox(height: 20),
               TextField(
                 controller: incomeCtrl,
                 keyboardType: TextInputType.number,
-                style: GoogleFonts.dmSans(color: theme.text1, fontWeight: FontWeight.w500),
+                style: AppFonts.text(color: theme.text1, fontWeight: FontWeight.w500),
                 decoration: InputDecoration(
                   labelText: 'Income Earned Today',
-                  labelStyle: GoogleFonts.dmSans(color: theme.text3),
+                  labelStyle: AppFonts.text(color: theme.text3),
                   prefixIcon: const Icon(Icons.trending_up, color: kTeal),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -6972,10 +6972,10 @@ class DayHistoryCard extends StatelessWidget {
               TextField(
                 controller: expenseCtrl,
                 keyboardType: TextInputType.number,
-                style: GoogleFonts.dmSans(color: theme.text1, fontWeight: FontWeight.w500),
+                style: AppFonts.text(color: theme.text1, fontWeight: FontWeight.w500),
                 decoration: InputDecoration(
                   labelText: 'Amount Spent Today',
-                  labelStyle: GoogleFonts.dmSans(color: theme.text3),
+                  labelStyle: AppFonts.text(color: theme.text3),
                   prefixIcon: const Icon(Icons.trending_down, color: kRed),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -7009,7 +7009,7 @@ class DayHistoryCard extends StatelessWidget {
                   },
                   child: Text(
                     'Save',
-                    style: GoogleFonts.syne(
+                    style: AppFonts.display(
                       color: Colors.black,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
@@ -7041,7 +7041,7 @@ class DayHistoryCard extends StatelessWidget {
             children: [
               Text(
                 'Workout summary',
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: theme.text1,
@@ -7050,7 +7050,7 @@ class DayHistoryCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 summary.workoutName,
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: theme.text2,
@@ -7059,7 +7059,7 @@ class DayHistoryCard extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 '${summary.exercisesCompleted}/${summary.totalExercises} exercises - ${summary.setsCompleted}/${summary.totalSets} sets',
-                style: GoogleFonts.dmSans(color: theme.text3, height: 1.5),
+                style: AppFonts.text(color: theme.text3, height: 1.5),
               ),
               const SizedBox(height: 16),
               ...summary.setsPerExercise.entries.map((entry) {
@@ -7071,12 +7071,12 @@ class DayHistoryCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           entry.key,
-                          style: GoogleFonts.dmSans(color: theme.text1, fontWeight: FontWeight.w500),
+                          style: AppFonts.text(color: theme.text1, fontWeight: FontWeight.w500),
                         ),
                       ),
                       Text(
                         '${entry.value} sets',
-                        style: GoogleFonts.dmSans(color: theme.text3),
+                        style: AppFonts.text(color: theme.text3),
                       ),
                     ],
                   ),
@@ -7112,7 +7112,7 @@ class DayHistoryCard extends StatelessWidget {
             children: [
               Text(
                 shortDate(date),
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: theme.text1,
@@ -7123,7 +7123,7 @@ class DayHistoryCard extends StatelessWidget {
                 children: [
                   Text(
                     '${record.doneTotal}/${record.total}',
-                    style: GoogleFonts.syne(
+                    style: AppFonts.display(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       color: theme.gold,
@@ -7144,18 +7144,18 @@ class DayHistoryCard extends StatelessWidget {
                             backgroundColor: theme.bg,
                             title: Text(
                               'Reset Day Data?',
-                              style: GoogleFonts.syne(color: theme.text1, fontWeight: FontWeight.w700),
+                              style: AppFonts.display(color: theme.text1, fontWeight: FontWeight.w700),
                             ),
                             content: Text(
                               'This will permanently clear all tasks, prayers, fasting log, and financial data for ${shortDate(date)}.',
-                              style: GoogleFonts.dmSans(color: theme.text2),
+                              style: AppFonts.text(color: theme.text2),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(dialogContext),
                                 child: Text(
                                   'Cancel',
-                                  style: GoogleFonts.dmSans(color: theme.text3),
+                                  style: AppFonts.text(color: theme.text3),
                                 ),
                               ),
                               TextButton(
@@ -7165,7 +7165,7 @@ class DayHistoryCard extends StatelessWidget {
                                 },
                                 child: Text(
                                   'Reset',
-                                  style: GoogleFonts.dmSans(color: Colors.red, fontWeight: FontWeight.w700),
+                                  style: AppFonts.text(color: Colors.red, fontWeight: FontWeight.w700),
                                 ),
                               ),
                             ],
@@ -7239,7 +7239,7 @@ class DayHistoryCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           'Workout',
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: theme.text1,
@@ -7274,7 +7274,7 @@ class DayHistoryCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         'INCOME',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 12,
                           color: kMuted,
                           fontWeight: FontWeight.w700,
@@ -7284,7 +7284,7 @@ class DayHistoryCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         'Tap to edit',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 12,
                           color: theme.text4,
                           fontWeight: FontWeight.w600,
@@ -7361,7 +7361,7 @@ class _IncomeMiniCard extends StatelessWidget {
           children: [
             Text(
               label,
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: theme.text4,
@@ -7371,7 +7371,7 @@ class _IncomeMiniCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '$prefix\u20B9${absAmount.toStringAsFixed(0)}',
-              style: GoogleFonts.syne(
+              style: AppFonts.display(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: color,
@@ -7431,7 +7431,7 @@ class StatusChip extends StatelessWidget {
                 Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.syne(
+                  style: AppFonts.display(
                     fontSize: 13,
                     color: done ? theme.text1 : theme.text3,
                     fontWeight: FontWeight.w700,
@@ -7442,7 +7442,7 @@ class StatusChip extends StatelessWidget {
                   Text(
                     subtitle!,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 12,
                       color: cSub2,
                     ),
@@ -7509,7 +7509,7 @@ class MonitorRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.syne(
+                  style: AppFonts.display(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: theme.text1,
@@ -7517,7 +7517,7 @@ class MonitorRow extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 12,
                     color: theme.text3,
                     fontWeight: FontWeight.w600,
@@ -8810,7 +8810,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               const SizedBox(width: 8),
               Text(
                 '${_selectedSplit.title} · Bodyweight',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: theme.text1,
@@ -8829,7 +8829,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             },
             child: Text(
               'Tomorrow: ${otherSplit.title} ›',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
@@ -8910,7 +8910,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               children: [
                                 Text(
                                   'TRAINING',
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: -0.08,
@@ -8920,7 +8920,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   _weekdayName(DateTime.now()),
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 32,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: -0.5,
@@ -8930,7 +8930,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   '${_selectedSplit.title} · $exercisesCount Exercises · ~25 Min',
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 15,
                                     color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
                                     fontWeight: FontWeight.w400,
@@ -9387,7 +9387,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               const SizedBox(width: 8),
               Text(
                 'Today: ${_selectedSplit.title}',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: theme.text1,
@@ -9396,7 +9396,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               const SizedBox(width: 6),
               Text(
                 '· Bodyweight',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                   color: theme.text3,
@@ -9415,7 +9415,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             },
             child: Text(
               'Switch to ${otherSplit.title} →',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: theme.teal,
@@ -9436,7 +9436,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           children: [
             Text(
               "Today's session",
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: theme.text1,
@@ -9453,7 +9453,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     percent == 0
                         ? 'Ready · ${_selectedSplit.exercises.length} exercises (~25m)'
                         : '$percent% · $_completedExercises/${_selectedSplit.exercises.length} exercises',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 12,
                       color: percent == 0
                           ? const Color(0xFF00C896)
@@ -9512,7 +9512,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               const SizedBox(width: 6),
               Text(
                 'Start Workout',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                   color: Colors.white,
@@ -9563,7 +9563,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     alignment: Alignment.center,
                     child: Text(
                       'MY ROUTINE (${selectedSplit.exercises.length})',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -9590,7 +9590,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     alignment: Alignment.center,
                     child: Text(
                       'LIBRARY (24)',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -9769,21 +9769,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'End workout?',
-          style: GoogleFonts.dmSans(
+          style: AppFonts.text(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           'Progress for completed sets will be saved.',
-          style: GoogleFonts.dmSans(color: const Color(0xFF8B929D)),
+          style: AppFonts.text(color: const Color(0xFF8B929D)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancel',
-              style: GoogleFonts.dmSans(color: const Color(0xFF6B7280)),
+              style: AppFonts.text(color: const Color(0xFF6B7280)),
             ),
           ),
           TextButton(
@@ -9797,7 +9797,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             },
             child: Text(
               'End Workout',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 color: const Color(0xFFEF4444),
                 fontWeight: FontWeight.bold,
               ),
@@ -9837,7 +9837,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               const SizedBox(height: 20),
               Text(
                 'WORKOUT PAUSED',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.0,
@@ -9848,7 +9848,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               Text(
                 'Take a breath. Timer & progress are frozen.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 13,
                   color: const Color(0xFF8B929D),
                 ),
@@ -9871,7 +9871,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 ),
                 child: Text(
                   'RESUME WORKOUT',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
@@ -9892,7 +9892,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 ),
                 child: Text(
                   'End Workout',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -9920,7 +9920,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             children: [
               Text(
                 'How hard was that set?',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -9929,7 +9929,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               const SizedBox(height: 4),
               Text(
                 'Rate your exertion (RPE)',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 13,
                   color: const Color(0xFF8B929D),
                 ),
@@ -9976,7 +9976,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       alignment: Alignment.center,
                       child: Text(
                         '$rpeVal',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: isSelected
@@ -9994,21 +9994,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 children: [
                   Text(
                     'Easy',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       color: const Color(0xFF6B7280),
                     ),
                   ),
                   Text(
                     'Hard',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       color: const Color(0xFF6B7280),
                     ),
                   ),
                   Text(
                     'Max effort',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       color: const Color(0xFF6B7280),
                     ),
@@ -10055,7 +10055,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 ),
                 child: Text(
                   'Start rest timer',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: _selectedRpe == null
@@ -10149,7 +10149,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                             children: [
                               Text(
                                 normalizeExerciseName(_activeExerciseName!),
-                                style: GoogleFonts.dmSans(
+                                style: AppFonts.text(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w700,
                                   color: textPrim,
@@ -10158,7 +10158,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 'Set $currentSet of $totalSets',
-                                style: GoogleFonts.dmSans(
+                                style: AppFonts.text(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: auroraTeal,
@@ -10314,7 +10314,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                         ),
                                       Text(
                                         'Set $setNum',
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700,
                                           color: bubbleText,
@@ -10355,7 +10355,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 children: [
                                   Text(
                                     'TARGET REPS',
-                                    style: GoogleFonts.dmSans(
+                                    style: AppFonts.text(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 2.0,
@@ -10403,7 +10403,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                       // Large Hero Number
                                       Text(
                                         '${_repsRemaining > 0 ? _repsRemaining : state.maxReps}',
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 76,
                                           fontWeight: FontWeight.w200,
                                           color: textPrim,
@@ -10449,7 +10449,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
                                   Text(
                                     '${state.maxReps} reps prescribed · Tap ± to adjust',
-                                    style: GoogleFonts.dmSans(
+                                    style: AppFonts.text(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                       color: textSec,
@@ -10471,7 +10471,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                     children: [
                                       Text(
                                         'HOW HARD WAS THAT? (RPE)',
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w700,
                                           letterSpacing: 1.2,
@@ -10487,7 +10487,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                                   : _selectedRpe! <= 8
                                                       ? 'Hard (1-2 RIR)'
                                                       : 'Maximum Effort / 10',
-                                          style: GoogleFonts.dmSans(
+                                          style: AppFonts.text(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
                                             color: solarGold,
@@ -10538,7 +10538,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                           alignment: Alignment.center,
                                           child: Text(
                                             '$rpe',
-                                            style: GoogleFonts.dmSans(
+                                            style: AppFonts.text(
                                               fontSize: 13,
                                               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                                               color: isSelected ? solarGold : textSec,
@@ -10582,7 +10582,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                   Expanded(
                                     child: Text(
                                       _getFormCueForExercise(_activeExerciseName!),
-                                      style: GoogleFonts.dmSans(
+                                      style: AppFonts.text(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
                                         color: textSec,
@@ -10673,7 +10673,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 alignment: Alignment.center,
                                 child: Text(
                                   isLastSet ? 'Finish Exercise ▶' : 'Complete Set $currentSet ▶',
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                     color: theme.isDark ? Colors.black : Colors.white,
@@ -10761,7 +10761,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     children: [
                       Text(
                         'Edit Workout & Exercise',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: textPrim,
@@ -10785,7 +10785,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Customise your routine title, exercise name, and target reps',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 13,
                       color: textSec,
                     ),
@@ -10795,7 +10795,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   // 1. Workout Routine Name Field
                   Text(
                     'WORKOUT ROUTINE NAME',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
@@ -10819,7 +10819,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     alignment: Alignment.centerLeft,
                     child: TextField(
                       controller: _editWorkoutTitleController,
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: textPrim,
@@ -10837,7 +10837,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   // 2. Exercise Name Field
                   Text(
                     'EXERCISE NAME',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
@@ -10861,7 +10861,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     alignment: Alignment.centerLeft,
                     child: TextField(
                       controller: _editExerciseNameController,
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: textPrim,
@@ -10886,7 +10886,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           children: [
                             Text(
                               'TARGET REPS',
-                              style: GoogleFonts.dmSans(
+                              style: AppFonts.text(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5,
@@ -10930,7 +10930,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                       controller: _editRepsController,
                                       textAlign: TextAlign.center,
                                       keyboardType: TextInputType.number,
-                                      style: GoogleFonts.dmSans(
+                                      style: AppFonts.text(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w700,
                                         color: textPrim,
@@ -10970,7 +10970,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           children: [
                             Text(
                               'TOTAL SETS',
-                              style: GoogleFonts.dmSans(
+                              style: AppFonts.text(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5,
@@ -11014,7 +11014,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                       controller: _editSetsController,
                                       textAlign: TextAlign.center,
                                       keyboardType: TextInputType.number,
-                                      style: GoogleFonts.dmSans(
+                                      style: AppFonts.text(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w700,
                                         color: textPrim,
@@ -11136,7 +11136,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       alignment: Alignment.center,
                       child: Text(
                         'Save Changes',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: theme.isDark ? Colors.black : Colors.white,
@@ -11187,7 +11187,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 children: [
                   Text(
                     'RESTING BEFORE',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       color: textMuted,
                       fontWeight: FontWeight.w600,
@@ -11199,7 +11199,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     nextExerciseName == 'Workout complete!'
                         ? 'Finish Line'
                         : nextExerciseName,
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 20,
                       color: textPrim,
                       fontWeight: FontWeight.w600,
@@ -11224,7 +11224,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       ),
                       Text(
                         '$_restSeconds',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 48,
                           fontWeight: FontWeight.w200,
                           color: textPrim,
@@ -11267,7 +11267,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                       ),
                       child: Text(
                         'Skip Rest ›',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: textSec,
@@ -11764,7 +11764,7 @@ class _IncomeScreenState extends State<IncomeScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Edit Daily Income Target',
-          style: GoogleFonts.syne(
+          style: AppFonts.display(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors(widget.theme).text1,
@@ -11776,7 +11776,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           children: [
             Text(
               'Set a realistic daily goal (e.g. ₹1,000 - ₹3,000/day):',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 13,
                 color: AppColors(widget.theme).text2,
               ),
@@ -11785,20 +11785,20 @@ class _IncomeScreenState extends State<IncomeScreen>
             TextField(
               controller: ctrl,
               keyboardType: TextInputType.number,
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: AppColors(widget.theme).text1,
               ),
               decoration: InputDecoration(
                 prefixText: '₹ ',
-                prefixStyle: GoogleFonts.dmSans(
+                prefixStyle: AppFonts.text(
                   fontSize: 16,
                   color: AppColors(widget.theme).gold,
                   fontWeight: FontWeight.bold,
                 ),
                 hintText: '1500',
-                hintStyle: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+                hintStyle: AppFonts.text(color: AppColors(widget.theme).text3),
                 filled: true,
                 fillColor: AppColors(widget.theme).card,
                 border: OutlineInputBorder(
@@ -11814,7 +11814,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancel',
-              style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+              style: AppFonts.text(color: AppColors(widget.theme).text3),
             ),
           ),
           TextButton(
@@ -11832,7 +11832,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             },
             child: Text(
               'Save',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 color: AppColors(widget.theme).emerald,
                 fontWeight: FontWeight.w700,
               ),
@@ -11970,7 +11970,7 @@ class _IncomeScreenState extends State<IncomeScreen>
         ),
         child: Text(
           label,
-          style: GoogleFonts.dmSans(
+          style: AppFonts.text(
             fontSize: 11,
             fontWeight: FontWeight.bold,
             color: selected ? colors.gold : colors.text3,
@@ -11987,7 +11987,7 @@ class _IncomeScreenState extends State<IncomeScreen>
         backgroundColor: AppColors(widget.theme).bg,
         title: Text(
           'Delete Goal',
-          style: GoogleFonts.syne(
+          style: AppFonts.display(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors(widget.theme).text1,
@@ -11995,7 +11995,7 @@ class _IncomeScreenState extends State<IncomeScreen>
         ),
         content: Text(
           'Are you sure you want to delete "${goal.name}"?',
-          style: GoogleFonts.dmSans(
+          style: AppFonts.text(
             fontSize: 14,
             color: AppColors(widget.theme).text2,
           ),
@@ -12005,7 +12005,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancel',
-              style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+              style: AppFonts.text(color: AppColors(widget.theme).text3),
             ),
           ),
           TextButton(
@@ -12021,7 +12021,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             },
             child: Text(
               'Delete',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 color: AppColors(widget.theme).red,
                 fontWeight: FontWeight.w700,
               ),
@@ -12039,7 +12039,7 @@ class _IncomeScreenState extends State<IncomeScreen>
         backgroundColor: colors.bg,
         title: Text(
           'Reset Savings Goals',
-          style: GoogleFonts.syne(
+          style: AppFonts.display(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: colors.text1,
@@ -12047,14 +12047,14 @@ class _IncomeScreenState extends State<IncomeScreen>
         ),
         content: Text(
           'Are you sure you want to reset all savings goals to default?',
-          style: GoogleFonts.dmSans(fontSize: 14, color: colors.text2),
+          style: AppFonts.text(fontSize: 14, color: colors.text2),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancel',
-              style: GoogleFonts.dmSans(color: colors.text3),
+              style: AppFonts.text(color: colors.text3),
             ),
           ),
           TextButton(
@@ -12069,7 +12069,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             },
             child: Text(
               'Reset',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 color: colors.red,
                 fontWeight: FontWeight.w700,
               ),
@@ -12158,7 +12158,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                               existing == null
                                   ? 'Add Savings Goal'
                                   : 'Edit Savings Goal',
-                              style: GoogleFonts.syne(
+                              style: AppFonts.display(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 color: colors.text1,
@@ -12191,7 +12191,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
                         Text(
                           'GOAL NAME',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1,
@@ -12211,14 +12211,14 @@ class _IncomeScreenState extends State<IncomeScreen>
                           ),
                           child: TextField(
                             controller: nameCtrl,
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: colors.text1,
                             ),
                             decoration: InputDecoration(
                               hintText: 'e.g. Wedding Fund',
-                              hintStyle: GoogleFonts.dmSans(
+                              hintStyle: AppFonts.text(
                                 color: colors.text3,
                                 fontWeight: FontWeight.w400,
                               ),
@@ -12230,7 +12230,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
                         Text(
                           'TARGET AMOUNT (₹)',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1,
@@ -12251,14 +12251,14 @@ class _IncomeScreenState extends State<IncomeScreen>
                           child: TextField(
                             controller: targetCtrl,
                             keyboardType: TextInputType.number,
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: colors.text1,
                             ),
                             decoration: InputDecoration(
                               hintText: 'e.g. 100000',
-                              hintStyle: GoogleFonts.dmSans(
+                              hintStyle: AppFonts.text(
                                 color: colors.text3,
                                 fontWeight: FontWeight.w400,
                               ),
@@ -12273,7 +12273,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           children: [
                             Text(
                               'INCOME PERCENTAGE',
-                              style: GoogleFonts.dmSans(
+                              style: AppFonts.text(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1,
@@ -12282,7 +12282,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                             ),
                             Text(
                               '${pct.toStringAsFixed(0)}%',
-                              style: GoogleFonts.dmSans(
+                              style: AppFonts.text(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 color: colors.gold,
@@ -12308,7 +12308,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
                         Text(
                           'SELECT ICON',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1,
@@ -12365,7 +12365,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
                         Text(
                           'SELECT COLOR',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1,
@@ -12505,7 +12505,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                     existing == null
                                         ? 'Create Goal'
                                         : 'Save Changes',
-                                    style: GoogleFonts.dmSans(
+                                    style: AppFonts.text(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.white,
@@ -12541,7 +12541,7 @@ class _IncomeScreenState extends State<IncomeScreen>
         backgroundColor: AppColors(widget.theme).bg,
         title: Text(
           'Edit $label',
-          style: GoogleFonts.syne(
+          style: AppFonts.display(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors(widget.theme).text1,
@@ -12549,13 +12549,13 @@ class _IncomeScreenState extends State<IncomeScreen>
         ),
         content: TextField(
           controller: ctrl,
-          style: GoogleFonts.dmSans(
+          style: AppFonts.text(
             fontSize: 16,
             color: AppColors(widget.theme).text1,
           ),
           decoration: InputDecoration(
             hintText: 'Enter value',
-            hintStyle: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+            hintStyle: AppFonts.text(color: AppColors(widget.theme).text3),
           ),
         ),
         actions: [
@@ -12563,7 +12563,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancel',
-              style: GoogleFonts.dmSans(color: AppColors(widget.theme).text3),
+              style: AppFonts.text(color: AppColors(widget.theme).text3),
             ),
           ),
           TextButton(
@@ -12577,7 +12577,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             },
             child: Text(
               'Save',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 color: AppColors(widget.theme).gold,
                 fontWeight: FontWeight.w700,
               ),
@@ -12773,7 +12773,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           children: [
                             Text(
                               isAddingIncome ? 'Add Income' : 'Add Expense',
-                              style: GoogleFonts.syne(
+                              style: AppFonts.display(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 color: colors.text1,
@@ -12833,7 +12833,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                   alignment: Alignment.center,
                                   child: Text(
                                     'Income',
-                                    style: GoogleFonts.dmSans(
+                                    style: AppFonts.text(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: isAddingIncome
@@ -12870,7 +12870,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                   alignment: Alignment.center,
                                   child: Text(
                                     'Expense',
-                                    style: GoogleFonts.dmSans(
+                                    style: AppFonts.text(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       color: !isAddingIncome
@@ -12887,7 +12887,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
                         Text(
                           'AMOUNT (₹)',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1,
@@ -12908,14 +12908,14 @@ class _IncomeScreenState extends State<IncomeScreen>
                           child: TextField(
                             controller: _incomeCtrl,
                             keyboardType: TextInputType.number,
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: colors.text1,
                             ),
                             decoration: InputDecoration(
                               hintText: '0',
-                              hintStyle: GoogleFonts.dmSans(
+                              hintStyle: AppFonts.text(
                                 color: colors.text3,
                                 fontWeight: FontWeight.w400,
                               ),
@@ -12927,7 +12927,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
                         Text(
                           isAddingIncome ? 'SOURCE' : 'DESCRIPTION',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1,
@@ -12947,7 +12947,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           ),
                           child: TextField(
                             controller: _sourceCtrl,
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: colors.text1,
@@ -12956,7 +12956,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                               hintText: isAddingIncome
                                   ? 'e.g. Freelance project'
                                   : 'e.g. Groceries, internet bills',
-                              hintStyle: GoogleFonts.dmSans(
+                              hintStyle: AppFonts.text(
                                 color: colors.text3,
                                 fontWeight: FontWeight.w400,
                               ),
@@ -12968,7 +12968,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
                         Text(
                           'QUICK ADD',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1,
@@ -13003,7 +13003,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 alignment: Alignment.center,
                                 child: Text(
                                   _money(val),
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     color: colors.text2,
@@ -13074,7 +13074,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 const SizedBox(width: 6),
                                 Text(
                                   isAddingIncome ? 'Add Income' : 'Add Expense',
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
@@ -13114,7 +13114,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             children: [
               Text(
                 'INCOME',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.08,
@@ -13195,7 +13195,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               const SizedBox(width: 14),
               Text(
                 '${_monthNames[_selectedMonth - 1]} $_selectedYear',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 26,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
@@ -13236,7 +13236,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           Center(
             child: Text(
               _hijriApprox(),
-              style: GoogleFonts.amiri(
+              style: AppFonts.arabic(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: colors.text2,
@@ -13314,7 +13314,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                   const SizedBox(width: 6),
                   Text(
                     'DAILY MOMENTUM',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
@@ -13340,7 +13340,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         Flexible(
                           child: Text(
                             statusText,
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: statusColor,
@@ -13405,7 +13405,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               Flexible(
                 child: Text(
                   'Today: ${_money(todayEarned)}',
-                  style: GoogleFonts.dmSans(fontSize: 11, color: colors.text3),
+                  style: AppFonts.text(fontSize: 11, color: colors.text3),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -13413,7 +13413,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               Flexible(
                 child: Text(
                   'Avg: ${_money(dailyAvg.round())}/day',
-                  style: GoogleFonts.dmSans(fontSize: 11, color: colors.text2, fontWeight: FontWeight.w600),
+                  style: AppFonts.text(fontSize: 11, color: colors.text2, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -13423,7 +13423,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                   onTap: _editDailyTargetDialog,
                   child: Text(
                     'Goal: ${_money(targetVal)}/day',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: colors.emerald,
@@ -13512,7 +13512,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                   const SizedBox(width: 6),
                   Text(
                     'NET BALANCE',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
@@ -13533,7 +13533,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ),
                   child: Text(
                     '${isUp ? "↑" : "↓"} ${changePct.abs().toStringAsFixed(0)}%',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: isUp ? colors.emerald : colors.text2,
@@ -13594,7 +13594,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     children: [
                       Text(
                         'INCOME',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.0,
@@ -13604,7 +13604,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                       const SizedBox(height: 4),
                       Text(
                         totalEarned > 0 ? _money(totalEarned) : '₹0',
-                        style: GoogleFonts.syne(
+                        style: AppFonts.display(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: totalEarned > 0
@@ -13617,7 +13617,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         const SizedBox(height: 2),
                         Text(
                           'Avg: ${_money(dailyAvg)}/day',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 11,
                             color: colors.text2,
                           ),
@@ -13643,7 +13643,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     children: [
                       Text(
                         'EXPENSES',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.0,
@@ -13653,7 +13653,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                       const SizedBox(height: 4),
                       Text(
                         totalSpent > 0 ? _money(totalSpent) : '₹0',
-                        style: GoogleFonts.syne(
+                        style: AppFonts.display(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: totalSpent > 0 ? colors.text1 : colors.text3,
@@ -13664,7 +13664,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         const SizedBox(height: 2),
                         Text(
                           'Avg: ${_money(dailyAvgSpent)}/day',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 11,
                             color: colors.text2,
                           ),
@@ -13684,7 +13684,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               daysLogged >= 7
                   ? 'Projected monthly income: ${_money(projected)}'
                   : '${_money(totalEarned)} earned so far · Log ${7 - daysLogged} more days for projection',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: daysLogged >= 7 ? colors.emerald : colors.text3,
@@ -13742,7 +13742,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     Expanded(
                       child: Text(
                         'INCOME ALLOCATION',
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.2,
@@ -13769,7 +13769,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                   hasBalance
                       ? '70% Spend · 30% Save'
                       : 'Activates when Balance > 0',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color: colors.emerald,
@@ -13796,7 +13796,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                       children: [
                         Text(
                           '70 · 30',
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
                             color: colors.text1,
@@ -13804,7 +13804,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         ),
                         Text(
                           'SPEND / SAVE',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 7.5,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.5,
@@ -13838,7 +13838,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                             const SizedBox(width: 6),
                             Text(
                               'For Savings (30%)',
-                              style: GoogleFonts.dmSans(
+                              style: AppFonts.text(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: hasBalance ? colors.text1 : colors.text3,
@@ -13848,7 +13848,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         ),
                         Text(
                           hasBalance ? _money(forSavings) : '—',
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: hasBalance ? colors.emerald : colors.text3,
@@ -13887,7 +13887,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                             const SizedBox(width: 6),
                             Text(
                               'For My Use (70%)',
-                              style: GoogleFonts.dmSans(
+                              style: AppFonts.text(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: hasBalance ? colors.text2 : colors.text3,
@@ -13897,7 +13897,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         ),
                         Text(
                           hasBalance ? _money(forUse) : '—',
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: hasBalance ? colors.text2 : colors.text3,
@@ -13955,7 +13955,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               const SizedBox(width: 8),
               Text(
                 'SAVINGS GOALS',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 2,
@@ -13974,7 +13974,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     const SizedBox(width: 4),
                     Text(
                       'Reset',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: colors.red,
@@ -13999,7 +13999,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     const SizedBox(width: 4),
                     Text(
                       'Add Goal',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: colors.emerald,
@@ -14022,7 +14022,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               alignment: Alignment.center,
               child: Text(
                 'No savings goals created yet.',
-                style: GoogleFonts.dmSans(fontSize: 12, color: colors.text3),
+                style: AppFonts.text(fontSize: 12, color: colors.text3),
               ),
             )
           else
@@ -14099,7 +14099,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                               children: [
                                 Text(
                                   g.name,
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     color: colors.text1,
@@ -14108,7 +14108,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 const SizedBox(height: 1),
                                 Text(
                                   '${g.percentage.toStringAsFixed(0)}% of income',
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w500,
                                     color: colors.text3,
@@ -14119,7 +14119,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           ),
                           RichText(
                             text: TextSpan(
-                              style: GoogleFonts.dmSans(
+                              style: AppFonts.text(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: colors.text2,
@@ -14184,14 +14184,14 @@ class _IncomeScreenState extends State<IncomeScreen>
                         children: [
                           Text(
                             '${(pct * 100).toStringAsFixed(0)}% complete',
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 9,
                               color: colors.text3,
                             ),
                           ),
                           Text(
                             '~$monthsLeft months left',
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 9,
                               color: colors.text3,
                             ),
@@ -14252,7 +14252,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                 const SizedBox(width: 6),
                 Text(
                   'ASPIRATIONAL GOALS · LONG TERM',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
@@ -14284,7 +14284,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         children: [
                           Text(
                             _earningCurrent,
-                            style: GoogleFonts.syne(
+                            style: AppFonts.display(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: colors.text1,
@@ -14293,7 +14293,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           const SizedBox(height: 2),
                           Text(
                             'TARGET / MONTH',
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
                               color: colors.text3,
@@ -14327,7 +14327,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         children: [
                           Text(
                             _earningTarget,
-                            style: GoogleFonts.syne(
+                            style: AppFonts.display(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: colors.gold,
@@ -14336,7 +14336,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                           const SizedBox(height: 2),
                           Text(
                             'FREELANCE POTENTIAL',
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
                               color: colors.text3,
@@ -14406,7 +14406,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             children: [
               Text(
                 'DAILY EARNINGS',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
@@ -14417,7 +14417,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                 hasEarnings
                     ? '$daysLogged days logged'
                     : _monthNames[_selectedMonth - 1],
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: hasEarnings ? colors.emerald : colors.text3,
@@ -14432,7 +14432,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               alignment: Alignment.center,
               child: Text(
                 'Log earnings to view your daily momentum chart',
-                style: GoogleFonts.dmSans(fontSize: 12, color: colors.text3),
+                style: AppFonts.text(fontSize: 12, color: colors.text3),
               ),
             )
           else
@@ -14493,7 +14493,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 child: showLabel
                                     ? Text(
                                         '${i + 1}',
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 8,
                                           fontWeight: FontWeight.w500,
                                           color: colors.text3,
@@ -14562,7 +14562,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             children: [
               Text(
                 'RECENT TRANSACTIONS',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
@@ -14573,7 +14573,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               if (entries.isNotEmpty)
                 Text(
                   '${entries.length} entries',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: colors.text3,
@@ -14629,7 +14629,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                       alignment: Alignment.center,
                       child: Text(
                         label,
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 13,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                           color: isSelected
@@ -14664,7 +14664,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               child: Center(
                 child: Text(
                   'Tap + Log to record your first transaction',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 13,
                     color: colors.text3,
                   ),
@@ -14742,7 +14742,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                     children: [
                                       Text(
                                         getDayName(e.date),
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
                                           color: colors.text1,
@@ -14752,7 +14752,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                       const SizedBox(height: 2),
                                       Text(
                                         formatDayRowDate(e.date),
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 11,
                                           color: colors.text3,
                                         ),
@@ -14762,7 +14762,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 ),
                                 Text(
                                   '$prefix${_money(e.amount)}',
-                                  style: GoogleFonts.syne(
+                                  style: AppFonts.display(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                     color: displayColor,
@@ -14828,7 +14828,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               const SizedBox(width: 4),
               Text(
                 'Log',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
@@ -15289,7 +15289,7 @@ class _GoldToastState extends State<_GoldToast>
                 alignment: Alignment.center,
                 child: Text(
                   widget.message,
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -15591,7 +15591,7 @@ class _TapCounterButtonState extends State<TapCounterButton>
                 AnimatedDefaultTextStyle(
                   duration: duration,
                   curve: curve,
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: isDone ? theme.text3 : theme.teal,
@@ -15954,7 +15954,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                       width: 24,
                                       child: Text(
                                         '${widget.index + 1}.',
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w600,
                                           color: isFirstNextUp
@@ -15975,7 +15975,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                         children: [
                                           Text(
                                             normalizeExerciseName(widget.exercise[0]),
-                                            style: GoogleFonts.dmSans(
+                                            style: AppFonts.text(
                                               fontSize: 17,
                                               fontWeight: FontWeight.w600,
                                               letterSpacing: -0.41,
@@ -15987,7 +15987,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                           const SizedBox(height: 2),
                                           Text(
                                             '${widget.sets} × ${_isIsometric ? '${widget.reps} sec' : '${widget.reps}'} · ${primaryMuscle.split(',').first.trim()}',
-                                            style: GoogleFonts.dmSans(
+                                            style: AppFonts.text(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w400,
                                               letterSpacing: -0.08,
@@ -16012,7 +16012,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                           children: [
                                             Text(
                                               '${widget.reps}',
-                                              style: GoogleFonts.dmSans(
+                                              style: AppFonts.text(
                                                 fontSize: 28,
                                                 fontWeight: FontWeight.w300,
                                                 letterSpacing: -0.5,
@@ -16025,7 +16025,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                             const SizedBox(width: 3),
                                             Text(
                                               _isIsometric ? 'sec' : 'reps',
-                                              style: GoogleFonts.dmSans(
+                                              style: AppFonts.text(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w400,
                                                 letterSpacing: -0.08,
@@ -16036,7 +16036,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                         ),
                                         Text(
                                           'Last: ${widget.reps}',
-                                          style: GoogleFonts.dmSans(
+                                          style: AppFonts.text(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w500,
                                             color: theme.isDark
@@ -16084,7 +16084,7 @@ Widget _animatedValueText(String text, Color color, double fontSize) {
     child: Text(
       text,
       key: ValueKey(text),
-      style: GoogleFonts.dmSans(
+      style: AppFonts.text(
         fontSize: fontSize,
         color: color,
         fontWeight: FontWeight.w800,
@@ -16708,7 +16708,7 @@ class _ComboIndicatorState extends State<_ComboIndicator>
       scale: _scaleAnimation,
       child: Text(
         'x${widget.combo} COMBO',
-        style: GoogleFonts.syne(
+        style: AppFonts.display(
           fontSize: 16,
           color: const Color(0xFFE8B84B),
           fontWeight: FontWeight.w900,
@@ -17094,7 +17094,7 @@ class _ExerciseCompleteOverlayState extends State<_ExerciseCompleteOverlay>
               Text(
                 widget.exerciseName,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: widget.theme.text1,
@@ -17349,7 +17349,7 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
                                       Text(
                                         'WORKOUT COMPLETE!',
                                         textAlign: TextAlign.center,
-                                        style: GoogleFonts.syne(
+                                        style: AppFonts.display(
                                           fontSize: 22,
                                           fontWeight: FontWeight.w800,
                                           color: textPrim,
@@ -17359,7 +17359,7 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
                                       Text(
                                         'Session finished · Rest & recover',
                                         textAlign: TextAlign.center,
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
                                           color: textSec,
@@ -17436,7 +17436,7 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
                                       alignment: Alignment.center,
                                       child: Text(
                                         'Back to Home',
-                                        style: GoogleFonts.dmSans(
+                                        style: AppFonts.text(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                           color: theme.isDark ? Colors.black : Colors.white,
@@ -17480,7 +17480,7 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
         children: [
           Text(
             value,
-            style: GoogleFonts.syne(
+            style: AppFonts.display(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: accent,
@@ -17489,7 +17489,7 @@ class _WorkoutCompleteOverlayState extends State<_WorkoutCompleteOverlay>
           const SizedBox(height: 4),
           Text(
             label,
-            style: GoogleFonts.dmSans(
+            style: AppFonts.text(
               fontSize: 10,
               color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
               fontWeight: FontWeight.w600,
@@ -17987,7 +17987,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
               title: Text(
                 'Edit Profile',
-                style: GoogleFonts.syne(
+                style: AppFonts.display(
                   fontWeight: FontWeight.w800,
                   color: theme.text1,
                 ),
@@ -18000,7 +18000,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   children: [
                     Text(
                       'Your Name',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: theme.text2,
@@ -18038,7 +18038,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     const SizedBox(height: 16),
                     Text(
                       'Your Date of Birth',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: theme.text2,
@@ -18078,7 +18078,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     const SizedBox(height: 16),
                     Text(
                       'Goal Deadline Date',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: theme.text2,
@@ -18127,7 +18127,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   onPressed: () => Navigator.pop(dialogContext),
                   child: Text(
                     'Cancel',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontWeight: FontWeight.w600,
                       color: theme.text3,
                     ),
@@ -18163,7 +18163,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   ),
                   child: Text(
                     'Save',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -18240,7 +18240,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     const SizedBox(width: 8),
                     Text(
                       'Settings',
-                      style: GoogleFonts.syne(
+                      style: AppFonts.display(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: theme.text1,
@@ -18268,7 +18268,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             // 1. App Preferences
             Text(
               'APP PREFERENCES',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: theme.text3,
@@ -18289,7 +18289,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   SwitchListTile(
                     title: Text(
                       'Sound Effects',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         color: theme.text1,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -18297,7 +18297,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     ),
                     subtitle: Text(
                       'Enable workout audio cues',
-                      style: GoogleFonts.dmSans(color: theme.text3, fontSize: 11),
+                      style: AppFonts.text(color: theme.text3, fontSize: 11),
                     ),
                     activeThumbColor: const Color(0xFF2DD4A8),
                     activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
@@ -18313,7 +18313,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   SwitchListTile(
                     title: Text(
                       'Haptic Feedback',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         color: theme.text1,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -18321,7 +18321,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     ),
                     subtitle: Text(
                       'Vibration feedback on tap',
-                      style: GoogleFonts.dmSans(color: theme.text3, fontSize: 11),
+                      style: AppFonts.text(color: theme.text3, fontSize: 11),
                     ),
                     activeThumbColor: const Color(0xFF2DD4A8),
                     activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
@@ -18340,7 +18340,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             // 2. Profile Settings
             Text(
               'ACCOUNT & PROFILE',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: theme.text3,
@@ -18361,7 +18361,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   ListTile(
                     title: Text(
                       'Profile Information',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         color: theme.text1,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -18371,7 +18371,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       widget.userName.isNotEmpty
                           ? '${widget.userName} • ${getAgeFromDob(widget.userDob)} y/o'
                           : 'Set name, Date of Birth & goal',
-                      style: GoogleFonts.dmSans(color: theme.text3, fontSize: 11),
+                      style: AppFonts.text(color: theme.text3, fontSize: 11),
                     ),
                     trailing: Icon(Icons.chevron_right, color: theme.text3, size: 18),
                     onTap: () => _showEditNameDialog(context, theme),
@@ -18380,7 +18380,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   ListTile(
                     title: Text(
                       'Replay Setup (Demo Mode)',
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         color: theme.text1,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -18388,7 +18388,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     ),
                     subtitle: Text(
                       'Restart the guided onboarding tour',
-                      style: GoogleFonts.dmSans(color: theme.text3, fontSize: 11),
+                      style: AppFonts.text(color: theme.text3, fontSize: 11),
                     ),
                     trailing: const Icon(Icons.play_circle_outline, color: Color(0xFF2DD4A8), size: 20),
                     onTap: () {
@@ -18408,7 +18408,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             // 3. Prayer Timings Settings
             Text(
               'PRAYER CALCULATION & LOCATION',
-              style: GoogleFonts.dmSans(
+              style: AppFonts.text(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: theme.text3,
@@ -18435,7 +18435,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       children: [
                         Text(
                           'Location',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             color: theme.text3,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -18446,7 +18446,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                           _locationName.isNotEmpty
                               ? _locationName
                               : 'Detecting...',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             color: theme.text1,
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -18473,7 +18473,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                           ),
                           label: Text(
                             'Auto Detect',
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               color: const Color(0xFF2DD4A8),
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
@@ -18502,10 +18502,10 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       : null,
                   hint: Text(
                     'Choose a preset city...',
-                    style: GoogleFonts.dmSans(color: theme.text3, fontSize: 13),
+                    style: AppFonts.text(color: theme.text3, fontSize: 13),
                   ),
                   dropdownColor: theme.bg,
-                  style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
+                  style: AppFonts.text(color: theme.text1, fontSize: 13),
                   items: _cityPresets.keys.map((city) {
                     return DropdownMenuItem(value: city, child: Text(city));
                   }).toList(),
@@ -18526,7 +18526,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             SwitchListTile(
               title: Text(
                 'Advanced Settings',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   color: theme.text1,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -18534,7 +18534,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               ),
               subtitle: Text(
                 'Manual coordinates & calculation methods',
-                style: GoogleFonts.dmSans(color: theme.text3, fontSize: 10),
+                style: AppFonts.text(color: theme.text3, fontSize: 10),
               ),
               activeThumbColor: const Color(0xFF2DD4A8),
               activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
@@ -18557,7 +18557,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       children: [
                         Text(
                           'Latitude',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             color: theme.text3,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -18569,7 +18569,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
+                          style: AppFonts.text(color: theme.text1, fontSize: 13),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: theme.isDark
@@ -18611,7 +18611,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       children: [
                         Text(
                           'Longitude',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             color: theme.text3,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -18623,7 +18623,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
+                          style: AppFonts.text(color: theme.text1, fontSize: 13),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: theme.isDark
@@ -18664,7 +18664,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
 
               Text(
                 'Calculation Method',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   color: theme.text2,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -18685,7 +18685,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     isExpanded: true,
                     value: _selectedMethod,
                     dropdownColor: theme.bg,
-                    style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
+                    style: AppFonts.text(color: theme.text1, fontSize: 13),
                     items: const [
                       DropdownMenuItem(
                         value: 'Karachi',
@@ -18728,7 +18728,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
 
               Text(
                 'Asr Calculation Madhab',
-                style: GoogleFonts.dmSans(
+                style: AppFonts.text(
                   color: theme.text2,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -18749,7 +18749,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                     isExpanded: true,
                     value: _selectedMadhab,
                     dropdownColor: theme.bg,
-                    style: GoogleFonts.dmSans(color: theme.text1, fontSize: 13),
+                    style: AppFonts.text(color: theme.text1, fontSize: 13),
                     items: const [
                       DropdownMenuItem(
                         value: 'Shafi',
@@ -18791,7 +18791,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 alignment: Alignment.center,
                 child: Text(
                   'Save Settings',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: Colors.black,
@@ -18807,7 +18807,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   icon: const Icon(Icons.refresh, size: 14, color: Color(0xFFE54D2E)),
                   label: Text(
                     'Reset Today\'s Progress',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFFE54D2E),
@@ -18833,16 +18833,16 @@ class _SettingsSheetState extends State<_SettingsSheet> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Reset Today\'s Progress?',
-          style: GoogleFonts.syne(color: theme.text1, fontWeight: FontWeight.bold),
+          style: AppFonts.display(color: theme.text1, fontWeight: FontWeight.bold),
         ),
         content: Text(
           'This will clear all tracked prayers, tasks, and water intake for today. This action cannot be undone.',
-          style: GoogleFonts.dmSans(color: theme.text2, fontSize: 13),
+          style: AppFonts.text(color: theme.text2, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: Text('Cancel', style: GoogleFonts.dmSans(color: theme.text3)),
+            child: Text('Cancel', style: AppFonts.text(color: theme.text3)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -18860,7 +18860,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ),
               );
             },
-            child: Text('Reset', style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text('Reset', style: AppFonts.text(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

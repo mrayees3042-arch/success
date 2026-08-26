@@ -255,7 +255,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 children: [
                   Text(
                     'Add New Goal',
-                    style: GoogleFonts.syne(
+                    style: AppFonts.display(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: widget.theme.text1,
@@ -264,10 +264,10 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: titleCtrl,
-                    style: GoogleFonts.dmSans(color: widget.theme.text1, fontWeight: FontWeight.w500),
+                    style: AppFonts.text(color: widget.theme.text1, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
                       labelText: 'Goal Title',
-                      labelStyle: GoogleFonts.dmSans(color: widget.theme.text3),
+                      labelStyle: AppFonts.text(color: widget.theme.text3),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: widget.theme.border),
@@ -281,10 +281,10 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: dateCtrl,
-                    style: GoogleFonts.dmSans(color: widget.theme.text1, fontWeight: FontWeight.w500),
+                    style: AppFonts.text(color: widget.theme.text1, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
                       labelText: 'Target Date (e.g. Dec 2025)',
-                      labelStyle: GoogleFonts.dmSans(color: widget.theme.text3),
+                      labelStyle: AppFonts.text(color: widget.theme.text3),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: widget.theme.border),
@@ -373,7 +373,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       },
                       child: Text(
                         'Add Goal',
-                        style: GoogleFonts.syne(
+                        style: AppFonts.display(
                           color: Colors.black,
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
@@ -442,7 +442,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
               children: [
                 Text(
                   'YEAR PROGRESS',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: text3,
@@ -451,7 +451,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 ),
                 Text(
                   '${(progressPercent * 100).round()}%',
-                  style: GoogleFonts.syne(
+                  style: AppFonts.display(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                     color: goldColor,
@@ -485,14 +485,14 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
               children: [
                 Text(
                   'Day $daysPassed of $totalDays',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 11,
                     color: text3,
                   ),
                 ),
                 Text(
                   '$daysRemaining days left',
-                  style: GoogleFonts.dmSans(
+                  style: AppFonts.text(
                     fontSize: 11,
                     color: text3,
                   ),
@@ -620,7 +620,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         Expanded(
                           child: Text(
                             goal.title,
-                            style: GoogleFonts.dmSans(
+                            style: AppFonts.text(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: text1,
@@ -650,7 +650,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                               const SizedBox(width: 6),
                               Text(
                                 pillLabel,
-                                style: GoogleFonts.dmSans(
+                                style: AppFonts.text(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.5,
@@ -670,7 +670,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       children: [
                         Text(
                           'Progress',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: text3,
@@ -678,7 +678,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         ),
                         Text(
                           '${(progressVal * 100).round()}%',
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
                             color: pillText,
@@ -714,7 +714,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                           goal.subTasks.isEmpty
                               ? (isCompleted ? 'Goal completed' : 'No subtasks')
                               : '$doneCount of ${goal.subTasks.length} steps completed',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 12,
                             color: text3,
                           ),
@@ -787,21 +787,21 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                     ),
                                     title: Text(
                                       'Delete Task',
-                                      style: GoogleFonts.syne(
+                                      style: AppFonts.display(
                                         fontWeight: FontWeight.w800,
                                         color: text1,
                                       ),
                                     ),
                                     content: Text(
                                       'Are you sure you want to delete this task?',
-                                      style: GoogleFonts.dmSans(color: text3),
+                                      style: AppFonts.text(color: text3),
                                     ),
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(dialogContext),
                                         child: Text(
                                           'Cancel',
-                                          style: GoogleFonts.dmSans(
+                                          style: AppFonts.text(
                                             fontWeight: FontWeight.w600,
                                             color: text3,
                                           ),
@@ -816,7 +816,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                         },
                                         child: Text(
                                           'Delete',
-                                          style: GoogleFonts.dmSans(
+                                          style: AppFonts.text(
                                             fontWeight: FontWeight.w600,
                                             color: redColor,
                                           ),
@@ -891,7 +891,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                   Expanded(
                                     child: Text(
                                       sub.title,
-                                      style: GoogleFonts.dmSans(
+                                      style: AppFonts.text(
                                         fontSize: 13.5,
                                         color: sub.isDone ? text3 : text1,
                                         decoration: sub.isDone ? TextDecoration.lineThrough : null,
@@ -930,10 +930,10 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                               addCtrl.clear();
                             }
                           },
-                          style: GoogleFonts.dmSans(fontSize: 12.5, color: text1),
+                          style: AppFonts.text(fontSize: 12.5, color: text1),
                           decoration: InputDecoration(
                             hintText: '+ Add a step...',
-                            hintStyle: GoogleFonts.dmSans(fontSize: 12.5, color: text3),
+                            hintStyle: AppFonts.text(fontSize: 12.5, color: text3),
                             border: InputBorder.none,
                             isDense: true,
                           ),
@@ -1016,7 +1016,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       children: [
                         Text(
                           'DAILY & LONG-TERM',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 2.0,
@@ -1026,7 +1026,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         const SizedBox(height: 4),
                         Text(
                           'To Do & Goals',
-                          style: GoogleFonts.syne(
+                          style: AppFonts.display(
                             fontSize: 26,
                             fontWeight: FontWeight.w800,
                             color: text1,
@@ -1035,7 +1035,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         const SizedBox(height: 4),
                         Text(
                           'Priorities & Action Items',
-                          style: GoogleFonts.dmSans(
+                          style: AppFonts.text(
                             fontSize: 13,
                             color: text2,
                             fontWeight: FontWeight.w600,
@@ -1074,7 +1074,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Completed',
-                    style: GoogleFonts.dmSans(
+                    style: AppFonts.text(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: text3,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_theme.dart'; // Access your ThemeColors & kTeal
+import '../core/app_fonts.dart';
 import '../models/todo_task.dart';
 
 class TodoTile extends StatelessWidget {
@@ -110,7 +111,7 @@ class TodoTile extends StatelessWidget {
                   children: [
                     Text(
                       task.title,
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: task.isCompleted ? theme.text4 : theme.text1,
@@ -122,10 +123,10 @@ class TodoTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _formatDate(task.createdAt),
-                      style: GoogleFonts.dmSans(
+                      style: AppFonts.text(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: theme.text3.withValues(alpha: 0.8),
+                        color: theme.text3,
                       ),
                     ),
                   ],

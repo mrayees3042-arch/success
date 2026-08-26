@@ -1,3 +1,4 @@
+import '../core/app_fonts.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -257,7 +258,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                               ).createShader(bounds),
                               child: Text(
                                 "مُتَّقِين",
-                                style: GoogleFonts.amiri(
+                                style: AppFonts.arabic(
                                   fontSize: 34,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -282,7 +283,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                             offset: Offset(0, _englishSlideUp.value),
                             child: Text(
                               "MUTTAQIN",
-                              style: GoogleFonts.syne(
+                              style: AppFonts.display(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: goldColor.withValues(alpha: 0.65),
@@ -308,7 +309,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                               children: [
                                 Text(
                                   "BUILT FOR",
-                                  style: GoogleFonts.dmSans(
+                                  style: AppFonts.text(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w600,
                                     color: text3Color,
@@ -320,7 +321,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                                   _userName.trim().isNotEmpty
                                       ? _userName.trim().toUpperCase()
                                       : "YOU",
-                                  style: GoogleFonts.syne(
+                                  style: AppFonts.display(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: text4Color,
@@ -392,7 +393,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                               const SizedBox(height: 8),
                               Text(
                                 '${(fillVal * 100).round()}%',
-                                style: GoogleFonts.dmSans(
+                                style: AppFonts.text(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: isDark
@@ -424,7 +425,7 @@ class _BootScreenState extends State<BootScreen> with TickerProviderStateMixin {
                       child: Text(
                         "“Indeed, with hardship comes ease.”",
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.dmSans(
+                        style: AppFonts.text(
                           fontSize: 12,
                           fontStyle: FontStyle.italic,
                           color: tagColor,
