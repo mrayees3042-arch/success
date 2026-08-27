@@ -2275,40 +2275,46 @@ class _TodayScreenState extends State<TodayScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isDone
-                          ? Icons.check_circle_rounded
-                          : Icons.water_drop_outlined,
-                      size: 15,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isDone
+                            ? Icons.check_circle_rounded
+                            : Icons.water_drop_outlined,
+                        size: 14,
+                        color: isDone
+                            ? const Color(0xFF38BDF8)
+                            : widget.theme.text3,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        label,
+                        style: AppFonts.compact(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDone
+                              ? const Color(0xFF38BDF8)
+                              : widget.theme.text1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 3),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    subtitle,
+                    style: AppFonts.compact(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w400,
                       color: isDone
                           ? const Color(0xFF38BDF8)
                           : widget.theme.text3,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      label,
-                      style: AppFonts.compact(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isDone
-                            ? const Color(0xFF38BDF8)
-                            : widget.theme.text1,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: AppFonts.compact(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w400,
-                    color: isDone
-                        ? const Color(0xFF38BDF8)
-                        : widget.theme.text3,
                   ),
                 ),
               ],
@@ -2330,20 +2336,25 @@ class _TodayScreenState extends State<TodayScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('💧', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Water Intake',
-                    style: AppFonts.display(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: widget.theme.text1,
+              Expanded(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('💧', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Water Intake',
+                        style: AppFonts.display(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: widget.theme.text1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -3559,31 +3570,37 @@ class _TodayScreenState extends State<TodayScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text('🌙', style: TextStyle(fontSize: 15)),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${_fastingDayName().replaceFirst(' Fast', '')} — Sunnah fast day',
-                    style: AppFonts.text(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: widget.theme.text1,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Text('🌙', style: TextStyle(fontSize: 15)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${_fastingDayName().replaceFirst(' Fast', '')} — Sunnah fast day',
+                        style: AppFonts.text(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: widget.theme.text1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              Row(
-                children: [
-                  Text(
-                    'Start Fast ›',
-                    style: AppFonts.text(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: gold,
-                    ),
+              const SizedBox(width: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Start Fast ›',
+                  style: AppFonts.text(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: gold,
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -3607,21 +3624,29 @@ class _TodayScreenState extends State<TodayScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Fast broken at $brokenTime. Next fast: ${_getNextSunnahDayName()}.',
-              style: AppFonts.text(
-                fontSize: 12,
-                color: widget.theme.text3,
-              ),
-            ),
-            GestureDetector(
-              onTap: _showStartFastSheet,
+            Expanded(
               child: Text(
-                'Restart ›',
+                'Fast broken at $brokenTime. Next fast: ${_getNextSunnahDayName()}.',
                 style: AppFonts.text(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: gold,
+                  color: widget.theme.text3,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _showStartFastSheet,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Restart ›',
+                  style: AppFonts.text(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: gold,
+                  ),
                 ),
               ),
             ),
