@@ -14044,31 +14044,31 @@ class _IncomeScreenState extends State<IncomeScreen>
         'label': 'Essentials',
         'pct': 0.55,
         'pctLabel': '55%',
-        'color': const Color(0xFF2DD4A8),
+        'color': const Color(0xFF1B8A5A),
+      },
+      {
+        'label': 'Guilt-free fun',
+        'pct': 0.05,
+        'pctLabel': '5%',
+        'color': const Color(0xFFC88B1E),
       },
       {
         'label': 'Debt payoff',
-        'pct': 0.05,
-        'pctLabel': '5%',
-        'color': const Color(0xFF38BDF8),
-      },
-      {
-        'label': 'Long-term wealth',
         'pct': 0.10,
         'pctLabel': '10%',
-        'color': const Color(0xFFA78BFA),
+        'color': const Color(0xFF7E8694),
       },
       {
         'label': 'Short-term save',
         'pct': 0.15,
         'pctLabel': '15%',
-        'color': const Color(0xFFE8B84B),
+        'color': const Color(0xFF38B289),
       },
       {
-        'label': 'Guilt-free fun',
+        'label': 'Long-term wealth',
         'pct': 0.15,
         'pctLabel': '15%',
-        'color': const Color(0xFFFB923C),
+        'color': const Color(0xFFD5BF6A),
       },
     ];
 
@@ -14102,63 +14102,47 @@ class _IncomeScreenState extends State<IncomeScreen>
             children: [
               Row(
                 children: [
-                  Icon(Icons.pie_chart_outline, size: 14, color: colors.emerald),
-                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.pie_chart,
+                    size: 15,
+                    color: colors.theme.isDark ? colors.text2 : const Color(0xFF5A6270),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     'INCOME ALLOCATION',
                     style: AppFonts.text(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: colors.text3,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                      color: colors.theme.isDark ? colors.text2 : const Color(0xFF5A6270),
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                 decoration: BoxDecoration(
-                  color: colors.emerald2,
-                  borderRadius: BorderRadius.circular(8),
+                  color: colors.theme.isDark
+                      ? const Color(0xFF1B8A5A).withValues(alpha: 0.2)
+                      : const Color(0xFFE6F7F0),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: colors.emerald.withValues(alpha: 0.3),
+                    color: const Color(0xFF1B8A5A).withValues(alpha: 0.25),
                     width: 0.5,
                   ),
                 ),
                 child: Text(
-                  '55/5/10/15/15 Rule',
-                  style: AppFonts.text(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: colors.emerald,
+                  '55·5·10·15·15',
+                  style: AppFonts.compact(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF1B8A5A),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // Segmented Bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: SizedBox(
-              height: 7,
-              child: Row(
-                children: categories.map((cat) {
-                  final flex = ((cat['pct'] as double) * 100).round();
-                  final col = cat['color'] as Color;
-                  return Expanded(
-                    flex: flex,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                      color: hasIncome ? col : colors.text3.withValues(alpha: 0.3),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // 5 Color-coded Rows
           Column(
@@ -14172,7 +14156,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
               return Padding(
                 padding: EdgeInsets.only(
-                  bottom: i < categories.length - 1 ? 10.0 : 0.0,
+                  bottom: i < categories.length - 1 ? 13.0 : 0.0,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -14180,38 +14164,73 @@ class _IncomeScreenState extends State<IncomeScreen>
                     Row(
                       children: [
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 12,
+                          height: 12,
                           decoration: BoxDecoration(
-                            color: hasIncome
-                                ? col
-                                : colors.text3.withValues(alpha: 0.5),
-                            shape: BoxShape.circle,
+                            color: col,
+                            borderRadius: BorderRadius.circular(3.5),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         Text(
-                          '$label ($pctLabel)',
+                          label,
                           style: AppFonts.text(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: hasIncome ? colors.text2 : colors.text3,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: colors.text1,
                           ),
                         ),
                       ],
                     ),
-                    Text(
-                      hasIncome ? _money(allocatedAmt) : '—',
-                      style: AppFonts.display(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: hasIncome ? colors.text1 : colors.text3,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (hasIncome) ...[
+                          Text(
+                            _money(allocatedAmt),
+                            style: AppFonts.display(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: colors.text1,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          pctLabel,
+                          style: AppFonts.compact(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colors.text3,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               );
             }),
+          ),
+          const SizedBox(height: 18),
+
+          // Segmented Bar at bottom
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: SizedBox(
+              height: 6,
+              child: Row(
+                children: categories.map((cat) {
+                  final flex = ((cat['pct'] as double) * 100).round();
+                  final col = cat['color'] as Color;
+                  return Expanded(
+                    flex: flex,
+                    child: Container(
+                      color: col,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
         ],
       ),
