@@ -14041,31 +14041,31 @@ class _IncomeScreenState extends State<IncomeScreen>
 
     final categories = [
       {
-        'label': 'Necessities & Bills',
+        'label': 'Essentials',
         'pct': 0.55,
         'pctLabel': '55%',
         'color': const Color(0xFF2DD4A8),
       },
       {
-        'label': 'Emergency Buffer',
+        'label': 'Debt payoff',
         'pct': 0.05,
         'pctLabel': '5%',
         'color': const Color(0xFF38BDF8),
       },
       {
-        'label': 'Investments & Growth',
+        'label': 'Long-term wealth',
         'pct': 0.10,
         'pctLabel': '10%',
         'color': const Color(0xFFA78BFA),
       },
       {
-        'label': 'Nikah / Family Fund',
+        'label': 'Short-term save',
         'pct': 0.15,
         'pctLabel': '15%',
         'color': const Color(0xFFE8B84B),
       },
       {
-        'label': 'Personal & Discretionary',
+        'label': 'Guilt-free fun',
         'pct': 0.15,
         'pctLabel': '15%',
         'color': const Color(0xFFFB923C),
