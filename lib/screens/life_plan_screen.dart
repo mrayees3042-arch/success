@@ -589,9 +589,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                   onTap: _showAddGoalSheet,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                      horizontal: 24,
-                    ),
+                      horizontal: 18, vertical: 12),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -619,12 +617,15 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                           color: Colors.white,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Add New Goal',
-                          style: AppFonts.text(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                        Flexible(
+                          child: Text(
+                            'Add New Goal',
+                            style: AppFonts.text(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -645,13 +646,16 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 color: emeraldColor,
               ),
               const SizedBox(width: 6),
-              Text(
-                'SUGGESTED MILESTONES',
-                style: AppFonts.text(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
-                  color: text3,
+              Flexible(
+                child: Text(
+                  'SUGGESTED MILESTONES',
+                  style: AppFonts.text(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: text3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

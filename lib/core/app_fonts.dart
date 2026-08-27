@@ -58,6 +58,9 @@ class AppFonts {
     'serif',
   ];
 
+  /// Global font scaling factor (+12% sizing boost for optimal readability)
+  static const double kGlobalFontScale = 1.12;
+
   /// SF Pro Display: For large sizes (>= 20pt), headlines, hero numbers
   static TextStyle display({
     double fontSize = 22,
@@ -75,7 +78,7 @@ class AppFonts {
     return TextStyle(
       fontFamily: 'SF Pro Display',
       fontFamilyFallback: _displayFallbacks,
-      fontSize: fontSize,
+      fontSize: fontSize * kGlobalFontScale,
       fontWeight: fontWeight,
       color: color,
       letterSpacing: letterSpacing,
@@ -106,7 +109,7 @@ class AppFonts {
     return TextStyle(
       fontFamily: 'SF Pro Text',
       fontFamilyFallback: _textFallbacks,
-      fontSize: fontSize,
+      fontSize: fontSize * kGlobalFontScale,
       fontWeight: fontWeight,
       color: color,
       letterSpacing: letterSpacing,
@@ -137,7 +140,7 @@ class AppFonts {
     return TextStyle(
       fontFamily: 'SF Pro',
       fontFamilyFallback: _textFallbacks,
-      fontSize: fontSize,
+      fontSize: fontSize * kGlobalFontScale,
       fontWeight: fontWeight,
       color: color,
       letterSpacing: letterSpacing,
@@ -168,7 +171,7 @@ class AppFonts {
     return TextStyle(
       fontFamily: 'SF Mono',
       fontFamilyFallback: _monoFallbacks,
-      fontSize: fontSize,
+      fontSize: fontSize * kGlobalFontScale,
       fontWeight: fontWeight,
       color: color,
       letterSpacing: letterSpacing,
@@ -199,7 +202,7 @@ class AppFonts {
     return TextStyle(
       fontFamily: 'SF Compact',
       fontFamilyFallback: _compactFallbacks,
-      fontSize: fontSize,
+      fontSize: fontSize * kGlobalFontScale,
       fontWeight: fontWeight,
       color: color,
       letterSpacing: letterSpacing,
@@ -227,7 +230,7 @@ class AppFonts {
     return TextStyle(
       fontFamily: 'NotoNaskhArabic',
       fontFamilyFallback: _arabicFallbacks,
-      fontSize: fontSize,
+      fontSize: fontSize * kGlobalFontScale,
       fontWeight: fontWeight,
       color: color,
       letterSpacing: letterSpacing,

@@ -5035,34 +5035,40 @@ class _TodayScreenState extends State<TodayScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Daily Prayers',
-                style: AppFonts.display(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: widget.theme.text1,
+              Flexible(
+                child: Text(
+                  'Daily Prayers',
+                  style: AppFonts.display(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: widget.theme.text1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8B84B).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFFE8B84B).withValues(alpha: 0.3),
-                    width: 0.5,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
                   ),
-                ),
-                child: Text(
-                  fardDone == 0 ? '5 Ahead' : '$fardDone of 5 Done',
-                  style: AppFonts.compact(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFE8B84B),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8B84B).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFE8B84B).withValues(alpha: 0.3),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Text(
+                    fardDone == 0 ? '5 Ahead' : '$fardDone of 5 Done',
+                    style: AppFonts.compact(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFE8B84B),
+                    ),
                   ),
                 ),
               ),
@@ -5098,106 +5104,129 @@ class _TodayScreenState extends State<TodayScreen>
         : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
     final ampm = tod.hour < 12 ? 'AM' : 'PM';
     final timeStr = '$hour12:${tod.minute.toString().padLeft(2, '0')} $ampm';
-    const prayer = 'Tahajjud';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: GestureDetector(
-        onTap: () {
-          HapticService.tapFeedback();
-          widget.onPrayerToggle(prayer);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          decoration: BoxDecoration(
-            color: widget.theme.isDark
-                ? const Color(0x1F2A2A3E)
-                : widget.theme.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
+    return GestureDetector(
+      onTap: () {
+        HapticService.tapFeedback();
+        widget.onPrayerToggle('Tahajjud');
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
               color: done
-                  ? const Color(0xFF00C896).withValues(alpha: 0.5)
-                  : widget.theme.isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : widget.theme.border,
-              width: 0.8,
+                  ? const Color(0xFF00C896).withValues(alpha: 0.2)
+                  : Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    done ? '🌙' : '🌑',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: widget.theme.isDark
+                  ? const Color(0x1F2A2A3E)
+                  : widget.theme.card,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: done
+                    ? const Color(0xFF00C896).withValues(alpha: 0.5)
+                    : widget.theme.isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : widget.theme.border,
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Tahajjud',
-                            style: AppFonts.text(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: widget.theme.text1,
+                      Text(
+                        done ? '🌙' : '🌑',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'Tahajjud',
+                                    style: AppFonts.text(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: widget.theme.text1,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: widget.theme.isDark
+                                        ? Colors.white.withValues(alpha: 0.08)
+                                        : Colors.black.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'OPTIONAL / SUNNAH',
+                                    style: AppFonts.text(
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                      color: widget.theme.text3,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: widget.theme.isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : Colors.black.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              'OPTIONAL / SUNNAH',
+                            Text(
+                              'Night prayer • $timeStr',
                               style: AppFonts.text(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
+                                fontSize: 11,
                                 color: widget.theme.text3,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Night prayer • $timeStr',
-                        style: AppFonts.text(
-                          fontSize: 11,
-                          color: widget.theme.text3,
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: done ? const Color(0xFF00C896) : Colors.transparent,
-                  border: Border.all(
-                    color: done ? const Color(0xFF00C896) : widget.theme.border,
-                    width: 1.5,
-                  ),
                 ),
-                child: done
-                    ? const Icon(Icons.check, color: Colors.white, size: 14)
-                    : null,
-              ),
-            ],
+                const SizedBox(width: 8),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: done ? const Color(0xFF00C896) : Colors.transparent,
+                    border: Border.all(
+                      color: done ? const Color(0xFF00C896) : widget.theme.border,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: done
+                      ? const Icon(Icons.check, color: Colors.white, size: 14)
+                      : null,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -6069,7 +6098,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                         Text(
                           '${(progress * 100).round()}%',
                           style: AppFonts.display(
-                            // Use Syne
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                             color: goalColor,
@@ -6082,44 +6110,52 @@ class _GoalsScreenState extends State<GoalsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Streak badge
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.local_fire_department,
-                              size: 16,
-                              color: Colors.orange,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '$streak days',
-                              style: AppFonts.display(
-                                // Use Syne
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: theme.text1,
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.local_fire_department,
+                                size: 16,
+                                color: Colors.orange,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  '$streak days',
+                                  style: AppFonts.display(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: theme.text1,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         // Mark Done Button
                         GestureDetector(
                           onTap: () => _markToday(taskIndex),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
+                              horizontal: 12,
+                              vertical: 6,
                             ),
                             decoration: BoxDecoration(
                               border: Border.all(color: goalColor, width: 1.5),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(
-                              isDone ? 'Done' : 'Mark Done',
-                              style: AppFonts.display(
-                                // Use Syne
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: isDone ? goalColor : theme.text1,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                isDone ? 'Done' : 'Mark Done',
+                                style: AppFonts.display(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDone ? goalColor : theme.text1,
+                                ),
                               ),
                             ),
                           ),
@@ -6778,19 +6814,24 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Icon(Icons.account_balance_wallet_outlined, size: 16, color: appColors.gold),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Tap to log daily cash flow',
-                                style: AppFonts.text(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: appColors.text1,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Icons.account_balance_wallet_outlined, size: 16, color: appColors.gold),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Tap to log daily cash flow',
+                                    style: AppFonts.text(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: appColors.text1,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                           Icon(Icons.arrow_forward_ios_rounded, size: 12, color: appColors.text3),
                         ],
@@ -6860,8 +6901,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
                             );
                           },
                           child: Container(
-                            height: 48,
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            constraints: const BoxConstraints(minHeight: 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                             decoration: BoxDecoration(
                               color: _selectedWaterGlasses >= 3
                                   ? const Color(0xFF38BDF8).withValues(alpha: 0.18)
@@ -6878,24 +6919,31 @@ class _HabitsScreenState extends State<HabitsScreen> {
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  'Morning',
-                                  style: AppFonts.compact(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: _selectedWaterGlasses >= 3
-                                        ? const Color(0xFF38BDF8)
-                                        : appColors.text1,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Morning',
+                                    style: AppFonts.compact(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: _selectedWaterGlasses >= 3
+                                          ? const Color(0xFF38BDF8)
+                                          : appColors.text1,
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  '3 gl (0.75L)',
-                                  style: AppFonts.compact(
-                                    fontSize: 9.5,
-                                    color: _selectedWaterGlasses >= 3
-                                        ? const Color(0xFF38BDF8)
-                                        : appColors.text3,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '3 gl (0.75L)',
+                                    style: AppFonts.compact(
+                                      fontSize: 9.5,
+                                      color: _selectedWaterGlasses >= 3
+                                          ? const Color(0xFF38BDF8)
+                                          : appColors.text3,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -6912,8 +6960,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
                             );
                           },
                           child: Container(
-                            height: 48,
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            constraints: const BoxConstraints(minHeight: 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                             decoration: BoxDecoration(
                               color: _selectedWaterGlasses >= 6
                                   ? const Color(0xFF38BDF8).withValues(alpha: 0.18)
@@ -6930,24 +6978,31 @@ class _HabitsScreenState extends State<HabitsScreen> {
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  'Afternoon',
-                                  style: AppFonts.compact(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: _selectedWaterGlasses >= 6
-                                        ? const Color(0xFF38BDF8)
-                                        : appColors.text1,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Afternoon',
+                                    style: AppFonts.compact(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: _selectedWaterGlasses >= 6
+                                          ? const Color(0xFF38BDF8)
+                                          : appColors.text1,
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  '3 gl (1.5L)',
-                                  style: AppFonts.compact(
-                                    fontSize: 9.5,
-                                    color: _selectedWaterGlasses >= 6
-                                        ? const Color(0xFF38BDF8)
-                                        : appColors.text3,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '3 gl (1.5L)',
+                                    style: AppFonts.compact(
+                                      fontSize: 9.5,
+                                      color: _selectedWaterGlasses >= 6
+                                          ? const Color(0xFF38BDF8)
+                                          : appColors.text3,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -6964,8 +7019,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
                             );
                           },
                           child: Container(
-                            height: 48,
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            constraints: const BoxConstraints(minHeight: 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                             decoration: BoxDecoration(
                               color: _selectedWaterGlasses >= 10
                                   ? const Color(0xFF38BDF8).withValues(alpha: 0.18)
@@ -6982,24 +7037,31 @@ class _HabitsScreenState extends State<HabitsScreen> {
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  'Evening',
-                                  style: AppFonts.compact(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: _selectedWaterGlasses >= 10
-                                        ? const Color(0xFF38BDF8)
-                                        : appColors.text1,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Evening',
+                                    style: AppFonts.compact(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: _selectedWaterGlasses >= 10
+                                          ? const Color(0xFF38BDF8)
+                                          : appColors.text1,
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  '4 gl (2.5L)',
-                                  style: AppFonts.compact(
-                                    fontSize: 9.5,
-                                    color: _selectedWaterGlasses >= 10
-                                        ? const Color(0xFF38BDF8)
-                                        : appColors.text3,
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '4 gl (2.5L)',
+                                    style: AppFonts.compact(
+                                      fontSize: 9.5,
+                                      color: _selectedWaterGlasses >= 10
+                                          ? const Color(0xFF38BDF8)
+                                          : appColors.text3,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -7057,23 +7119,37 @@ class _HabitsScreenState extends State<HabitsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              title,
-              style: AppFonts.compact(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: appColors.text1,
+            Flexible(
+              flex: 3,
+              child: Text(
+                title,
+                style: AppFonts.compact(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: appColors.text1,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
-            if (rightText != null)
-              Text(
-                rightText,
-                style: AppFonts.text(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: rightColor ?? appColors.text2,
+            if (rightText != null) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                flex: 2,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    rightText,
+                    style: AppFonts.text(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: rightColor ?? appColors.text2,
+                    ),
+                  ),
                 ),
               ),
+            ],
           ],
         ),
         const SizedBox(height: 8),
@@ -9286,12 +9362,15 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         size: 22,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        'Start Workout',
-                        style: AppFonts.display(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: theme.isDark ? Colors.black : Colors.white,
+                      Flexible(
+                        child: Text(
+                          'Start Workout',
+                          style: AppFonts.display(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: theme.isDark ? Colors.black : Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -9312,42 +9391,58 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488),
-                  shape: BoxShape.circle,
+          Expanded(
+            flex: 3,
+            child: Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${_selectedSplit.title} · Bodyweight',
-                style: AppFonts.text(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: theme.text1,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${_selectedSplit.title} · Bodyweight',
+                    style: AppFonts.text(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: theme.text1,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          GestureDetector(
-            onTap: () {
-              HapticService.tapFeedback();
-              SoundManager.playTapClick();
-              setState(() {
-                _selectedSplit = otherSplit;
-                _recalculateStats();
-              });
-            },
-            child: Text(
-              'Tomorrow: ${otherSplit.title} ›',
-              style: AppFonts.text(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () {
+                  HapticService.tapFeedback();
+                  SoundManager.playTapClick();
+                  setState(() {
+                    _selectedSplit = otherSplit;
+                    _recalculateStats();
+                  });
+                },
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Tomorrow: ${otherSplit.title} ›',
+                    style: AppFonts.text(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: theme.isDark ? const Color(0xFF8B8B9A) : const Color(0xFF6B6560),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -13644,53 +13739,66 @@ class _IncomeScreenState extends State<IncomeScreen>
         children: [
           // Top row: label + compact streak pill badge
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'INCOME',
-                style: AppFonts.text(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.08,
-                  color: colors.text3,
+              Expanded(
+                flex: 3,
+                child: Text(
+                  'INCOME',
+                  style: AppFonts.text(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.08,
+                    color: colors.text3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: streak > 0
-                      ? colors.emerald.withValues(alpha: 0.12)
-                      : (colors.theme.isDark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : Colors.black.withValues(alpha: 0.04)),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: streak > 0
-                        ? colors.emerald.withValues(alpha: 0.3)
-                        : colors.cardBorder,
-                    width: 0.5,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      streak > 0 ? '🌱' : '💼',
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      streak > 0 ? '$streak days logged' : 'Log daily',
-                      style: AppFonts.compact(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: streak > 0 ? colors.emerald : colors.text2,
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: streak > 0
+                            ? colors.emerald.withValues(alpha: 0.12)
+                            : (colors.theme.isDark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : Colors.black.withValues(alpha: 0.04)),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: streak > 0
+                              ? colors.emerald.withValues(alpha: 0.3)
+                              : colors.cardBorder,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            streak > 0 ? '🌱' : '💼',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            streak > 0 ? '$streak days logged' : 'Log daily',
+                            style: AppFonts.compact(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: streak > 0 ? colors.emerald : colors.text2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -13699,7 +13807,6 @@ class _IncomeScreenState extends State<IncomeScreen>
 
           // Month nav row
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
                 onTap: _prevMonth,
@@ -13726,17 +13833,24 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
-              Text(
-                '${_monthNames[_selectedMonth - 1]} $_selectedYear',
-                style: AppFonts.text(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                  color: colors.text1,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${_monthNames[_selectedMonth - 1]} $_selectedYear',
+                      style: AppFonts.text(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                        color: colors.text1,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: _nextMonth,
                 child: Container(
@@ -13864,43 +13978,55 @@ class _IncomeScreenState extends State<IncomeScreen>
         children: [
           // Top row
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.speed, size: 14, color: colors.emerald),
-                  const SizedBox(width: 6),
-                  Text(
-                    'DAILY MOMENTUM',
-                    style: AppFonts.text(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: colors.text3,
+              Expanded(
+                flex: 3,
+                child: Row(
+                  children: [
+                    Icon(Icons.speed, size: 14, color: colors.emerald),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'DAILY MOMENTUM',
+                        style: AppFonts.text(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: colors.text3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: statusColor.withValues(alpha: 0.25),
-                    width: 0.5,
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.25),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        statusText,
+                        style: AppFonts.text(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  statusText,
-                  style: AppFonts.text(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                  ),
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -13948,17 +14074,18 @@ class _IncomeScreenState extends State<IncomeScreen>
 
           // Comparison text
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
+              Expanded(
+                flex: 3,
                 child: Text(
                   'Today: ${_money(todayEarned)}',
                   style: AppFonts.text(fontSize: 11, color: colors.text3),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 6),
-              Flexible(
+              const SizedBox(width: 4),
+              Expanded(
+                flex: 3,
                 child: Text(
                   'Avg: ${_money(dailyAvg)}/day',
                   style: AppFonts.text(
@@ -13967,10 +14094,12 @@ class _IncomeScreenState extends State<IncomeScreen>
                     fontWeight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(width: 6),
-              Flexible(
+              const SizedBox(width: 4),
+              Expanded(
+                flex: 4,
                 child: Text(
                   'M${activeMilestone['num']} Goal: ${_money(milestoneDaily)}/day',
                   style: AppFonts.text(
@@ -13979,6 +14108,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     color: colors.gold,
                   ),
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
                 ),
               ),
             ],
@@ -14048,47 +14178,62 @@ class _IncomeScreenState extends State<IncomeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet,
-                    size: 13,
-                    color: colors.emerald,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'NET BALANCE',
-                    style: AppFonts.text(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: colors.text3,
+              Expanded(
+                flex: 3,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet,
+                      size: 13,
+                      color: colors.emerald,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'NET BALANCE',
+                        style: AppFonts.text(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: colors.text3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              if (prevTotal > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isUp ? colors.emerald2 : colors.theme.isDark ? Colors.white10 : Colors.black12,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${isUp ? "↑" : "↓"} ${changePct.abs().toStringAsFixed(0)}%',
-                    style: AppFonts.text(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isUp ? colors.emerald : colors.text2,
+              if (prevTotal > 0) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isUp ? colors.emerald2 : colors.theme.isDark ? Colors.white10 : Colors.black12,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${isUp ? "↑" : "↓"} ${changePct.abs().toStringAsFixed(0)}%',
+                          style: AppFonts.text(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isUp ? colors.emerald : colors.text2,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 6),
@@ -14309,45 +14454,60 @@ class _IncomeScreenState extends State<IncomeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.pie_chart,
-                    size: 15,
-                    color: colors.theme.isDark ? colors.text2 : const Color(0xFF5A6270),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'INCOME ALLOCATION',
-                    style: AppFonts.text(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.1,
+              Expanded(
+                flex: 3,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.pie_chart,
+                      size: 15,
                       color: colors.theme.isDark ? colors.text2 : const Color(0xFF5A6270),
                     ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                decoration: BoxDecoration(
-                  color: colors.theme.isDark
-                      ? const Color(0xFF1B8A5A).withValues(alpha: 0.2)
-                      : const Color(0xFFE6F7F0),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF1B8A5A).withValues(alpha: 0.25),
-                    width: 0.5,
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'INCOME ALLOCATION',
+                        style: AppFonts.text(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.1,
+                          color: colors.theme.isDark ? colors.text2 : const Color(0xFF5A6270),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  '55·5·10·15·15',
-                  style: AppFonts.compact(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1B8A5A),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: colors.theme.isDark
+                            ? const Color(0xFF1B8A5A).withValues(alpha: 0.2)
+                            : const Color(0xFFE6F7F0),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF1B8A5A).withValues(alpha: 0.25),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        '55·5·10·15·15',
+                        style: AppFonts.compact(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1B8A5A),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -14372,50 +14532,61 @@ class _IncomeScreenState extends State<IncomeScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: col,
-                            borderRadius: BorderRadius.circular(3.5),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          label,
-                          style: AppFonts.text(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: colors.text1,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (hasIncome) ...[
-                          Text(
-                            _money(allocatedAmt),
-                            style: AppFonts.display(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: colors.text1,
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: col,
+                              borderRadius: BorderRadius.circular(3.5),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                        ],
-                        Text(
-                          pctLabel,
-                          style: AppFonts.compact(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: colors.text3,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: AppFonts.text(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text1,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (hasIncome) ...[
+                              Text(
+                                _money(allocatedAmt),
+                                style: AppFonts.display(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.text1,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Text(
+                              pctLabel,
+                              style: AppFonts.compact(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: colors.text3,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -14977,27 +15148,34 @@ class _IncomeScreenState extends State<IncomeScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.shield_outlined,
-                      size: 15,
-                      color: Color(0xFF7E8694),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'DEBT PAYOFF ALLOCATION',
-                      style: AppFonts.text(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.1,
-                        color: colors.theme.isDark
-                            ? colors.text2
-                            : const Color(0xFF5A6270),
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.shield_outlined,
+                        size: 15,
+                        color: Color(0xFF7E8694),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'DEBT PAYOFF ALLOCATION',
+                          style: AppFonts.text(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.1,
+                            color: colors.theme.isDark
+                                ? colors.text2
+                                : const Color(0xFF5A6270),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
@@ -15058,12 +15236,15 @@ class _IncomeScreenState extends State<IncomeScreen>
                     const Icon(Icons.add_rounded,
                         size: 16, color: Color(0xFF7E8694)),
                     const SizedBox(width: 6),
-                    Text(
-                      'Add Debt Amount',
-                      style: AppFonts.text(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: colors.text1,
+                    Flexible(
+                      child: Text(
+                        'Add Debt Amount',
+                        style: AppFonts.text(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colors.text1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -15115,70 +15296,86 @@ class _IncomeScreenState extends State<IncomeScreen>
         children: [
           // 1. Header
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    isDebtFree
-                        ? Icons.verified_rounded
-                        : Icons.credit_card_off_rounded,
-                    size: 16,
-                    color: isDebtFree
-                        ? const Color(0xFF00C896)
-                        : const Color(0xFF7E8694),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _debtOwedTo.isNotEmpty
-                        ? 'DEBT PAYOFF · ${_debtOwedTo.toUpperCase()}'
-                        : 'DEBT PAYOFF TRACKER',
-                    style: AppFonts.text(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1,
-                      color: colors.theme.isDark
-                          ? colors.text2
-                          : const Color(0xFF5A6270),
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: (isDebtFree
-                              ? const Color(0xFF00C896)
-                              : const Color(0xFF7E8694))
-                          .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
+              Expanded(
+                flex: 3,
+                child: Row(
+                  children: [
+                    Icon(
                       isDebtFree
-                          ? 'DEBT FREE 🏆'
-                          : '${(progress * 100).toStringAsFixed(0)}% PAID',
-                      style: AppFonts.compact(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: isDebtFree
-                            ? const Color(0xFF00C896)
-                            : const Color(0xFF7E8694),
+                          ? Icons.verified_rounded
+                          : Icons.credit_card_off_rounded,
+                      size: 16,
+                      color: isDebtFree
+                          ? const Color(0xFF00C896)
+                          : const Color(0xFF7E8694),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _debtOwedTo.isNotEmpty
+                            ? 'DEBT PAYOFF · ${_debtOwedTo.toUpperCase()}'
+                            : 'DEBT PAYOFF TRACKER',
+                        style: AppFonts.text(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
+                          color: colors.theme.isDark
+                              ? colors.text2
+                              : const Color(0xFF5A6270),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: _showDebtOptionsMenu,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(Icons.more_vert_rounded,
-                          size: 18, color: colors.text3),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: (isDebtFree
+                                    ? const Color(0xFF00C896)
+                                    : const Color(0xFF7E8694))
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            isDebtFree
+                                ? 'DEBT FREE 🏆'
+                                : '${(progress * 100).toStringAsFixed(0)}% PAID',
+                            style: AppFonts.compact(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isDebtFree
+                                  ? const Color(0xFF00C896)
+                                  : const Color(0xFF7E8694),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: _showDebtOptionsMenu,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(Icons.more_vert_rounded,
+                                size: 18, color: colors.text3),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -15190,7 +15387,7 @@ class _IncomeScreenState extends State<IncomeScreen>
               Expanded(
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   decoration: BoxDecoration(
                     color: isDark
                         ? const Color(0xFF24242A)
@@ -15209,23 +15406,26 @@ class _IncomeScreenState extends State<IncomeScreen>
                             color: colors.text3),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        _money(_debtTotal),
-                        style: AppFonts.display(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: colors.text1),
-                        overflow: TextOverflow.ellipsis,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _money(_debtTotal),
+                          style: AppFonts.display(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: colors.text1),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Expanded(
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   decoration: BoxDecoration(
                     color: isDark
                         ? const Color(0xFF24242A)
@@ -15244,23 +15444,26 @@ class _IncomeScreenState extends State<IncomeScreen>
                             color: const Color(0xFF00C896)),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        _money(_debtPaid),
-                        style: AppFonts.display(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF00C896)),
-                        overflow: TextOverflow.ellipsis,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _money(_debtPaid),
+                          style: AppFonts.display(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF00C896)),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Expanded(
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   decoration: BoxDecoration(
                     color: isDark
                         ? const Color(0xFF24242A)
@@ -15279,15 +15482,18 @@ class _IncomeScreenState extends State<IncomeScreen>
                             color: colors.gold),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        _money(remainingDebt),
-                        style: AppFonts.display(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: isDebtFree
-                                ? const Color(0xFF00C896)
-                                : colors.text1),
-                        overflow: TextOverflow.ellipsis,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _money(remainingDebt),
+                          style: AppFonts.display(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDebtFree
+                                  ? const Color(0xFF00C896)
+                                  : colors.text1),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -15464,16 +15670,20 @@ class _IncomeScreenState extends State<IncomeScreen>
                 alignment: Alignment.center,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.add_circle_outline_rounded,
                         size: 16, color: Colors.white),
                     const SizedBox(width: 6),
-                    Text(
-                      'Log a Payment',
-                      style: AppFonts.text(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                    Flexible(
+                      child: Text(
+                        'Log a Payment',
+                        style: AppFonts.text(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -15510,26 +15720,30 @@ class _IncomeScreenState extends State<IncomeScreen>
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                'SAVINGS GOALS',
-                style: AppFonts.text(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 2,
-                  color: colors.text3,
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'SAVINGS GOALS',
+                  style: AppFonts.text(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: colors.text3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   HapticService.light();
                   _showGoalResetConfirmation(colors);
                 },
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.refresh, size: 13, color: colors.red),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 3),
                     Text(
                       'Reset',
                       style: AppFonts.text(
@@ -15541,20 +15755,21 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ],
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   HapticService.light();
                   _showGoalFormSheet();
                 },
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.add_circle_outline,
                       size: 13,
                       color: colors.emerald,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 3),
                     Text(
                       'Add Goal',
                       style: AppFonts.text(
@@ -15675,20 +15890,26 @@ class _IncomeScreenState extends State<IncomeScreen>
                               ],
                             ),
                           ),
-                          RichText(
-                            text: TextSpan(
-                              style: AppFonts.text(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: colors.text2,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: _money(current),
-                                  style: TextStyle(color: colors.text1),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: RichText(
+                                text: TextSpan(
+                                  style: AppFonts.text(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: colors.text2,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: _money(current),
+                                      style: TextStyle(color: colors.text1),
+                                    ),
+                                    TextSpan(text: ' / ${_money(target)}'),
+                                  ],
                                 ),
-                                TextSpan(text: ' / ${_money(target)}'),
-                              ],
+                              ),
                             ),
                           ),
                         ],
@@ -15826,42 +16047,57 @@ class _IncomeScreenState extends State<IncomeScreen>
         children: [
           // ── 1. Card Header ──
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.route_rounded, size: 16, color: colors.gold),
-                  const SizedBox(width: 8),
-                  Text(
-                    'PATH TO ₹3,00,000/MO',
-                    style: AppFonts.text(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1,
-                      color: colors.theme.isDark
-                          ? colors.text2
-                          : const Color(0xFF5A6270),
+              Expanded(
+                flex: 3,
+                child: Row(
+                  children: [
+                    Icon(Icons.route_rounded, size: 16, color: colors.gold),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'PATH TO ₹3,00,000/MO',
+                        style: AppFonts.text(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.1,
+                          color: colors.theme.isDark
+                              ? colors.text2
+                              : const Color(0xFF5A6270),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                decoration: BoxDecoration(
-                  color: colors.gold.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: colors.gold.withValues(alpha: 0.25),
-                    width: 0.5,
-                  ),
+                  ],
                 ),
-                child: Text(
-                  'Milestone ${activeMilestone['num']} of 10',
-                  style: AppFonts.compact(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: colors.gold,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: colors.gold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colors.gold.withValues(alpha: 0.25),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        'Milestone ${activeMilestone['num']} of 10',
+                        style: AppFonts.compact(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: colors.gold,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -15882,6 +16118,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           LayoutBuilder(
             builder: (context, constraints) {
               final trackWidth = constraints.maxWidth;
+              final nodeSize = ((trackWidth - 36) / 10).clamp(16.0, 24.0);
               return Stack(
                 alignment: Alignment.centerLeft,
                 children: [
@@ -15945,8 +16182,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                       }
 
                       return Container(
-                        width: 24,
-                        height: 24,
+                        width: nodeSize,
+                        height: nodeSize,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: nodeBg,
@@ -15968,13 +16205,13 @@ class _IncomeScreenState extends State<IncomeScreen>
                         child: isCompleted
                             ? const Icon(
                                 Icons.check,
-                                size: 12,
+                                size: 11,
                                 color: Colors.white,
                               )
                             : Text(
                                 '${i + 1}',
                                 style: AppFonts.compact(
-                                  fontSize: 10,
+                                  fontSize: nodeSize < 20 ? 8.5 : 10,
                                   fontWeight: isCurrent
                                       ? FontWeight.w700
                                       : FontWeight.w500,
@@ -16023,13 +16260,16 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                'CURRENT MILESTONE ${activeMilestone['num']}',
-                                style: AppFonts.compact(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.8,
-                                  color: colors.gold,
+                              Expanded(
+                                child: Text(
+                                  'CURRENT MILESTONE ${activeMilestone['num']}',
+                                  style: AppFonts.compact(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.8,
+                                    color: colors.gold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -16042,27 +16282,35 @@ class _IncomeScreenState extends State<IncomeScreen>
                               fontWeight: FontWeight.w700,
                               color: colors.text1,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colors.gold.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: colors.gold.withValues(alpha: 0.25),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        '$milestonePct% of Target',
-                        style: AppFonts.compact(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: colors.gold,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colors.gold.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: colors.gold.withValues(alpha: 0.25),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            '$milestonePct% of Target',
+                            style: AppFonts.compact(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: colors.gold,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -16076,7 +16324,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            vertical: 10, horizontal: 12),
+                            vertical: 10, horizontal: 10),
                         decoration: BoxDecoration(
                           color: isDark
                               ? const Color(0x08FFFFFF)
@@ -16097,23 +16345,27 @@ class _IncomeScreenState extends State<IncomeScreen>
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(
-                              '${_money(activeDailyTarget)}/day',
-                              style: AppFonts.display(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: colors.text1,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${_money(activeDailyTarget)}/day',
+                                style: AppFonts.display(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.text1,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            vertical: 10, horizontal: 12),
+                            vertical: 10, horizontal: 10),
                         decoration: BoxDecoration(
                           color: isDark
                               ? const Color(0x08FFFFFF)
@@ -16134,14 +16386,18 @@ class _IncomeScreenState extends State<IncomeScreen>
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(
-                              '${_money(dailyAvg)}/day',
-                              style: AppFonts.display(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: dailyAvg > 0
-                                    ? const Color(0xFF00C896)
-                                    : colors.text3,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${_money(dailyAvg)}/day',
+                                style: AppFonts.display(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: dailyAvg > 0
+                                      ? const Color(0xFF00C896)
+                                      : colors.text3,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -16200,15 +16456,19 @@ class _IncomeScreenState extends State<IncomeScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'MILESTONE LADDER',
-                style: AppFonts.text(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                  color: colors.text3,
+              Flexible(
+                child: Text(
+                  'MILESTONE LADDER',
+                  style: AppFonts.text(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                    color: colors.text3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   HapticService.selection();
@@ -16295,33 +16555,37 @@ class _IncomeScreenState extends State<IncomeScreen>
                   const SizedBox(width: 10),
                   // Name
                   Expanded(
+                    flex: 3,
                     child: Row(
                       children: [
-                        Text(
-                          'M${m['num']} · ${m['name']}',
-                          style: AppFonts.text(
-                            fontSize: 12.5,
-                            fontWeight: isCurrent
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                            color: isCurrent
-                                ? colors.text1
-                                : (isCompleted ? colors.text2 : colors.text3),
+                        Flexible(
+                          child: Text(
+                            'M${m['num']} · ${m['name']}',
+                            style: AppFonts.text(
+                              fontSize: 12.5,
+                              fontWeight: isCurrent
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: isCurrent
+                                  ? colors.text1
+                                  : (isCompleted ? colors.text2 : colors.text3),
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isFinal) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 5, vertical: 1.5),
+                                horizontal: 4, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: colors.gold.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'GOAL',
                               style: AppFonts.compact(
-                                fontSize: 8.5,
+                                fontSize: 8,
                                 fontWeight: FontWeight.w700,
                                 color: colors.gold,
                               ),
@@ -16331,35 +16595,46 @@ class _IncomeScreenState extends State<IncomeScreen>
                       ],
                     ),
                   ),
+                  const SizedBox(width: 6),
                   // Numbers
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${_money(m['daily'] as int)}/day',
-                        style: AppFonts.text(
-                          fontSize: 12,
-                          fontWeight: isCurrent
-                              ? FontWeight.w700
-                              : (isCompleted
-                                  ? FontWeight.w500
-                                  : FontWeight.w400),
-                          color: isCurrent
-                              ? colors.gold
-                              : (isCompleted
-                                  ? const Color(0xFF00C896)
-                                  : colors.text3),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${_money(m['daily'] as int)}/day',
+                            style: AppFonts.text(
+                              fontSize: 12,
+                              fontWeight: isCurrent
+                                  ? FontWeight.w700
+                                  : (isCompleted
+                                      ? FontWeight.w500
+                                      : FontWeight.w400),
+                              color: isCurrent
+                                  ? colors.gold
+                                  : (isCompleted
+                                      ? const Color(0xFF00C896)
+                                      : colors.text3),
+                            ),
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${_money(m['monthly'] as int)}/mo',
-                        style: AppFonts.compact(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w400,
-                          color: colors.text4,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${_money(m['monthly'] as int)}/mo',
+                            style: AppFonts.compact(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w400,
+                              color: colors.text4,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -16370,34 +16645,34 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // 3. BAR CHART — 7-DAY ROLLING WINDOW
+  // ---------------------------------------------------------------------------
   Widget _buildChart(AppColors colors, int daysInMonth) {
     final now = DateTime.now();
     final isCurrentMonth =
-        _selectedMonth == now.month && _selectedYear == now.year;
+        _selectedYear == now.year && _selectedMonth == now.month;
     final today = DateTime(now.year, now.month, now.day);
 
-    // 7-day rolling window or active week
-    final days = List.generate(7, (i) {
-      if (isCurrentMonth) {
-        return today.subtract(Duration(days: 6 - i));
-      } else {
-        final startDay = (daysInMonth - 7).clamp(1, daysInMonth);
-        return DateTime(_selectedYear, _selectedMonth, startDay + i);
-      }
-    });
+    final days = isCurrentMonth
+        ? List.generate(7, (i) => today.subtract(Duration(days: 6 - i)))
+        : List.generate(
+            7,
+            (i) => DateTime(_selectedYear, _selectedMonth,
+                daysInMonth > 7 ? daysInMonth - 6 + i : i + 1),
+          );
 
     final amounts = days.map((d) => widget.incomeLog[dayKey(d)] ?? 0).toList();
-    int max7 = amounts.fold(0, (max, e) => e > max ? e : max);
-    if (max7 <= 0) max7 = 1;
+    final max7 = amounts.fold<int>(0, (a, b) => a > b ? a : b);
 
-    // Total month stats for caption
+    // Active days count & daily average for the month
     int monthEarned = 0;
     int daysLogged = 0;
-    for (int d = 1; d <= daysInMonth; d++) {
-      final date = DateTime(_selectedYear, _selectedMonth, d);
-      final amt = widget.incomeLog[dayKey(date)] ?? 0;
-      if (amt > 0) {
-        monthEarned += amt;
+    for (int d = 1; d <= (isCurrentMonth ? now.day : daysInMonth); d++) {
+      final key = dayKey(DateTime(_selectedYear, _selectedMonth, d));
+      final val = widget.incomeLog[key] ?? 0;
+      if (val > 0) {
+        monthEarned += val;
         daysLogged++;
       }
     }
@@ -16432,41 +16707,56 @@ class _IncomeScreenState extends State<IncomeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.bar_chart_rounded, size: 14, color: colors.emerald),
-                  const SizedBox(width: 6),
-                  Text(
-                    'DAILY EARNINGS',
-                    style: AppFonts.text(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: colors.text3,
+              Expanded(
+                flex: 3,
+                child: Row(
+                  children: [
+                    Icon(Icons.bar_chart_rounded, size: 14, color: colors.emerald),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'DAILY EARNINGS',
+                        style: AppFonts.text(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: colors.text3,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: daysLogged > 0 ? colors.emerald2 : colors.card,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: daysLogged > 0
-                        ? colors.emerald.withValues(alpha: 0.3)
-                        : colors.cardBorder,
-                    width: 0.5,
-                  ),
+                  ],
                 ),
-                child: Text(
-                  daysLogged > 0 ? '$daysLogged active days' : '7-Day Trend',
-                  style: AppFonts.text(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: daysLogged > 0 ? colors.emerald : colors.text3,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: daysLogged > 0 ? colors.emerald2 : colors.card,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: daysLogged > 0
+                              ? colors.emerald.withValues(alpha: 0.3)
+                              : colors.cardBorder,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        daysLogged > 0 ? '$daysLogged active days' : '7-Day Trend',
+                        style: AppFonts.text(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: daysLogged > 0 ? colors.emerald : colors.text3,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -16476,7 +16766,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
           // 7-day bars with real weekday labels
           SizedBox(
-            height: 110,
+            height: 120,
             child: AnimatedBuilder(
               animation: _chartBarsController,
               builder: (_, _) {
@@ -16487,7 +16777,6 @@ class _IncomeScreenState extends State<IncomeScreen>
                     final amt = amounts[i];
                     final isToday = isCurrentMonth && dayKey(date) == dayKey(today);
                     final barPct = max7 > 0 ? (amt / max7).clamp(0.0, 1.0) : 0.0;
-                    final barH = amt > 0 ? math.max(6.0, barPct * 44.0) : 4.0;
                     final weekday = weekdayShort[date.weekday - 1];
 
                     final staggerStart = (i * 40.0 / 1300.0).clamp(0.0, 1.0);
@@ -16497,14 +16786,12 @@ class _IncomeScreenState extends State<IncomeScreen>
                       staggerEnd,
                       curve: Curves.easeOutCubic,
                     );
-                    final animH = barH * interval.transform(_chartBarsController.value);
 
                     return Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             SizedBox(
                               height: 14,
@@ -16522,34 +16809,51 @@ class _IncomeScreenState extends State<IncomeScreen>
                                     )
                                   : null,
                             ),
+                            const SizedBox(height: 3),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: FractionallySizedBox(
+                                  heightFactor: (amt > 0
+                                          ? (0.15 + 0.85 * barPct)
+                                          : 0.08) *
+                                      interval.transform(
+                                          _chartBarsController.value),
+                                  child: Container(
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: amt > 0
+                                          ? (isToday ? colors.gold : colors.emerald)
+                                          : (colors.theme.isDark
+                                              ? Colors.white.withValues(alpha: 0.06)
+                                              : Colors.black.withValues(alpha: 0.04)),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Container(
-                              height: animH,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: amt > 0
-                                    ? (isToday ? colors.gold : colors.emerald)
-                                    : (colors.theme.isDark
-                                        ? Colors.white.withValues(alpha: 0.06)
-                                        : Colors.black.withValues(alpha: 0.04)),
-                                borderRadius: BorderRadius.circular(4),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                weekday,
+                                style: AppFonts.compact(
+                                  fontSize: 10,
+                                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+                                  color: isToday ? colors.gold : colors.text3,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              weekday,
-                              style: AppFonts.compact(
-                                fontSize: 10,
-                                fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                                color: isToday ? colors.gold : colors.text3,
-                              ),
-                            ),
-                            Text(
-                              '${date.day}',
-                              style: AppFonts.compact(
-                                fontSize: 9,
-                                fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
-                                color: isToday ? colors.text1 : colors.text3.withValues(alpha: 0.6),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '${date.day}',
+                                style: AppFonts.compact(
+                                  fontSize: 9,
+                                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
+                                  color: isToday ? colors.text1 : colors.text3.withValues(alpha: 0.6),
+                                ),
                               ),
                             ),
                           ],
@@ -16640,18 +16944,22 @@ class _IncomeScreenState extends State<IncomeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'RECENT TRANSACTIONS',
-                style: AppFonts.text(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                  color: colors.text3,
+              Flexible(
+                child: Text(
+                  'RECENT TRANSACTIONS',
+                  style: AppFonts.text(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: colors.text3,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Spacer(),
-              if (entries.isNotEmpty)
+              if (entries.isNotEmpty) ...[
+                const SizedBox(width: 8),
                 Text(
                   '${entries.length} entries',
                   style: AppFonts.text(
@@ -16660,6 +16968,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     color: colors.text3,
                   ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -16768,8 +17077,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                 boxShadow: [
                   BoxShadow(
                     color: colors.theme.isDark
-                        ? Colors.black.withValues(alpha: 0.3)
-                        : const Color(0xFF3C321E).withValues(alpha: 0.04),
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : const Color(0xFF3C321E).withValues(alpha: 0.04),
                     blurRadius: 20,
                     offset: const Offset(0, 4),
                   ),
@@ -16798,8 +17107,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                       return Column(
                         children: [
                           Container(
-                            height: 58,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            constraints: const BoxConstraints(minHeight: 58),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             child: Row(
                               children: [
                                 Container(
@@ -16838,16 +17147,23 @@ class _IncomeScreenState extends State<IncomeScreen>
                                           fontSize: 11,
                                           color: colors.text3,
                                         ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
                                 ),
-                                Text(
-                                  '$prefix${_money(e.amount)}',
-                                  style: AppFonts.display(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: displayColor,
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      '$prefix${_money(e.amount)}',
+                                      style: AppFonts.display(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: displayColor,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -17995,7 +18311,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                   duration: const Duration(milliseconds: 300),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
-                    height: 76,
+                    constraints: const BoxConstraints(minHeight: 76),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: shadows,
@@ -18030,7 +18346,7 @@ class _ExerciseLogRowWidgetState extends State<ExerciseLogRowWidget>
                                   ),
                                 ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 child: Row(
                                   children: [
                                     // Clean Left-Aligned Apple Order Number
