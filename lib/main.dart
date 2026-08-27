@@ -11941,6 +11941,11 @@ class _IncomeScreenState extends State<IncomeScreen>
   String _earningTarget = '₹3,00,000';
   String _earningTip = 'Aim: ₹3,00,000/month · Target editable';
 
+  // --- Debt Payoff Tracker state (persisted) ---
+  int _debtTotal = 0;
+  int _debtPaid = 0;
+  String _debtOwedTo = '';
+
   // --- Animation controllers ---
   late AnimationController _fireController;
   late AnimationController _velocityBarController;
@@ -12213,6 +12218,10 @@ class _IncomeScreenState extends State<IncomeScreen>
           prefs.getString('income_earning_tip') ??
           'Aim: ₹3,00,000/month · Long term';
 
+      _debtTotal = prefs.getInt('income_debt_total') ?? 0;
+      _debtPaid = prefs.getInt('income_debt_paid') ?? 0;
+      _debtOwedTo = prefs.getString('income_debt_owed_to') ?? '';
+
       final rawGoals = prefs.getString('income_savings_goals_list');
       if (rawGoals != null && rawGoals.isNotEmpty) {
         try {
@@ -12258,6 +12267,13 @@ class _IncomeScreenState extends State<IncomeScreen>
     ];
   }
 
+  Future<void> _saveDebtState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('income_debt_total', _debtTotal);
+    await prefs.setInt('income_debt_paid', _debtPaid);
+    await prefs.setString('income_debt_owed_to', _debtOwedTo);
+  }
+
   Future<void> _saveEditableGoals() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('income_daily_target', _dailyTarget);
@@ -12265,6 +12281,9 @@ class _IncomeScreenState extends State<IncomeScreen>
     await prefs.setString('income_earning_current', _earningCurrent);
     await prefs.setString('income_earning_target', _earningTarget);
     await prefs.setString('income_earning_tip', _earningTip);
+    await prefs.setInt('income_debt_total', _debtTotal);
+    await prefs.setInt('income_debt_paid', _debtPaid);
+    await prefs.setString('income_debt_owed_to', _debtOwedTo);
 
     final encoded = jsonEncode(_savingsGoals.map((g) => g.toJson()).toList());
     await prefs.setString('income_savings_goals_list', encoded);
@@ -14414,6 +14433,1043 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
+  // ═══════════════════════════════════════════════
+  // DEBT PAYOFF TRACKER (LIVE 10% ALLOCATION)
+  // ═══════════════════════════════════════════════
+
+  void _showAddDebtSheet() {
+    final totalCtrl = TextEditingController(
+      text: _debtTotal > 0 ? _debtTotal.toString() : '',
+    );
+    final owedToCtrl = TextEditingController(text: _debtOwedTo);
+    final colors = AppColors(widget.theme);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: const Color(0xD906060F),
+      builder: (ctx) {
+        return BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: StatefulBuilder(
+            builder: (ctx, setSheetState) {
+              return AnimatedPadding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                ),
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.theme.isDark
+                        ? const Color(0xFF0E0E18)
+                        : const Color(0xFFF9F7F2),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _debtTotal > 0
+                                  ? 'Edit Debt Details'
+                                  : 'Add Debt Amount',
+                              style: AppFonts.display(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text1,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(ctx),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.card,
+                                  border: Border.all(
+                                    color: colors.cardBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: colors.text2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Track total liability against your monthly 10% debt allocation.',
+                          style: AppFonts.text(
+                            fontSize: 12,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Field 1: Total Amount Owed (Required)
+                        Text(
+                          'TOTAL AMOUNT OWED *',
+                          style: AppFonts.compact(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border:
+                                Border.all(color: colors.cardBorder, width: 1),
+                          ),
+                          child: TextField(
+                            controller: totalCtrl,
+                            keyboardType: TextInputType.number,
+                            style: AppFonts.display(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. 50000',
+                              hintStyle: AppFonts.display(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: colors.text4,
+                              ),
+                              prefixText: '₹ ',
+                              prefixStyle: AppFonts.display(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text1,
+                              ),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Field 2: Owed To (Optional)
+                        Text(
+                          'OWED TO (OPTIONAL)',
+                          style: AppFonts.compact(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border:
+                                Border.all(color: colors.cardBorder, width: 1),
+                          ),
+                          child: TextField(
+                            controller: owedToCtrl,
+                            style: AppFonts.text(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. Brother, Bank loan, Friend',
+                              hintStyle: AppFonts.text(
+                                fontSize: 14,
+                                color: colors.text4,
+                              ),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Save Button
+                        GestureDetector(
+                          onTap: () {
+                            final total =
+                                int.tryParse(totalCtrl.text.trim()) ?? 0;
+                            if (total <= 0) return;
+                            HapticService.light();
+                            setState(() {
+                              _debtTotal = total;
+                              _debtOwedTo = owedToCtrl.text.trim();
+                              if (_debtPaid > _debtTotal) {
+                                _debtPaid = _debtTotal;
+                              }
+                            });
+                            _saveDebtState();
+                            Navigator.pop(ctx);
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF7E8694),
+                                  colors.theme.isDark
+                                      ? const Color(0xFF5A6270)
+                                      : const Color(0xFF475569),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF7E8694)
+                                      .withValues(alpha: 0.25),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              _debtTotal > 0
+                                  ? 'Save Changes'
+                                  : 'Add Debt Tracker',
+                              style: AppFonts.text(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLogDebtPaymentSheet() {
+    final payCtrl = TextEditingController();
+    final colors = AppColors(widget.theme);
+    final remaining = (_debtTotal - _debtPaid).clamp(0, _debtTotal);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: const Color(0xD906060F),
+      builder: (ctx) {
+        return BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: StatefulBuilder(
+            builder: (ctx, setSheetState) {
+              return AnimatedPadding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                ),
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colors.theme.isDark
+                        ? const Color(0xFF0E0E18)
+                        : const Color(0xFFF9F7F2),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Log Debt Payment',
+                              style: AppFonts.display(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text1,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(ctx),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.card,
+                                  border: Border.all(
+                                    color: colors.cardBorder,
+                                    width: 1,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.close,
+                                  size: 14,
+                                  color: colors.text2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Current Remaining: ${_money(remaining)}${_debtOwedTo.isNotEmpty ? " · Owed to $_debtOwedTo" : ""}',
+                          style: AppFonts.text(
+                            fontSize: 12,
+                            color: colors.emerald,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        Text(
+                          'PAYMENT AMOUNT *',
+                          style: AppFonts.compact(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border:
+                                Border.all(color: colors.cardBorder, width: 1),
+                          ),
+                          child: TextField(
+                            controller: payCtrl,
+                            keyboardType: TextInputType.number,
+                            autofocus: true,
+                            style: AppFonts.display(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. 5000',
+                              hintStyle: AppFonts.display(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: colors.text4,
+                              ),
+                              prefixText: '₹ ',
+                              prefixStyle: AppFonts.display(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text1,
+                              ),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+
+                        // Submit Payment
+                        GestureDetector(
+                          onTap: () {
+                            final payAmt =
+                                int.tryParse(payCtrl.text.trim()) ?? 0;
+                            if (payAmt <= 0) return;
+                            HapticService.light();
+                            setState(() {
+                              _debtPaid =
+                                  (_debtPaid + payAmt).clamp(0, _debtTotal);
+                            });
+                            _saveDebtState();
+                            Navigator.pop(ctx);
+                            _showGoldToast(payAmt);
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colors.emerald,
+                                  colors.theme.isDark
+                                      ? const Color(0xFF047857)
+                                      : const Color(0xFF065F46),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colors.emerald.withValues(alpha: 0.3),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            alignment: Alignment.center,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.check_circle_outline,
+                                    size: 18, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Record Payment',
+                                  style: AppFonts.text(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDebtOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final colors = AppColors(widget.theme);
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.theme.isDark ? const Color(0xFF14141E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.edit_outlined, color: colors.text1),
+                title: Text(
+                  'Edit Debt Details',
+                  style: AppFonts.text(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.text1,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showAddDebtSheet();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: colors.red),
+                title: Text(
+                  'Clear Debt / Reset',
+                  style: AppFonts.text(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.red,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _debtTotal = 0;
+                    _debtPaid = 0;
+                    _debtOwedTo = '';
+                  });
+                  _saveDebtState();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDebtPayoffCard(AppColors colors, int totalEarned) {
+    final isDark = colors.theme.isDark;
+    final cardBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final cardBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
+
+    final monthlyDebtAlloc = (totalEarned * 0.10).round();
+    final remainingDebt = (_debtTotal - _debtPaid).clamp(0, _debtTotal);
+    final isDebtFree = _debtTotal > 0 && remainingDebt == 0;
+    final progress =
+        _debtTotal > 0 ? (_debtPaid / _debtTotal).clamp(0.0, 1.0) : 0.0;
+
+    // Step 1: When no debt is on file
+    if (_debtTotal == 0) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cardBorder, width: 0.5),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : const Color(0xFF3C321E).withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.shield_outlined,
+                      size: 15,
+                      color: Color(0xFF7E8694),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'DEBT PAYOFF ALLOCATION',
+                      style: AppFonts.text(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                        color: colors.theme.isDark
+                            ? colors.text2
+                            : const Color(0xFF5A6270),
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7E8694).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '10% Active',
+                    style: AppFonts.compact(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF7E8694),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'No active debt logged on file.',
+              style: AppFonts.text(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: colors.text1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Your 55/5/10/15/15 allocation reserves 10% for debt payoff. When debt is ₹0, this 10% slot automatically converts into Short-term save (15% → 25%).',
+              style: AppFonts.text(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w400,
+                color: colors.text3,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: _showAddDebtSheet,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF2C2C32)
+                      : const Color(0xFFF2F2F7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF7E8694).withValues(alpha: 0.3),
+                    width: 0.8,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.add_rounded,
+                        size: 16, color: Color(0xFF7E8694)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '＋ Add Debt Amount',
+                      style: AppFonts.text(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colors.text1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Step 3: Active Debt Tracker
+    String etaText;
+    if (isDebtFree) {
+      etaText =
+          'Debt cleared! 10% slot rolled into Short-Term Save (Now 25%)';
+    } else if (monthlyDebtAlloc > 0) {
+      final months = (remainingDebt / monthlyDebtAlloc).ceil();
+      etaText =
+          '~$months months at current 10% pace (${_money(monthlyDebtAlloc)}/mo)';
+    } else {
+      etaText = 'Log monthly income to project payoff timeline';
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDebtFree
+              ? const Color(0xFF00C896).withValues(alpha: 0.4)
+              : cardBorder,
+          width: isDebtFree ? 1.0 : 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : const Color(0xFF3C321E).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isDebtFree
+                        ? Icons.verified_rounded
+                        : Icons.credit_card_off_rounded,
+                    size: 16,
+                    color: isDebtFree
+                        ? const Color(0xFF00C896)
+                        : const Color(0xFF7E8694),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _debtOwedTo.isNotEmpty
+                        ? 'DEBT PAYOFF · ${_debtOwedTo.toUpperCase()}'
+                        : 'DEBT PAYOFF TRACKER',
+                    style: AppFonts.text(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                      color: colors.theme.isDark
+                          ? colors.text2
+                          : const Color(0xFF5A6270),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: (isDebtFree
+                              ? const Color(0xFF00C896)
+                              : const Color(0xFF7E8694))
+                          .withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      isDebtFree
+                          ? 'DEBT FREE 🏆'
+                          : '${(progress * 100).toStringAsFixed(0)}% PAID',
+                      style: AppFonts.compact(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: isDebtFree
+                            ? const Color(0xFF00C896)
+                            : const Color(0xFF7E8694),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: _showDebtOptionsMenu,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.more_vert_rounded,
+                          size: 18, color: colors.text3),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // 2. Three Key Figures Row
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF24242A)
+                        : const Color(0xFFF7F7FA),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TOTAL OWED',
+                        style: AppFonts.compact(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.6,
+                            color: colors.text3),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _money(_debtTotal),
+                        style: AppFonts.display(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: colors.text1),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF24242A)
+                        : const Color(0xFFF7F7FA),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PAID SO FAR',
+                        style: AppFonts.compact(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.6,
+                            color: const Color(0xFF00C896)),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _money(_debtPaid),
+                        style: AppFonts.display(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF00C896)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF24242A)
+                        : const Color(0xFFF7F7FA),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'REMAINING',
+                        style: AppFonts.compact(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.6,
+                            color: colors.gold),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _money(remainingDebt),
+                        style: AppFonts.display(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDebtFree
+                                ? const Color(0xFF00C896)
+                                : colors.text1),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // 3. Progress Bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: Container(
+              height: 6,
+              width: double.infinity,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.06),
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: progress,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF7E8694),
+                        isDebtFree ? const Color(0xFF00C896) : colors.gold,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 4. Monthly Contribution & ETA Box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0x06FFFFFF) : colors.bg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: cardBorder, width: 0.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.calendar_month_outlined,
+                        size: 14,
+                        color: isDebtFree
+                            ? const Color(0xFF00C896)
+                            : colors.gold),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        totalEarned > 0
+                            ? '${_money(monthlyDebtAlloc)} routed this month (10% allocation)'
+                            : '10% of logged income routes here automatically',
+                        style: AppFonts.text(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: colors.text1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.only(left: 22),
+                  child: Text(
+                    etaText,
+                    style: AppFonts.text(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w400,
+                      color:
+                          isDebtFree ? const Color(0xFF00C896) : colors.text3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // 5. Plain language advice note
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.lightbulb_outline_rounded,
+                  size: 13, color: colors.gold),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Keep debt at 10% unless high-interest. Borrowing a few points temporarily from Fun (5%→2%) or Long-term (15%→10%) accelerates payoff without touching Essentials.',
+                  style: AppFonts.text(
+                    fontSize: 10.5,
+                    color: colors.text3,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // 6. Automatic conversion rule note
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: (isDebtFree ? const Color(0xFF00C896) : colors.gold)
+                  .withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isDebtFree
+                      ? Icons.check_circle_rounded
+                      : Icons.info_outline_rounded,
+                  size: 13,
+                  color: isDebtFree ? const Color(0xFF00C896) : colors.gold,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isDebtFree
+                        ? '10% debt slot is now converted to Short-Term Save (25% total).'
+                        : 'Once debt hits ₹0, the 10% slot automatically converts to Short-term save (15% → 25%).',
+                    style: AppFonts.text(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
+                      color: isDebtFree
+                          ? const Color(0xFF00C896)
+                          : (isDark
+                              ? colors.text2
+                              : const Color(0xFF7C5E10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // 7. Action Button: ＋ Log a Payment
+          if (!isDebtFree)
+            GestureDetector(
+              onTap: _showLogDebtPaymentSheet,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF7E8694),
+                      isDark
+                          ? const Color(0xFF5A6270)
+                          : const Color(0xFF475569),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7E8694).withValues(alpha: 0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.add_circle_outline_rounded,
+                        size: 16, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Text(
+                      '＋ Log a Payment',
+                      style: AppFonts.text(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSavingsGoals(AppColors colors, int totalEarned) {
     final iconDataMap = {
       'favorite': Icons.favorite,
@@ -15949,6 +17005,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                 _buildHeroCard(colors, totalEarned, daysInMonth),
                 const SizedBox(height: 14),
                 _buildIncomeAllocationCard(colors, netBalance),
+                const SizedBox(height: 14),
+                _buildDebtPayoffCard(colors, totalEarned),
                 const SizedBox(height: 14),
                 _buildEarningPotential(colors),
                 const SizedBox(height: 14),
