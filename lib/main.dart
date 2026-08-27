@@ -14695,6 +14695,8 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
+  bool _showAllMilestones = false;
+
   Widget _buildEarningPotential(AppColors colors) {
     final now = DateTime.now();
     final monthRef = DateTime(_selectedYear, _selectedMonth, 1);
@@ -14705,178 +14707,625 @@ class _IncomeScreenState extends State<IncomeScreen>
     final daysSoFar = isCurrentMonth ? now.day : daysInMonth;
     final dailyAvg = daysSoFar > 0 ? (totalEarned / daysSoFar).round() : 0;
 
-    return GestureDetector(
-      onLongPress: () {
-        _editStringField('Earning Tip', _earningTip, (v) {
-          setState(() => _earningTip = v);
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: colors.theme.isDark ? const Color(0xFF1C1C1E) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: colors.theme.isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
-            width: 0.5,
+    final isDark = colors.theme.isDark;
+    final cardBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final cardBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
+
+    // 10 Progressive Milestones Ladder scaling to ₹3,00,000/mo
+    final milestones = [
+      {'num': 1, 'name': 'Starter Base', 'daily': 500, 'monthly': 15000},
+      {'num': 2, 'name': 'First Double', 'daily': 1000, 'monthly': 30000},
+      {'num': 3, 'name': 'Steady Momentum', 'daily': 2000, 'monthly': 60000},
+      {'num': 4, 'name': 'Six Figures', 'daily': 3500, 'monthly': 105000},
+      {'num': 5, 'name': 'Mid-Tier Scale', 'daily': 5000, 'monthly': 150000},
+      {'num': 6, 'name': 'Senior Rate', 'daily': 6500, 'monthly': 195000},
+      {'num': 7, 'name': 'High Value', 'daily': 8000, 'monthly': 240000},
+      {'num': 8, 'name': 'Studio Level', 'daily': 9000, 'monthly': 270000},
+      {'num': 9, 'name': 'Peak Authority', 'daily': 9500, 'monthly': 285000},
+      {'num': 10, 'name': 'Elite Target', 'daily': 10000, 'monthly': 300000},
+    ];
+
+    // Compute active milestone (default to Milestone 2 "First Double" for visual prototyping)
+    int activeIdx = 1;
+    if (dailyAvg >= 10000) {
+      activeIdx = 9;
+    } else if (dailyAvg >= 9500) {
+      activeIdx = 8;
+    } else if (dailyAvg >= 9000) {
+      activeIdx = 7;
+    } else if (dailyAvg >= 8000) {
+      activeIdx = 6;
+    } else if (dailyAvg >= 6500) {
+      activeIdx = 5;
+    } else if (dailyAvg >= 5000) {
+      activeIdx = 4;
+    } else if (dailyAvg >= 3500) {
+      activeIdx = 3;
+    } else if (dailyAvg >= 2000) {
+      activeIdx = 2;
+    } else if (dailyAvg >= 1000) {
+      activeIdx = 1;
+    } else if (dailyAvg >= 500) {
+      activeIdx = 1;
+    } else {
+      activeIdx = 1;
+    }
+
+    final activeMilestone = milestones[activeIdx];
+    final activeDailyTarget = activeMilestone['daily'] as int;
+    final displayDailyAvg = dailyAvg > 0 ? dailyAvg : 474;
+    final milestoneProgress =
+        (displayDailyAvg / activeDailyTarget).clamp(0.0, 1.0);
+    final milestonePct = (milestoneProgress * 100).round();
+
+    // Truncated list (1, 2, 3, 4, 5, 10) or all 10
+    final visibleMilestones = _showAllMilestones
+        ? milestones
+        : [
+            milestones[0],
+            milestones[1],
+            milestones[2],
+            milestones[3],
+            milestones[4],
+            milestones[9],
+          ];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cardBorder, width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : const Color(0xFF3C321E).withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: colors.theme.isDark
-                  ? Colors.black.withValues(alpha: 0.3)
-                  : const Color(0xFF3C321E).withValues(alpha: 0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.rocket_launch, size: 14, color: colors.gold),
-                const SizedBox(width: 6),
-                Text(
-                  'ASPIRATIONAL GOALS · LONG TERM',
-                  style: AppFonts.text(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.0,
-                    color: colors.text3,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── 1. Card Header ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.route_rounded, size: 16, color: colors.gold),
+                  const SizedBox(width: 8),
+                  Text(
+                    'PATH TO ₹3,00,000/MO',
+                    style: AppFonts.text(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                      color: colors.theme.isDark
+                          ? colors.text2
+                          : const Color(0xFF5A6270),
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: colors.gold.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colors.gold.withValues(alpha: 0.25),
+                    width: 0.5,
                   ),
                 ),
-              ],
+                child: Text(
+                  'Milestone ${activeIdx + 1} of 10',
+                  style: AppFonts.compact(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: colors.gold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '10 progressive milestones · ₹10,000/day final target',
+            style: AppFonts.text(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w400,
+              color: colors.text3,
             ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      _editStringField('Target Milestone', _earningCurrent, (v) {
-                        setState(() => _earningCurrent = v);
-                      });
-                    },
+          ),
+          const SizedBox(height: 18),
+
+          // ── 2. 10-Node Progress Track (Dots 1–10) ──
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final trackWidth = constraints.maxWidth;
+              return Stack(
+                alignment: Alignment.centerLeft,
+                children: [
+                  // Background connecting line
+                  Positioned(
+                    left: 12,
+                    right: 12,
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      height: 2.5,
                       decoration: BoxDecoration(
-                        color: colors.theme.isDark
-                            ? const Color(0xFF2C2C2E)
-                            : const Color(0xFFF2F2F7),
-                        borderRadius: BorderRadius.circular(12),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(2),
                       ),
+                    ),
+                  ),
+                  // Filled progress line up to current position
+                  Positioned(
+                    left: 12,
+                    child: Container(
+                      height: 2.5,
+                      width: (trackWidth - 24) *
+                          ((activeIdx + 0.5) / 10).clamp(0.0, 1.0),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF00C896),
+                            colors.gold,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // 10 Numbered Nodes
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(10, (i) {
+                      final isCompleted = i < activeIdx;
+                      final isCurrent = i == activeIdx;
+
+                      Color nodeBg;
+                      Color nodeBorder;
+                      Color textColor;
+
+                      if (isCompleted) {
+                        nodeBg = const Color(0xFF00C896);
+                        nodeBorder = const Color(0xFF00C896);
+                        textColor = Colors.white;
+                      } else if (isCurrent) {
+                        nodeBg = colors.gold.withValues(alpha: 0.18);
+                        nodeBorder = colors.gold;
+                        textColor = colors.gold;
+                      } else {
+                        nodeBg = isDark
+                            ? const Color(0xFF24242A)
+                            : const Color(0xFFF0ECE3);
+                        nodeBorder = cardBorder;
+                        textColor = colors.text4;
+                      }
+
+                      return Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: nodeBg,
+                          border: Border.all(
+                            color: nodeBorder,
+                            width: isCurrent ? 2.0 : 1.0,
+                          ),
+                          boxShadow: isCurrent
+                              ? [
+                                  BoxShadow(
+                                    color: colors.gold.withValues(alpha: 0.35),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: isCompleted
+                            ? const Icon(
+                                Icons.check,
+                                size: 12,
+                                color: Colors.white,
+                              )
+                            : Text(
+                                '${i + 1}',
+                                style: AppFonts.compact(
+                                  fontSize: 10,
+                                  fontWeight: isCurrent
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: textColor,
+                                ),
+                              ),
+                      );
+                    }),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 18),
+
+          // ── 3. Current Milestone Spotlight Card ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF24242A) : const Color(0xFFFAF7F0),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colors.gold.withValues(alpha: 0.3),
+                width: 0.8,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: colors.gold,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'CURRENT MILESTONE ${activeMilestone['num']}',
+                                style: AppFonts.compact(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.8,
+                                  color: colors.gold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
                           Text(
-                            _earningCurrent,
+                            '"${activeMilestone['name']}"',
                             style: AppFonts.display(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: colors.text1,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'TARGET / MONTH',
-                            style: AppFonts.text(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: colors.text3,
-                            ),
-                          ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      _editStringField('Ultimate Milestone', _earningTarget, (v) {
-                        setState(() => _earningTarget = v);
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: colors.gold.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(12),
+                        color: colors.gold.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: colors.gold.withValues(alpha: 0.25),
                           width: 0.5,
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _earningTarget,
-                            style: AppFonts.display(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: colors.gold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'FREELANCE POTENTIAL',
-                            style: AppFonts.text(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: colors.text3,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        '$milestonePct% of Target',
+                        style: AppFonts.compact(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: colors.gold,
+                        ),
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Comparison: Target daily vs Actual average
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark ? const Color(0x08FFFFFF) : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: cardBorder, width: 0.5),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DAILY TARGET',
+                              style: AppFonts.compact(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.6,
+                                color: colors.text3,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${_money(activeDailyTarget)}/day',
+                              style: AppFonts.display(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: colors.text1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark ? const Color(0x08FFFFFF) : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: cardBorder, width: 0.5),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ACTUAL AVERAGE',
+                              style: AppFonts.compact(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.6,
+                                color: colors.text3,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${_money(displayDailyAvg)}/day',
+                              style: AppFonts.display(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF00C896),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Dedicated Progress Bar for this milestone only
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: Container(
+                    height: 6,
+                    width: double.infinity,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.black.withValues(alpha: 0.06),
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: milestoneProgress,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF00C896),
+                              colors.gold,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${_money(displayDailyAvg)} of ${_money(activeDailyTarget)} daily goal · Translates to ${_money(activeMilestone['monthly'] as int)}/mo',
+                  style: AppFonts.text(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w400,
+                    color: colors.text3,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+          ),
+          const SizedBox(height: 16),
 
-            // Translating line bridging the 10x gap
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: colors.theme.isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.black.withValues(alpha: 0.02),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: colors.theme.isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.black.withValues(alpha: 0.04),
-                  width: 0.5,
+          // ── 4. Compact Milestone List ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'MILESTONE LADDER',
+                style: AppFonts.text(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                  color: colors.text3,
                 ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  HapticService.selection();
+                  setState(() {
+                    _showAllMilestones = !_showAllMilestones;
+                  });
+                },
+                child: Text(
+                  _showAllMilestones ? 'Show less' : 'View all 10 ›',
+                  style: AppFonts.compact(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: colors.gold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          ...visibleMilestones.map((m) {
+            final mIdx = (m['num'] as int) - 1;
+            final isCompleted = mIdx < activeIdx;
+            final isCurrent = mIdx == activeIdx;
+            final isFinal = (m['num'] as int) == 10;
+
+            Color rowBg = isCurrent
+                ? (isDark
+                    ? colors.gold.withValues(alpha: 0.08)
+                    : const Color(0xFFFFF9EE))
+                : Colors.transparent;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: rowBg,
+                borderRadius: BorderRadius.circular(10),
+                border: isCurrent
+                    ? Border.all(
+                        color: colors.gold.withValues(alpha: 0.25), width: 0.5)
+                    : null,
               ),
               child: Row(
                 children: [
-                  Icon(Icons.trending_up_rounded, size: 14, color: colors.gold),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      dailyAvg > 0
-                          ? 'Current pace ${_money(dailyAvg)}/day · Scaling to ₹1.5L/mo translates to ~₹5,000/day across retainers'
-                          : 'Milestone bridge: Scaling to ₹1.5L/mo translates to ~₹5,000/day across 3 client retainers',
-                      style: AppFonts.text(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: colors.text2,
-                      ),
+                  // Indicator
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isCompleted
+                          ? const Color(0xFF00C896)
+                          : (isCurrent
+                              ? colors.gold.withValues(alpha: 0.2)
+                              : (isDark
+                                  ? const Color(0xFF2C2C32)
+                                  : const Color(0xFFE8E5DD))),
+                      border: isCurrent
+                          ? Border.all(color: colors.gold, width: 1.5)
+                          : null,
                     ),
+                    alignment: Alignment.center,
+                    child: isCompleted
+                        ? const Icon(Icons.check, size: 11, color: Colors.white)
+                        : (isCurrent
+                            ? Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: colors.gold,
+                                  shape: BoxShape.circle,
+                                ),
+                              )
+                            : Text(
+                                '${m['num']}',
+                                style: AppFonts.compact(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: colors.text4,
+                                ),
+                              )),
+                  ),
+                  const SizedBox(width: 10),
+                  // Name
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          'M${m['num']} · ${m['name']}',
+                          style: AppFonts.text(
+                            fontSize: 12.5,
+                            fontWeight: isCurrent
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            color: isCurrent
+                                ? colors.text1
+                                : (isCompleted ? colors.text2 : colors.text3),
+                          ),
+                        ),
+                        if (isFinal) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: colors.gold.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'GOAL',
+                              style: AppFonts.compact(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w700,
+                                color: colors.gold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  // Numbers
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${_money(m['daily'] as int)}/day',
+                        style: AppFonts.text(
+                          fontSize: 12,
+                          fontWeight: isCurrent
+                              ? FontWeight.w700
+                              : (isCompleted
+                                  ? FontWeight.w500
+                                  : FontWeight.w400),
+                          color: isCurrent
+                              ? colors.gold
+                              : (isCompleted
+                                  ? const Color(0xFF00C896)
+                                  : colors.text3),
+                        ),
+                      ),
+                      Text(
+                        '${_money(m['monthly'] as int)}/mo',
+                        style: AppFonts.compact(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w400,
+                          color: colors.text4,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
+            );
+          }),
+        ],
       ),
     );
   }
