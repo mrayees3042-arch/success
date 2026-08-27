@@ -27,6 +27,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:success/services/psychology_report_service.dart';
 import 'package:success/services/app_open_service.dart';
 import 'package:success/core/app_fonts.dart';
+import 'package:success/screens/bluetooth_sync_sheet.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20750,6 +20751,31 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                         MaterialPageRoute(
                           builder: (context) => const OnboardingScreen(),
                         ),
+                      );
+                    },
+                  ),
+                  Divider(color: theme.border, height: 0.5, thickness: 0.5),
+                  ListTile(
+                    title: Text(
+                      'Offline Bluetooth Sync',
+                      style: AppFonts.text(
+                        color: theme.text1,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Sync data directly between 2 devices over Bluetooth',
+                      style: AppFonts.text(color: theme.text3, fontSize: 11),
+                    ),
+                    trailing: const Icon(Icons.bluetooth_searching, color: Color(0xFF2DD4A8), size: 20),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const BluetoothSyncSheet(),
                       );
                     },
                   ),

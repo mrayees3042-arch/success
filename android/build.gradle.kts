@@ -19,6 +19,26 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
+subprojects {
+    val configureAction = Action<Project> {
+        if (plugins.hasPlugin("com.android.library")) {
+            val androidExtension = extensions.findByType(com.android.build.gradle.LibraryExtension::class.java)
+            if (androidExtension != null && androidExtension.namespace == null) {
+                if (name == "flutter_bluetooth_serial") {
+                    androidExtension.namespace = "io.github.edufolly.flutterbluetoothserial"
+                } else {
+                    androidExtension.namespace = "com.example." + name.replace("-", "_")
+                }
+            }
+        }
+    }
+    if (state.executed) {
+        configureAction.execute(this)
+    } else {
+        afterEvaluate(configureAction)
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
