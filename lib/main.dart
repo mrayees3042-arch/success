@@ -3821,6 +3821,178 @@ class _TodayScreenState extends State<TodayScreen>
     );
   }
 
+  Widget _buildGoalDeadlineCard() {
+    final daysLeft = _daysLeft;
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final formattedDate =
+        '${widget.userGoalDay} ${months[(widget.userGoalMonth - 1).clamp(0, 11)]} ${widget.userGoalYear}';
+
+    final isDark = widget.theme.isDark;
+    final cardBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+    final cardBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cardBorder, width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.25)
+                : const Color(0xFF3C321E).withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.flag_rounded,
+                    size: 15,
+                    color: widget.theme.teal,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'GOAL DEADLINE',
+                    style: AppFonts.text(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                      color: widget.theme.text3,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: widget.theme.teal.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: widget.theme.teal.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
+                ),
+                child: Text(
+                  daysLeft > 0 ? '$daysLeft days left' : 'Target reached',
+                  style: AppFonts.compact(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: widget.theme.teal,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              // Target Date Box
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0x06FFFFFF) : widget.theme.bg,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: cardBorder, width: 0.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TARGET DATE',
+                        style: AppFonts.text(
+                          fontSize: 9.5,
+                          letterSpacing: 1.0,
+                          fontWeight: FontWeight.w600,
+                          color: widget.theme.text3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        formattedDate,
+                        style: AppFonts.display(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: widget.theme.text1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Countdown Days Box
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0x06FFFFFF) : widget.theme.bg,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: cardBorder, width: 0.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'COUNTDOWN',
+                        style: AppFonts.text(
+                          fontSize: 9.5,
+                          letterSpacing: 1.0,
+                          fontWeight: FontWeight.w600,
+                          color: widget.theme.text3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        daysLeft > 0 ? '$daysLeft Days' : 'Achieved',
+                        style: AppFonts.display(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: widget.theme.teal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _prayerTile(String prayer, String arabic) {
     final done = widget.record.prayers[prayer] ?? false;
     final missed = !done && isPrayerPassed(prayer);
@@ -4445,6 +4617,10 @@ class _TodayScreenState extends State<TodayScreen>
 
                       // 8. Fasting Card (Conditional — hidden unless active or Sunnah day)
                       _wrapWithStaggered(7, _fastingStatusCard()),
+                      const SizedBox(height: 16),
+
+                      // 9. Goal Deadline Date Card
+                      _wrapWithStaggered(8, _buildGoalDeadlineCard()),
                     ],
                   ),
                 ),
