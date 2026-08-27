@@ -6026,11 +6026,9 @@ class _HabitsScreenState extends State<HabitsScreen> {
       waterVal = int.tryParse(raw ?? '') ?? 0;
     } catch (_) {}
 
-    // 2. Load fasting status & calculate streak
+    // 2. Load fasting status & calculate streak (strictly Opt-In only)
     final fastVal = prefs.getString('fast_status_$dateStr');
-    final isSunnah =
-        date.weekday == DateTime.monday || date.weekday == DateTime.thursday;
-    final fastStatus = fastVal ?? (isSunnah ? 'fasting' : 'none');
+    final fastStatus = fastVal ?? 'none';
 
     // 3. Load extra habits
     final Map<String, bool> habits = {};
@@ -7188,12 +7186,8 @@ class FastingStatusChip extends StatelessWidget {
         final prefs = snapshot.data!;
         final status = prefs.getString('fast_status_${dayKey(date)}');
 
-        final isSunnah =
-            date.weekday == DateTime.monday ||
-            date.weekday == DateTime.thursday;
         final isFasting =
-            status == 'fasting' ||
-            (isSunnah && status != 'broke' && status != 'none');
+            status == 'fasting' || status == 'completed';
 
         if (isFasting) {
           return StatusChip(
@@ -18181,7 +18175,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
           .toString();
       _locationName = prefs.getString('prayer_location_name') ?? 'Delhi, India';
       _selectedMethod = prefs.getString('prayer_calc_method') ?? 'Karachi';
-      _selectedMadhab = prefs.getString('prayer_madhab') ?? 'Hanafi';
+      _selectedMadhab = prefs.getString('prayer_madhab') ?? 'Shafi';
     });
   }
 
@@ -18578,79 +18572,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ),
             const SizedBox(height: 18),
 
-            // 1. App Preferences
-            Text(
-              'APP PREFERENCES',
-              style: AppFonts.text(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: theme.text3,
-                letterSpacing: 0.8,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: theme.isDark
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.black.withValues(alpha: 0.025),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.border, width: 0.5),
-              ),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: Text(
-                      'Sound Effects',
-                      style: AppFonts.text(
-                        color: theme.text1,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Enable workout audio cues',
-                      style: AppFonts.text(color: theme.text3, fontSize: 11),
-                    ),
-                    activeThumbColor: const Color(0xFF2DD4A8),
-                    activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
-                    value: SoundManager.isEnabled,
-                    onChanged: (val) async {
-                      await SoundManager.setEnabled(val);
-                      setState(() {});
-                      HapticService.tapFeedback();
-                      if (val) SoundManager.playTapClick();
-                    },
-                  ),
-                  Divider(color: theme.border, height: 0.5, thickness: 0.5),
-                  SwitchListTile(
-                    title: Text(
-                      'Haptic Feedback',
-                      style: AppFonts.text(
-                        color: theme.text1,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Vibration feedback on tap',
-                      style: AppFonts.text(color: theme.text3, fontSize: 11),
-                    ),
-                    activeThumbColor: const Color(0xFF2DD4A8),
-                    activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
-                    value: HapticService.isEnabled,
-                    onChanged: (val) async {
-                      await HapticService.setEnabled(val);
-                      setState(() {});
-                      if (val) HapticService.tapFeedback();
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 2. Profile Settings
+            // 1. Profile Settings
             Text(
               'ACCOUNT & PROFILE',
               style: AppFonts.text(
@@ -18718,7 +18640,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
             ),
             const SizedBox(height: 16),
 
-            // 3. Prayer Timings Settings
+            // 2. Prayer Calculation & Location
             Text(
               'PRAYER CALCULATION & LOCATION',
               style: AppFonts.text(
@@ -18796,10 +18718,20 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
 
+            // Calculation Method Dropdown (Directly visible)
+            Text(
+              'Calculation Method',
+              style: AppFonts.text(
+                color: theme.text2,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
               decoration: BoxDecoration(
                 color: theme.isDark
                     ? Colors.white.withValues(alpha: 0.04)
@@ -18810,278 +18742,47 @@ class _SettingsSheetState extends State<_SettingsSheet> {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
-                  value: _cityPresets.keys.contains(_locationName)
-                      ? _locationName
-                      : null,
-                  hint: Text(
-                    'Choose a preset city...',
-                    style: AppFonts.text(color: theme.text3, fontSize: 13),
-                  ),
+                  value: _selectedMethod,
                   dropdownColor: theme.bg,
                   style: AppFonts.text(color: theme.text1, fontSize: 13),
-                  items: _cityPresets.keys.map((city) {
-                    return DropdownMenuItem(value: city, child: Text(city));
-                  }).toList(),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Karachi',
+                      child: Text('University of Islamic Sciences, Karachi'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Mecca',
+                      child: Text('Umm al-Qura University, Makkah'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'MuslimWorldLeague',
+                      child: Text('Muslim World League (MWL)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Egypt',
+                      child: Text('Egyptian General Authority of Survey'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Gulf',
+                      child: Text('Gulf Region (Dubai)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'NorthAmerica',
+                      child: Text('ISNA (North America)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Singapore',
+                      child: Text('MUIS (Singapore)'),
+                    ),
+                  ],
                   onChanged: (val) {
                     if (val != null) {
-                      setState(() {
-                        _locationName = val;
-                        _latController.text = _cityPresets[val]![0].toString();
-                        _lonController.text = _cityPresets[val]![1].toString();
-                      });
+                      setState(() => _selectedMethod = val);
                     }
                   },
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-
-            SwitchListTile(
-              title: Text(
-                'Advanced Settings',
-                style: AppFonts.text(
-                  color: theme.text1,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              subtitle: Text(
-                'Manual coordinates & calculation methods',
-                style: AppFonts.text(color: theme.text3, fontSize: 10),
-              ),
-              activeThumbColor: const Color(0xFF2DD4A8),
-              activeTrackColor: const Color(0xFF2DD4A8).withValues(alpha: 0.3),
-              contentPadding: EdgeInsets.zero,
-              value: _showAdvancedTimings,
-              onChanged: (val) {
-                setState(() {
-                  _showAdvancedTimings = val;
-                });
-              },
-            ),
-
-            if (_showAdvancedTimings) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Latitude',
-                          style: AppFonts.text(
-                            color: theme.text3,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: _latController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          style: AppFonts.text(color: theme.text1, fontSize: 13),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: theme.isDark
-                                ? Colors.white.withValues(alpha: 0.03)
-                                : Colors.black.withValues(alpha: 0.015),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: theme.border,
-                                width: 0.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFD4A843),
-                                width: 1.0,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              _locationName =
-                                  'Custom (${double.tryParse(_latController.text)?.toStringAsFixed(2)}, ${double.tryParse(_lonController.text)?.toStringAsFixed(2)})';
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Longitude',
-                          style: AppFonts.text(
-                            color: theme.text3,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: _lonController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          style: AppFonts.text(color: theme.text1, fontSize: 13),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: theme.isDark
-                                ? Colors.white.withValues(alpha: 0.03)
-                                : Colors.black.withValues(alpha: 0.015),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: theme.border,
-                                width: 0.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFD4A843),
-                                width: 1.0,
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              _locationName =
-                                  'Custom (${double.tryParse(_latController.text)?.toStringAsFixed(2)}, ${double.tryParse(_lonController.text)?.toStringAsFixed(2)})';
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              Text(
-                'Calculation Method',
-                style: AppFonts.text(
-                  color: theme.text2,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: theme.isDark
-                      ? Colors.white.withValues(alpha: 0.03)
-                      : Colors.black.withValues(alpha: 0.015),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.border, width: 0.5),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: _selectedMethod,
-                    dropdownColor: theme.bg,
-                    style: AppFonts.text(color: theme.text1, fontSize: 13),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Karachi',
-                        child: Text('University of Islamic Sciences, Karachi'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Mecca',
-                        child: Text('Umm al-Qura University, Makkah'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'MuslimWorldLeague',
-                        child: Text('Muslim World League (MWL)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Egypt',
-                        child: Text('Egyptian General Authority of Survey'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Gulf',
-                        child: Text('Gulf Region (Dubai)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'NorthAmerica',
-                        child: Text('ISNA (North America)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Singapore',
-                        child: Text('MUIS (Singapore)'),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _selectedMethod = val);
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Text(
-                'Asr Calculation Madhab',
-                style: AppFonts.text(
-                  color: theme.text2,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: theme.isDark
-                      ? Colors.white.withValues(alpha: 0.03)
-                      : Colors.black.withValues(alpha: 0.015),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.border, width: 0.5),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: _selectedMadhab,
-                    dropdownColor: theme.bg,
-                    style: AppFonts.text(color: theme.text1, fontSize: 13),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Shafi',
-                        child: Text('Standard (Shafi\'i, Maliki, Hanbali)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Hanafi',
-                        child: Text('Hanafi (Later Asr)'),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _selectedMadhab = val);
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(height: 20),
 
             // Save Settings CTA Button
