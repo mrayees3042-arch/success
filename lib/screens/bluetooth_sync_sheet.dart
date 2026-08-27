@@ -56,8 +56,8 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
     setState(() {
       _role = SyncRole.host;
       _isSyncing = true;
-      _progress = 0.0;
-      _statusMessage = "Ready as Host. Waiting for paired device to connect...";
+      _progress = 0.1;
+      _statusMessage = "📡 Host Mode Active (Discoverable). On the second phone, open Bluetooth Sync and tap SYNC.";
     });
 
     final success = await BluetoothServiceManager.instance.startServer(
@@ -74,7 +74,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
           setState(() {
             _isSyncing = false;
             _progress = 1.0;
-            _statusMessage = "✅ Offline Sync Complete!";
+            _statusMessage = "✅ Offline Sync Complete! All data synchronized.";
           });
         }
       },
@@ -86,7 +86,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
     if (!success) {
       setState(() {
         _isSyncing = false;
-        _statusMessage = "Failed to start Bluetooth listener host.";
+        _statusMessage = "Failed to start Bluetooth host discoverability.";
       });
     }
   }
@@ -97,14 +97,14 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
       _selectedDevice = device;
       _isSyncing = true;
       _progress = 0.05;
-      _statusMessage = "Connecting to ${device.name ?? 'Device'}...";
+      _statusMessage = "Connecting to ${device.name ?? 'Device'} (Attempting 1 of 3)...";
     });
 
-    final connected = await BluetoothServiceManager.instance.connectToDevice(device);
+    final connected = await BluetoothServiceManager.instance.connectToDevice(device, maxAttempts: 3);
     if (!connected) {
       setState(() {
         _isSyncing = false;
-        _statusMessage = "❌ Could not connect to ${device.name ?? 'Device'}. Make sure Bluetooth is ON.";
+        _statusMessage = "❌ Could not connect to ${device.name ?? 'Device'}. Ensure ${device.name ?? 'Device'} tapped 'Host / Share' and Bluetooth is ON.";
       });
       return;
     }
@@ -280,20 +280,50 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
           ),
           SizedBox(height: 20.h),
           if (_role == SyncRole.receiver) ...[
-            Text(
-              "Paired Bluetooth Devices:",
-              style: AppFonts.text(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.white70,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Paired Bluetooth Devices:",
+                  style: AppFonts.text(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white70,
+                  ),
+                ),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: _loadPairedDevices,
+                      child: Row(
+                        children: [
+                          Icon(Icons.refresh, size: 14.sp, color: accentColor),
+                          SizedBox(width: 4.w),
+                          Text("Refresh", style: AppFonts.text(fontSize: 11, color: accentColor)),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 12.w),
+                    GestureDetector(
+                      onTap: () => BluetoothServiceManager.instance.openSettings(),
+                      child: Row(
+                        children: [
+                          Icon(Icons.settings_bluetooth, size: 14.sp, color: accentColor),
+                          SizedBox(width: 4.w),
+                          Text("Pair New", style: AppFonts.text(fontSize: 11, color: accentColor)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
             SizedBox(height: 8.h),
             if (_pairedDevices.isEmpty)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.h),
                 child: Text(
-                  "No paired devices found. Pair both phones in Android Bluetooth Settings first.",
+                  "No paired devices found. Tap 'Pair New' to open Android Bluetooth Settings.",
                   style: AppFonts.text(fontSize: 12, color: Colors.white54),
                 ),
               )

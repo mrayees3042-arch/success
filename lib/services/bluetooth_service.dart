@@ -32,6 +32,21 @@ class BluetoothServiceManager {
     return success ?? false;
   }
 
+  Future<bool> makeDiscoverable([int durationSeconds = 300]) async {
+    try {
+      final res = await FlutterBluetoothSerial.instance.requestDiscoverable(durationSeconds);
+      return res != null && res > 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> openSettings() async {
+    try {
+      await FlutterBluetoothSerial.instance.openSettings();
+    } catch (_) {}
+  }
+
   Future<List<BluetoothDevice>> getPairedDevices() async {
     try {
       return await FlutterBluetoothSerial.instance.getBondedDevices();
@@ -42,22 +57,30 @@ class BluetoothServiceManager {
 
   Future<bool> startServer(Function(Uint8List payload) onDataReceived, Function(double progress) onProgress) async {
     try {
-      // Prepared server listening state
+      await makeDiscoverable(300);
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  Future<bool> connectToDevice(BluetoothDevice device) async {
-    try {
-      await disconnect();
-      _connection = await BluetoothConnection.toAddress(device.address);
-      return true;
-    } catch (e) {
-      _connection = null;
-      return false;
+  Future<bool> connectToDevice(BluetoothDevice device, {int maxAttempts = 3}) async {
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await disconnect();
+        await Future.delayed(const Duration(milliseconds: 300));
+        _connection = await BluetoothConnection.toAddress(device.address);
+        if (_connection != null && _connection!.isConnected) {
+          return true;
+        }
+      } catch (_) {
+        _connection = null;
+      }
+      if (attempt < maxAttempts) {
+        await Future.delayed(const Duration(milliseconds: 1200));
+      }
     }
+    return false;
   }
 
   Future<void> sendPayload(Uint8List payload, Function(double progress) onProgress) async {
