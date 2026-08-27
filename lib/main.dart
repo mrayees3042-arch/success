@@ -23,6 +23,7 @@ import 'package:success/services/sound_manager.dart';
 import 'package:success/widgets/stick_figure_painter.dart';
 import 'package:success/core/islamic_data.dart';
 import 'package:printing/printing.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:success/services/psychology_report_service.dart';
 import 'package:success/services/app_open_service.dart';
 import 'package:success/core/app_fonts.dart';
@@ -287,13 +288,20 @@ class SuccessApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
-    return MaterialApp(
-      title: 'MUTTAQIN',
-      debugShowCheckedModeBanner: false,
-      themeMode: themeNotifier.mode,
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      home: const BootScreen(),
+    return ScreenUtilInit(
+      designSize: const Size(393, 852),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return MaterialApp(
+          title: 'MUTTAQIN',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeNotifier.mode,
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          home: const BootScreen(),
+        );
+      },
     );
   }
 }
