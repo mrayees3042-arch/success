@@ -1255,70 +1255,6 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           userGoalYear: _userGoalYear,
         ),
       ),
-      SizedBox.expand(
-        child: _MoreHubScreen(
-          theme: _theme,
-          userName: _userName,
-          onOpenWorkout: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => Scaffold(
-                  backgroundColor: _theme.bg,
-                  body: WorkoutScreen(
-                    theme: _theme,
-                    onWorkoutCompleted: _markWorkoutCompleted,
-                    onWorkoutProgressChanged: _updateWorkoutProgress,
-                    onScreenshot: _takeScreenshot,
-                    userName: _userName,
-                    onNameChanged: _updateProfileFromNameChanged,
-                    userGoalYear: _userGoalYear,
-                    userGoalMonth: _userGoalMonth,
-                    userGoalDay: _userGoalDay,
-                  ),
-                ),
-              ),
-            );
-          },
-          onOpenIncome: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => Scaffold(
-                  backgroundColor: _theme.bg,
-                  body: IncomeScreen(
-                    theme: _theme,
-                    incomeLog: _incomeLog,
-                    expenseLog: _expenseLog,
-                    onAddEntry: _addIncomeEntry,
-                    onAddExpense: _addExpenseEntry,
-                    onScreenshot: _takeScreenshot,
-                  ),
-                ),
-              ),
-            );
-          },
-          onPrintPdf: () => _printPdf(context),
-          onPrayerSettings: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => _SettingsSheet(
-                theme: _theme,
-                userName: _userName,
-                userGoalYear: _userGoalYear,
-                userGoalMonth: _userGoalMonth,
-                userGoalDay: _userGoalDay,
-                userDob: _userDob,
-                onProfileChanged: _updateProfile,
-                onResetToday: () => _resetDayData(DateTime.now()),
-                onSaved: () {
-                  if (mounted) setState(() {});
-                },
-              ),
-            );
-          },
-        ),
-      ),
     ];
 
     final currentTab = _tab.clamp(0, screens.length - 1);
@@ -1550,18 +1486,20 @@ class _BottomNavBarState extends State<_BottomNavBar>
   static const _activeIcons = [
     Icons.home_rounded,
     Icons.check_circle_rounded,
+    Icons.fitness_center_rounded,
+    Icons.account_balance_wallet_rounded,
     Icons.flag_rounded,
-    Icons.grid_view_rounded,
   ];
 
   static const _inactiveIcons = [
     Icons.home_outlined,
     Icons.check_circle_outline_rounded,
+    Icons.fitness_center_outlined,
+    Icons.account_balance_wallet_outlined,
     Icons.flag_outlined,
-    Icons.grid_view_outlined,
   ];
 
-  static const _labels = ['Today', 'Habits', 'Goals', 'More'];
+  static const _labels = ['Today', 'Habits', 'Workout', 'Income', 'Goals'];
 
   @override
   Widget build(BuildContext context) {
@@ -2384,6 +2322,7 @@ class _TodayScreenState extends State<TodayScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('💧', style: TextStyle(fontSize: 16)),
                   const SizedBox(width: 8),
@@ -2398,6 +2337,7 @@ class _TodayScreenState extends State<TodayScreen>
                 ],
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Micro stepper -
                   GestureDetector(
@@ -2408,28 +2348,28 @@ class _TodayScreenState extends State<TodayScreen>
                       }
                     },
                     child: Container(
-                      width: 26,
-                      height: 26,
+                      width: 24,
+                      height: 24,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: widget.theme.isDark
                             ? Colors.white.withValues(alpha: 0.06)
                             : Colors.black.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(7),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         '−',
                         style: AppFonts.compact(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: widget.theme.text2,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                     decoration: BoxDecoration(
                       color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
@@ -2439,7 +2379,7 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                     ),
                     child: Text(
-                      '$glasses/10 glasses · ${consumed.toStringAsFixed(1)}L / 2.5L',
+                      '$glasses/10 · ${consumed.toStringAsFixed(1)}L',
                       style: AppFonts.compact(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -2447,7 +2387,7 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   // Micro stepper +
                   GestureDetector(
                     onTap: () {
@@ -2457,17 +2397,17 @@ class _TodayScreenState extends State<TodayScreen>
                       }
                     },
                     child: Container(
-                      width: 26,
-                      height: 26,
+                      width: 24,
+                      height: 24,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(7),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         '+',
                         style: AppFonts.compact(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF38BDF8),
                         ),
@@ -7168,9 +7108,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
               _loadDayData(date);
             },
             child: Container(
-              height: 68,
               margin: const EdgeInsets.symmetric(horizontal: 2.0),
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 1),
               decoration: BoxDecoration(
                 color: isSelected
                     ? appColors.card
@@ -7185,6 +7124,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 boxShadow: isSelected ? appColors.shadow : null,
               ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   FittedBox(
