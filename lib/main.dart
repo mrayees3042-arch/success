@@ -1255,6 +1255,70 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           userGoalYear: _userGoalYear,
         ),
       ),
+      SizedBox.expand(
+        child: _MoreHubScreen(
+          theme: _theme,
+          userName: _userName,
+          onOpenWorkout: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  backgroundColor: _theme.bg,
+                  body: WorkoutScreen(
+                    theme: _theme,
+                    onWorkoutCompleted: _markWorkoutCompleted,
+                    onWorkoutProgressChanged: _updateWorkoutProgress,
+                    onScreenshot: _takeScreenshot,
+                    userName: _userName,
+                    onNameChanged: _updateProfileFromNameChanged,
+                    userGoalYear: _userGoalYear,
+                    userGoalMonth: _userGoalMonth,
+                    userGoalDay: _userGoalDay,
+                  ),
+                ),
+              ),
+            );
+          },
+          onOpenIncome: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  backgroundColor: _theme.bg,
+                  body: IncomeScreen(
+                    theme: _theme,
+                    incomeLog: _incomeLog,
+                    expenseLog: _expenseLog,
+                    onAddEntry: _addIncomeEntry,
+                    onAddExpense: _addExpenseEntry,
+                    onScreenshot: _takeScreenshot,
+                  ),
+                ),
+              ),
+            );
+          },
+          onPrintPdf: () => _printPdf(context),
+          onPrayerSettings: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => _SettingsSheet(
+                theme: _theme,
+                userName: _userName,
+                userGoalYear: _userGoalYear,
+                userGoalMonth: _userGoalMonth,
+                userGoalDay: _userGoalDay,
+                userDob: _userDob,
+                onProfileChanged: _updateProfile,
+                onResetToday: () => _resetDayData(DateTime.now()),
+                onSaved: () {
+                  if (mounted) setState(() {});
+                },
+              ),
+            );
+          },
+        ),
+      ),
     ];
 
     final currentTab = _tab.clamp(0, screens.length - 1);
@@ -1300,6 +1364,173 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 }
 
+class _MoreHubScreen extends StatelessWidget {
+  final ThemeColors theme;
+  final String userName;
+  final VoidCallback onOpenWorkout;
+  final VoidCallback onOpenIncome;
+  final VoidCallback onPrintPdf;
+  final VoidCallback onPrayerSettings;
+
+  const _MoreHubScreen({
+    required this.theme,
+    required this.userName,
+    required this.onOpenWorkout,
+    required this.onOpenIncome,
+    required this.onPrintPdf,
+    required this.onPrayerSettings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final isDark = theme.isDark;
+
+    Widget hubCard({
+      required String title,
+      required String subtitle,
+      required IconData icon,
+      required Color accentColor,
+      required VoidCallback onTap,
+    }) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              HapticService.tapFeedback();
+              onTap();
+            },
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: theme.card,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: accentColor, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: AppFonts.display(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: theme.text1,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle,
+                          style: AppFonts.text(
+                            fontSize: 12.5,
+                            color: theme.text3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: theme.text3,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: theme.bg,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 90),
+          physics: const BouncingScrollPhysics(),
+          children: [
+            Text(
+              'More Hub',
+              style: AppFonts.display(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: theme.text1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Health, Financial Tracking & Profile',
+              style: AppFonts.text(
+                fontSize: 13,
+                color: theme.text3,
+              ),
+            ),
+            const SizedBox(height: 24),
+            hubCard(
+              title: 'Workout & Training',
+              subtitle: 'Daily splits, routines & exercise progress',
+              icon: Icons.fitness_center_rounded,
+              accentColor: const Color(0xFF2DD4A8),
+              onTap: onOpenWorkout,
+            ),
+            hubCard(
+              title: 'Income & Cash Flow',
+              subtitle: 'Daily earnings, monthly goals & expenses',
+              icon: Icons.account_balance_wallet_rounded,
+              accentColor: const Color(0xFFD4A843),
+              onTap: onOpenIncome,
+            ),
+            hubCard(
+              title: 'Monthly Psychology Report',
+              subtitle: 'Generate & export PDF performance report',
+              icon: Icons.picture_as_pdf_rounded,
+              accentColor: const Color(0xFF818CF8),
+              onTap: onPrintPdf,
+            ),
+            hubCard(
+              title: 'Prayer & Notification Settings',
+              subtitle: 'Calculation methods, adhan & reminders',
+              icon: Icons.notifications_active_rounded,
+              accentColor: const Color(0xFF38BDF8),
+              onTap: onPrayerSettings,
+            ),
+            hubCard(
+              title: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+              subtitle: isDark ? 'Cream surface #F5F0E8' : 'Deep obsidian #080810',
+              icon: isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              accentColor: isDark ? const Color(0xFFFBBF24) : const Color(0xFF94A3B8),
+              onTap: () {
+                themeNotifier.toggle();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _BottomNavBar extends StatefulWidget {
   const _BottomNavBar({
     required this.selectedIndex,
@@ -1308,7 +1539,7 @@ class _BottomNavBar extends StatefulWidget {
   });
   final int selectedIndex;
   final ValueChanged<int> onTap;
-  final ThemeColors theme; // Not used in this file, but kept for consistency
+  final ThemeColors theme;
 
   @override
   State<_BottomNavBar> createState() => _BottomNavBarState();
@@ -1319,26 +1550,24 @@ class _BottomNavBarState extends State<_BottomNavBar>
   static const _activeIcons = [
     Icons.home_rounded,
     Icons.check_circle_rounded,
-    Icons.fitness_center_rounded,
-    Icons.account_balance_wallet_rounded,
     Icons.flag_rounded,
+    Icons.grid_view_rounded,
   ];
 
   static const _inactiveIcons = [
     Icons.home_outlined,
     Icons.check_circle_outline_rounded,
-    Icons.fitness_center_outlined,
-    Icons.account_balance_wallet_outlined,
     Icons.flag_outlined,
+    Icons.grid_view_outlined,
   ];
 
-  static const _labels = ['Today', 'Habits', 'Workout', 'Income', 'Goals'];
+  static const _labels = ['Today', 'Habits', 'Goals', 'More'];
 
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
     final navBg = theme.isDark ? cBg : theme.navBg;
-    final bubbleColor = theme.teal; // matches active theme color
+    final bubbleColor = theme.teal;
     final inactiveColor = theme.isDark ? const Color(0xFF9898AC) : const Color(0xFF64748B);
 
     return SafeArea(
@@ -2055,6 +2284,101 @@ class _TodayScreenState extends State<TodayScreen>
     final int glasses = widget.waterGlasses;
     final double consumed = (glasses * 0.25).clamp(0.0, 2.5);
 
+    final bool morningDone = glasses >= 3;
+    final bool afternoonDone = glasses >= 6;
+    final bool eveningDone = glasses >= 10;
+
+    Widget chunkPill({
+      required String label,
+      required String subtitle,
+      required int targetGlasses,
+      required bool isDone,
+      required VoidCallback onTap,
+    }) {
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            HapticService.selection();
+            SoundManager.playTapClick();
+            onTap();
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            constraints: const BoxConstraints(minHeight: 52),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            decoration: BoxDecoration(
+              color: isDone
+                  ? const Color(0xFF38BDF8).withValues(alpha: 0.18)
+                  : (widget.theme.isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.03)),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDone
+                    ? const Color(0xFF38BDF8).withValues(alpha: 0.7)
+                    : (widget.theme.isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06)),
+                width: isDone ? 1.0 : 0.5,
+              ),
+              boxShadow: isDone
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      isDone
+                          ? Icons.check_circle_rounded
+                          : Icons.water_drop_outlined,
+                      size: 15,
+                      color: isDone
+                          ? const Color(0xFF38BDF8)
+                          : widget.theme.text3,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      label,
+                      style: AppFonts.compact(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isDone
+                            ? const Color(0xFF38BDF8)
+                            : widget.theme.text1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: AppFonts.compact(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: isDone
+                        ? const Color(0xFF38BDF8)
+                        : widget.theme.text3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return _GlassCard(
       theme: widget.theme,
       glowColor: const Color(0xFF38BDF8),
@@ -2081,24 +2405,84 @@ class _TodayScreenState extends State<TodayScreen>
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.3),
-                    width: 0.5,
+              Row(
+                children: [
+                  // Micro stepper -
+                  GestureDetector(
+                    onTap: () {
+                      if (glasses > 0) {
+                        HapticService.selection();
+                        widget.onWaterChange(glasses - 1);
+                      }
+                    },
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: widget.theme.isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.black.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(
+                        '−',
+                        style: AppFonts.compact(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: widget.theme.text2,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  '$glasses/10 glasses · ${consumed.toStringAsFixed(1)}L / 2.5L',
-                  style: AppFonts.compact(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF38BDF8),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF38BDF8).withValues(alpha: 0.3),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Text(
+                      '$glasses/10 glasses · ${consumed.toStringAsFixed(1)}L / 2.5L',
+                      style: AppFonts.compact(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF38BDF8),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  // Micro stepper +
+                  GestureDetector(
+                    onTap: () {
+                      if (glasses < 10) {
+                        HapticService.selection();
+                        widget.onWaterChange(glasses + 1);
+                      }
+                    },
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(
+                        '+',
+                        style: AppFonts.compact(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF38BDF8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -2117,88 +2501,39 @@ class _TodayScreenState extends State<TodayScreen>
           ),
           const SizedBox(height: 14),
 
-          // ── Interactive Selectable 10 Water Glasses ──
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final double itemWidth =
-                  ((constraints.maxWidth - (9 * 6)) / 10).clamp(26.0, 38.0);
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(10, (index) {
-                  final glassNum = index + 1;
-                  final isFilled = glassNum <= glasses;
-                  return GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      HapticService.selection();
-                      SoundManager.playTapClick();
-                      if (glasses == glassNum) {
-                        widget.onWaterChange(glassNum - 1);
-                      } else {
-                        widget.onWaterChange(glassNum);
-                      }
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      width: itemWidth,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isFilled
-                            ? const Color(0xFF38BDF8).withValues(alpha: 0.20)
-                            : (widget.theme.isDark
-                                ? Colors.white.withValues(alpha: 0.04)
-                                : Colors.black.withValues(alpha: 0.03)),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isFilled
-                              ? const Color(0xFF38BDF8).withValues(alpha: 0.7)
-                              : (widget.theme.isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : Colors.black.withValues(alpha: 0.06)),
-                          width: isFilled ? 1.0 : 0.5,
-                        ),
-                        boxShadow: isFilled
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isFilled
-                                ? Icons.water_drop_rounded
-                                : Icons.water_drop_outlined,
-                            size: 16,
-                            color: isFilled
-                                ? const Color(0xFF38BDF8)
-                                : widget.theme.text3,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '$glassNum',
-                            style: AppFonts.compact(
-                              fontSize: 10.5,
-                              fontWeight:
-                                  isFilled ? FontWeight.w800 : FontWeight.w600,
-                              color: isFilled
-                                  ? const Color(0xFF38BDF8)
-                                  : widget.theme.text3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              );
-            },
+          // ── 3 Chunk Pills (48dp+ Touch Targets) ──
+          Row(
+            children: [
+              chunkPill(
+                label: 'Morning',
+                subtitle: '3 gl (0.75L)',
+                targetGlasses: 3,
+                isDone: morningDone,
+                onTap: () {
+                  widget.onWaterChange(morningDone ? 0 : 3);
+                },
+              ),
+              const SizedBox(width: 8),
+              chunkPill(
+                label: 'Afternoon',
+                subtitle: '3 gl (1.5L)',
+                targetGlasses: 6,
+                isDone: afternoonDone,
+                onTap: () {
+                  widget.onWaterChange(afternoonDone ? 3 : 6);
+                },
+              ),
+              const SizedBox(width: 8),
+              chunkPill(
+                label: 'Evening',
+                subtitle: '4 gl (2.5L)',
+                targetGlasses: 10,
+                isDone: eveningDone,
+                onTap: () {
+                  widget.onWaterChange(eveningDone ? 6 : 10);
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -3555,24 +3890,14 @@ class _TodayScreenState extends State<TodayScreen>
     final hour12 = tod.hour == 0
         ? 12
         : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
-    final ampm = tod.hour < 12 ? 'AM' : 'PM';
-    final timeStr = '$hour12:${tod.minute.toString().padLeft(2, '0')} $ampm';
+    final timeStr = '$hour12:${tod.minute.toString().padLeft(2, '0')}';
 
     Color borderColor;
     Color timeColor;
-    Widget? iconWidget;
 
     if (done) {
       borderColor = const Color(0xFF2DD4A8).withValues(alpha: 0.6); // completed border
       timeColor = const Color(0xFF2DD4A8);
-      iconWidget = const Text(
-        ' ✓',
-        style: TextStyle(
-          color: Color(0xFF2DD4A8),
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-        ),
-      );
     } else if (isNext) {
       borderColor = const Color(0xFF2DD4A8); // current active glow border
       timeColor = const Color(0xFF2DD4A8);
@@ -3580,8 +3905,7 @@ class _TodayScreenState extends State<TodayScreen>
       borderColor = widget.theme.isDark
           ? Colors.white.withValues(alpha: 0.08)
           : widget.theme.border;
-      timeColor = widget.theme.text3; // clean grayed out time, NO Qada shaming label
-      iconWidget = null;
+      timeColor = widget.theme.text3;
     } else {
       borderColor = widget.theme.isDark
           ? Colors.white.withValues(alpha: 0.05)
@@ -3593,35 +3917,61 @@ class _TodayScreenState extends State<TodayScreen>
       onTap: () => widget.onPrayerToggle(prayer),
       child: Container(
         decoration: BoxDecoration(
-          color: widget.theme.card,
+          color: done
+              ? const Color(0xFF2DD4A8).withValues(alpha: 0.08)
+              : widget.theme.card,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: borderColor, width: isNext ? 1.2 : 0.5),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               prayer,
-              style: AppFonts.text(
-                fontSize: 11,
-                color: widget.theme.text3,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppFonts.compact(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: done ? const Color(0xFF2DD4A8) : widget.theme.text1,
               ),
             ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  timeStr,
-                  style: AppFonts.text(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: timeColor,
-                  ),
+            const SizedBox(height: 3),
+            Text(
+              timeStr,
+              maxLines: 1,
+              style: AppFonts.compact(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: timeColor,
+              ),
+            ),
+            const SizedBox(height: 3),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done ? const Color(0xFF2DD4A8) : Colors.transparent,
+                border: Border.all(
+                  color: done ? const Color(0xFF2DD4A8) : widget.theme.border,
+                  width: 1.0,
                 ),
-                if (iconWidget != null) iconWidget,
-              ],
+              ),
+              child: done
+                  ? const Icon(Icons.check_rounded, color: Colors.black, size: 10)
+                  : (isNext
+                      ? Container(
+                          margin: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xFF2DD4A8),
+                          ),
+                        )
+                      : null),
             ),
           ],
         ),
@@ -3850,6 +4200,7 @@ class _TodayScreenState extends State<TodayScreen>
                       style: AppFonts.display(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
                         color: Colors.white,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -4108,7 +4459,7 @@ class _TodayScreenState extends State<TodayScreen>
                       _wrapWithStaggered(0, _nextPrayerBanner()),
                       const SizedBox(height: 16),
 
-                      // 2. Five Daily Prayers
+                      // 2. Five Daily Prayers (Single 5-step row)
                       _wrapWithStaggered(
                         1,
                         KeyedSubtree(
@@ -4116,16 +4467,16 @@ class _TodayScreenState extends State<TodayScreen>
                           child: _buildPrayerGrid(),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-                      // 3. Daily Tasks Hero Section
+                      // 3. Daily Tasks Section
                       _wrapWithStaggered(
                         2,
                         KeyedSubtree(key: _tasksKey, child: _buildTasksList()),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-                      // 4. Today's Score & Metric Overview
+                      // 4. Today's Score & Momentum
                       _wrapWithStaggered(
                         3,
                         _buildScoreCard(
@@ -4135,22 +4486,22 @@ class _TodayScreenState extends State<TodayScreen>
                           waterProgress,
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-                      // 5. Life Odometer + Memento Mori ("The Five Before Five")
-                      _wrapWithStaggered(4, _buildAgeDigitalMeter()),
-                      const SizedBox(height: 20),
-
-                      // 6. Water Intake
+                      // 5. Water Intake (3 Chunk Pills)
                       _wrapWithStaggered(
-                        5,
+                        4,
                         KeyedSubtree(key: _waterKey, child: _waterTracker()),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-                      // 7. Streaks
-                      _wrapWithStaggered(6, _buildNoBadHabitsCard()),
-                      const SizedBox(height: 20),
+                      // 6. Clean Streaks
+                      _wrapWithStaggered(5, _buildNoBadHabitsCard()),
+                      const SizedBox(height: 16),
+
+                      // 7. Daily Mindful Reflection
+                      _wrapWithStaggered(6, _buildAgeDigitalMeter()),
+                      const SizedBox(height: 16),
 
                       // 8. Fasting Card (Conditional — hidden unless active or Sunnah day)
                       _wrapWithStaggered(7, _fastingStatusCard()),
@@ -4590,8 +4941,8 @@ class _TodayScreenState extends State<TodayScreen>
                   ),
                 ),
                 child: Text(
-                  '$fardDone/5 Completed',
-                  style: AppFonts.text(
+                  fardDone == 0 ? '5 Ahead' : '$fardDone of 5 Done',
+                  style: AppFonts.compact(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFFE8B84B),
@@ -4601,29 +4952,14 @@ class _TodayScreenState extends State<TodayScreen>
             ],
           ),
         ),
-        const SizedBox(height: 4),
-        // 5 Obligatory Prayers Grid: Top 3 (Fajr, Dhuhr, Asr), Bottom 2 (Maghrib, Isha)
-        Row(
-          children: fardPrayers
-              .take(3)
-              .map(
-                (p) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
         const SizedBox(height: 6),
+        // 5 Obligatory Prayers Grid: Single edge-to-edge 5-step path
         Row(
           children: fardPrayers
-              .skip(3)
               .map(
                 (p) => Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.all(4.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
                     child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
                   ),
                 ),
@@ -4814,9 +5150,11 @@ class _TodayScreenState extends State<TodayScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '$doneTasks of $totalTasks done',
-                      style: AppFonts.text(
-                        fontSize: 11,
+                      doneTasks == 0
+                          ? '$totalTasks To Do'
+                          : '$doneTasks of $totalTasks Done',
+                      style: AppFonts.compact(
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         color: goldColor,
                       ),
