@@ -1598,49 +1598,41 @@ class _BottomNavBarState extends State<_BottomNavBar>
                       HapticService.tapFeedback();
                       widget.onTap(i);
                     },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        AnimatedPadding(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOutBack,
-                          padding: EdgeInsets.only(bottom: isSelected ? 3 : 0),
-                          child: AnimatedScale(
-                            scale: isSelected ? 1.12 : 0.96,
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOutBack,
-                            child: Icon(
-                              isSelected ? _activeIcons[i] : _inactiveIcons[i],
-                              size: 22,
+                    child: SizedBox(
+                      height: 64,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isSelected ? _activeIcons[i] : _inactiveIcons[i],
+                            size: 22,
+                            color: isSelected ? bubbleColor : inactiveColor,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _labels[i],
+                            maxLines: 1,
+                            style: AppFonts.compact(
+                              fontSize: 10.5,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              letterSpacing: isSelected ? 0.3 : 0.1,
                               color: isSelected ? bubbleColor : inactiveColor,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _labels[i],
-                          maxLines: 1,
-                          style: AppFonts.compact(
-                            fontSize: 10.5,
-                            fontWeight: isSelected
-                                ? FontWeight.w800
-                                : FontWeight.w500,
-                            letterSpacing: isSelected ? 0.4 : 0.2,
-                            color: isSelected ? bubbleColor : inactiveColor,
+                          const SizedBox(height: 3),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: isSelected ? 12 : 0,
+                            height: 2.5,
+                            decoration: BoxDecoration(
+                              color: isSelected ? bubbleColor : Colors.transparent,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: isSelected ? 4 : 0,
-                          height: isSelected ? 4 : 0,
-                          decoration: BoxDecoration(
-                            color: bubbleColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -4850,12 +4842,12 @@ class _TodayScreenState extends State<TodayScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  "DAILY MOMENTUM",
+                  "Daily Momentum",
                   style: AppFonts.compact(
-                    fontSize: 10.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: widget.theme.text3,
-                    letterSpacing: 1.5,
+                    letterSpacing: 0.8,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -4887,14 +4879,14 @@ class _TodayScreenState extends State<TodayScreen>
             width: 56,
             height: 56,
             child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(end: hasStarted ? (displayScore / 100).clamp(0.05, 1.0) : 0.05),
+              tween: Tween<double>(end: hasStarted ? (displayScore / 100).clamp(0.10, 1.0) : 0.10),
               duration: const Duration(milliseconds: 700),
               curve: Curves.easeOutCubic,
               builder: (context, arcProgress, child) {
                 return CustomPaint(
                   painter: _ScoreArcPainter(
                     progress: arcProgress,
-                    color: hasStarted ? const Color(0xFFD4A843) : widget.theme.border,
+                    color: const Color(0xFFD4A843),
                   ),
                 );
               },
@@ -6690,18 +6682,19 @@ class _HabitsScreenState extends State<HabitsScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.account_balance_wallet_outlined, size: 16, color: appColors.text3),
+                              Icon(Icons.account_balance_wallet_outlined, size: 16, color: appColors.gold),
                               const SizedBox(width: 8),
                               Text(
-                                'No transactions logged today',
-                                style: AppFonts.text(fontSize: 12, color: appColors.text3),
+                                'Tap to log daily cash flow',
+                                style: AppFonts.text(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: appColors.text1,
+                                ),
                               ),
                             ],
                           ),
-                          Text(
-                            '+₹0',
-                            style: AppFonts.display(fontSize: 13, fontWeight: FontWeight.w700, color: appColors.text3),
-                          ),
+                          Icon(Icons.arrow_forward_ios_rounded, size: 12, color: appColors.text3),
                         ],
                       ),
                     )
@@ -6758,88 +6751,165 @@ class _HabitsScreenState extends State<HabitsScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // Interactive 10 glass icons row
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final double itemWidth =
-                          ((constraints.maxWidth - (9 * 5)) / 10).clamp(24.0, 36.0);
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: List.generate(10, (index) {
-                          final glassNum = index + 1;
-                          final isFilled = glassNum <= _selectedWaterGlasses;
-                          return GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              if (_selectedWaterGlasses == glassNum) {
-                                _setWaterGlassesForSelectedDate(glassNum - 1);
-                              } else {
-                                _setWaterGlassesForSelectedDate(glassNum);
-                              }
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              curve: Curves.easeOutCubic,
-                              width: itemWidth,
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isFilled
-                                    ? const Color(0xFF38BDF8).withValues(alpha: 0.20)
-                                    : (widget.theme.isDark
-                                        ? Colors.white.withValues(alpha: 0.04)
-                                        : Colors.black.withValues(alpha: 0.03)),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isFilled
-                                      ? const Color(0xFF38BDF8).withValues(alpha: 0.7)
-                                      : (widget.theme.isDark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : Colors.black.withValues(alpha: 0.06)),
-                                  width: isFilled ? 1.0 : 0.5,
-                                ),
-                                boxShadow: isFilled
-                                    ? [
-                                        BoxShadow(
-                                          color: const Color(0xFF38BDF8)
-                                              .withValues(alpha: 0.25),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
+                  // 3 Chunked Groups (Morning, Afternoon, Evening)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _setWaterGlassesForSelectedDate(
+                              _selectedWaterGlasses >= 3 ? 0 : 3,
+                            );
+                          },
+                          child: Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            decoration: BoxDecoration(
+                              color: _selectedWaterGlasses >= 3
+                                  ? const Color(0xFF38BDF8).withValues(alpha: 0.18)
+                                  : (appColors.theme.isDark
+                                      ? Colors.white.withValues(alpha: 0.04)
+                                      : Colors.black.withValues(alpha: 0.03)),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _selectedWaterGlasses >= 3
+                                    ? const Color(0xFF38BDF8)
+                                    : appColors.cardBorder,
+                                width: _selectedWaterGlasses >= 3 ? 1.0 : 0.5,
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    isFilled
-                                        ? Icons.water_drop_rounded
-                                        : Icons.water_drop_outlined,
-                                    size: 15,
-                                    color: isFilled
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Morning',
+                                  style: AppFonts.compact(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _selectedWaterGlasses >= 3
+                                        ? const Color(0xFF38BDF8)
+                                        : appColors.text1,
+                                  ),
+                                ),
+                                Text(
+                                  '3 gl (0.75L)',
+                                  style: AppFonts.compact(
+                                    fontSize: 9.5,
+                                    color: _selectedWaterGlasses >= 3
                                         ? const Color(0xFF38BDF8)
                                         : appColors.text3,
                                   ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    '$glassNum',
-                                    style: AppFonts.compact(
-                                      fontSize: 10,
-                                      fontWeight: isFilled
-                                          ? FontWeight.w800
-                                          : FontWeight.w600,
-                                      color: isFilled
-                                          ? const Color(0xFF38BDF8)
-                                          : appColors.text3,
-                                    ),
-                                  ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _setWaterGlassesForSelectedDate(
+                              _selectedWaterGlasses >= 6 ? 3 : 6,
+                            );
+                          },
+                          child: Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            decoration: BoxDecoration(
+                              color: _selectedWaterGlasses >= 6
+                                  ? const Color(0xFF38BDF8).withValues(alpha: 0.18)
+                                  : (appColors.theme.isDark
+                                      ? Colors.white.withValues(alpha: 0.04)
+                                      : Colors.black.withValues(alpha: 0.03)),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _selectedWaterGlasses >= 6
+                                    ? const Color(0xFF38BDF8)
+                                    : appColors.cardBorder,
+                                width: _selectedWaterGlasses >= 6 ? 1.0 : 0.5,
                               ),
                             ),
-                          );
-                        }),
-                      );
-                    },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Afternoon',
+                                  style: AppFonts.compact(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _selectedWaterGlasses >= 6
+                                        ? const Color(0xFF38BDF8)
+                                        : appColors.text1,
+                                  ),
+                                ),
+                                Text(
+                                  '3 gl (1.5L)',
+                                  style: AppFonts.compact(
+                                    fontSize: 9.5,
+                                    color: _selectedWaterGlasses >= 6
+                                        ? const Color(0xFF38BDF8)
+                                        : appColors.text3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _setWaterGlassesForSelectedDate(
+                              _selectedWaterGlasses >= 10 ? 6 : 10,
+                            );
+                          },
+                          child: Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            decoration: BoxDecoration(
+                              color: _selectedWaterGlasses >= 10
+                                  ? const Color(0xFF38BDF8).withValues(alpha: 0.18)
+                                  : (appColors.theme.isDark
+                                      ? Colors.white.withValues(alpha: 0.04)
+                                      : Colors.black.withValues(alpha: 0.03)),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _selectedWaterGlasses >= 10
+                                    ? const Color(0xFF38BDF8)
+                                    : appColors.cardBorder,
+                                width: _selectedWaterGlasses >= 10 ? 1.0 : 0.5,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Evening',
+                                  style: AppFonts.compact(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: _selectedWaterGlasses >= 10
+                                        ? const Color(0xFF38BDF8)
+                                        : appColors.text1,
+                                  ),
+                                ),
+                                Text(
+                                  '4 gl (2.5L)',
+                                  style: AppFonts.compact(
+                                    fontSize: 9.5,
+                                    color: _selectedWaterGlasses >= 10
+                                        ? const Color(0xFF38BDF8)
+                                        : appColors.text3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -6890,12 +6960,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              title.toUpperCase(),
-              style: AppFonts.text(
-                fontSize: 10.5,
-                letterSpacing: 1.8,
+              title,
+              style: AppFonts.compact(
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: appColors.text3,
+                color: appColors.text1,
               ),
             ),
             if (rightText != null)
@@ -7086,8 +7155,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
           statusLabel = percent > 0 ? '$percent%' : 'Today';
           scoreColor = percent > 0 ? appColors.emerald : appColors.gold;
         } else {
-          statusLabel = '—';
-          scoreColor = appColors.text3;
+          statusLabel = '•';
+          scoreColor = appColors.text3.withValues(alpha: 0.6);
         }
 
         return Expanded(
@@ -7099,10 +7168,15 @@ class _HabitsScreenState extends State<HabitsScreen> {
               _loadDayData(date);
             },
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2.5, vertical: 4),
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              height: 68,
+              margin: const EdgeInsets.symmetric(horizontal: 2.0),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? appColors.card : Colors.transparent,
+                color: isSelected
+                    ? appColors.card
+                    : (appColors.theme.isDark
+                        ? Colors.white.withValues(alpha: 0.03)
+                        : Colors.black.withValues(alpha: 0.02)),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isSelected ? appColors.gold : appColors.cardBorder,
@@ -7126,19 +7200,19 @@ class _HabitsScreenState extends State<HabitsScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
                       dayNumber,
                       style: AppFonts.display(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: isSelected ? appColors.text1 : appColors.text2,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
