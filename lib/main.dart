@@ -15783,37 +15783,22 @@ class _IncomeScreenState extends State<IncomeScreen>
       {'num': 10, 'name': 'Elite Target', 'daily': 10000, 'monthly': 300000},
     ];
 
-    // Compute active milestone (default to Milestone 2 "First Double" for visual prototyping)
-    int activeIdx = 1;
-    if (dailyAvg >= 10000) {
-      activeIdx = 9;
-    } else if (dailyAvg >= 9500) {
-      activeIdx = 8;
-    } else if (dailyAvg >= 9000) {
-      activeIdx = 7;
-    } else if (dailyAvg >= 8000) {
-      activeIdx = 6;
-    } else if (dailyAvg >= 6500) {
-      activeIdx = 5;
-    } else if (dailyAvg >= 5000) {
-      activeIdx = 4;
-    } else if (dailyAvg >= 3500) {
-      activeIdx = 3;
-    } else if (dailyAvg >= 2000) {
-      activeIdx = 2;
-    } else if (dailyAvg >= 1000) {
-      activeIdx = 1;
-    } else if (dailyAvg >= 500) {
-      activeIdx = 1;
-    } else {
-      activeIdx = 1;
+    // Determine active milestone based on user's custom daily target and actual daily earnings
+    final targetRate = _dailyTarget > 0 ? _dailyTarget : 1500;
+    final benchmarkRate = math.max(dailyAvg, targetRate);
+    int activeIdx = 0;
+    for (int i = 0; i < milestones.length; i++) {
+      final mDaily = milestones[i]['daily'] as int;
+      if (benchmarkRate <= mDaily || i == milestones.length - 1) {
+        activeIdx = i;
+        break;
+      }
     }
 
     final activeMilestone = milestones[activeIdx];
     final activeDailyTarget = activeMilestone['daily'] as int;
-    final displayDailyAvg = dailyAvg > 0 ? dailyAvg : 474;
     final milestoneProgress =
-        (displayDailyAvg / activeDailyTarget).clamp(0.0, 1.0);
+        targetRate > 0 ? (dailyAvg / targetRate).clamp(0.0, 1.0) : 0.0;
     final milestonePct = (milestoneProgress * 100).round();
 
     // Truncated list (1, 2, 3, 4, 5, 10) or all 10
@@ -15881,7 +15866,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                   ),
                 ),
                 child: Text(
-                  'Milestone ${activeIdx + 1} of 10',
+                  'Milestone ${activeMilestone['num']} of 10',
                   style: AppFonts.compact(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
@@ -16098,37 +16083,48 @@ class _IncomeScreenState extends State<IncomeScreen>
                 Row(
                   children: [
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 10, horizontal: 12),
-                        decoration: BoxDecoration(
-                          color:
-                              isDark ? const Color(0x08FFFFFF) : Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: cardBorder, width: 0.5),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'DAILY TARGET',
-                              style: AppFonts.compact(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.6,
-                                color: colors.text3,
+                      child: GestureDetector(
+                        onTap: _editDailyTargetDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0x08FFFFFF)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: cardBorder, width: 0.5),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'DAILY TARGET',
+                                    style: AppFonts.compact(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.6,
+                                      color: colors.text3,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.edit_outlined,
+                                      size: 10, color: colors.text3),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              '${_money(activeDailyTarget)}/day',
-                              style: AppFonts.display(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: colors.text1,
+                              const SizedBox(height: 3),
+                              Text(
+                                '${_money(targetRate)}/day',
+                                style: AppFonts.display(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.text1,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -16138,8 +16134,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                         padding: const EdgeInsets.symmetric(
                             vertical: 10, horizontal: 12),
                         decoration: BoxDecoration(
-                          color:
-                              isDark ? const Color(0x08FFFFFF) : Colors.white,
+                          color: isDark
+                              ? const Color(0x08FFFFFF)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: cardBorder, width: 0.5),
                         ),
@@ -16157,11 +16154,13 @@ class _IncomeScreenState extends State<IncomeScreen>
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '${_money(displayDailyAvg)}/day',
+                              '${_money(dailyAvg)}/day',
                               style: AppFonts.display(
                                 fontSize: 14.5,
                                 fontWeight: FontWeight.w700,
-                                color: const Color(0xFF00C896),
+                                color: dailyAvg > 0
+                                    ? const Color(0xFF00C896)
+                                    : colors.text3,
                               ),
                             ),
                           ],
@@ -16183,7 +16182,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                         : Colors.black.withValues(alpha: 0.06),
                     alignment: Alignment.centerLeft,
                     child: FractionallySizedBox(
-                      widthFactor: milestoneProgress,
+                      widthFactor: milestoneProgress > 0
+                          ? milestoneProgress
+                          : 0.001,
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -16200,7 +16201,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${_money(displayDailyAvg)} of ${_money(activeDailyTarget)} daily goal · Translates to ${_money(activeMilestone['monthly'] as int)}/mo',
+                  dailyAvg > 0
+                      ? '${_money(dailyAvg)} of ${_money(targetRate)}/day target pace · Scaling toward Milestone ${activeMilestone['num']} (${_money(activeDailyTarget)}/day)'
+                      : 'Pace: ₹0/day · Log daily earnings to build momentum toward ${_money(targetRate)}/day target',
                   style: AppFonts.text(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w400,
