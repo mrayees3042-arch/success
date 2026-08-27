@@ -16476,7 +16476,7 @@ class _IncomeScreenState extends State<IncomeScreen>
 
           // 7-day bars with real weekday labels
           SizedBox(
-            height: 96,
+            height: 110,
             child: AnimatedBuilder(
               animation: _chartBarsController,
               builder: (_, _) {
@@ -16487,7 +16487,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     final amt = amounts[i];
                     final isToday = isCurrentMonth && dayKey(date) == dayKey(today);
                     final barPct = max7 > 0 ? (amt / max7).clamp(0.0, 1.0) : 0.0;
-                    final barH = amt > 0 ? math.max(6.0, barPct * 52.0) : 4.0;
+                    final barH = amt > 0 ? math.max(6.0, barPct * 44.0) : 4.0;
                     final weekday = weekdayShort[date.weekday - 1];
 
                     final staggerStart = (i * 40.0 / 1300.0).clamp(0.0, 1.0);
@@ -16504,21 +16504,24 @@ class _IncomeScreenState extends State<IncomeScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 3),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (amt > 0)
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  _money(amt),
-                                  style: AppFonts.compact(
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: isToday ? colors.gold : colors.emerald,
-                                  ),
-                                ),
-                              )
-                            else
-                              const SizedBox(height: 11),
+                            SizedBox(
+                              height: 14,
+                              child: amt > 0
+                                  ? FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        _money(amt),
+                                        style: AppFonts.compact(
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: isToday ? colors.gold : colors.emerald,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                            ),
                             const SizedBox(height: 4),
                             Container(
                               height: animH,
