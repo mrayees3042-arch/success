@@ -504,56 +504,249 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
       );
     }
 
-    // Empty state helper
+    // Empty state helper with suggestions to eliminate dead space below fold
     Widget buildEmptyState() {
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: theme.isDark ? const Color(0x06FFFFFF) : const Color(0x05000000),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: cardBorder, width: 0.5),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: goldColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: goldColor.withValues(alpha: 0.25),
-                  width: 0.8,
+      final templates = [
+        {
+          'title': 'Launch Freelance Project',
+          'date': '3 Months',
+          'color': emeraldColor,
+          'icon': '💼',
+        },
+        {
+          'title': 'Master Flutter & AI Architecture',
+          'date': '6 Months',
+          'color': azureColor,
+          'icon': '🚀',
+        },
+        {
+          'title': 'Complete Quran Reading (Khatam)',
+          'date': '1 Year',
+          'color': goldColor,
+          'icon': '🕌',
+        },
+        {
+          'title': 'Achieve Target Savings Fund',
+          'date': 'Ongoing',
+          'color': purpleColor,
+          'icon': '🎯',
+        },
+      ];
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: cardBorder, width: 0.5),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Ambient illustration separated from actionable CTA
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: emeraldColor.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: emeraldColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.flag_rounded,
+                    size: 30,
+                    color: emeraldColor,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No goals set yet',
+                  style: AppFonts.display(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: text1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Define your key milestones to stay aligned with your vision.',
+                  style: AppFonts.text(
+                    fontSize: 13,
+                    color: text3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 22),
+                // High-Affordance High-Contrast Primary CTA Button
+                GestureDetector(
+                  onTap: _showAddGoalSheet,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 24,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          emeraldColor,
+                          isDark
+                              ? const Color(0xFF059669)
+                              : const Color(0xFF047857),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: emeraldColor.withValues(alpha: 0.28),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.add_rounded,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add New Goal',
+                          style: AppFonts.text(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Suggested Templates Section to eliminate dead space below the fold
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline_rounded,
+                size: 14,
+                color: emeraldColor,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'SUGGESTED MILESTONES',
+                style: AppFonts.text(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                  color: text3,
                 ),
               ),
-              child: Icon(
-                Icons.track_changes_rounded,
-                size: 28,
-                color: goldColor,
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          ...templates.map((tpl) {
+            final tplTitle = tpl['title'] as String;
+            final tplDate = tpl['date'] as String;
+            final tplColor = tpl['color'] as Color;
+            final tplIcon = tpl['icon'] as String;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: cardBorder, width: 0.5),
               ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'No goals set yet',
-              style: AppFonts.display(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: text1,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () {
+                    HapticService.selection();
+                    final goal = LifeGoal(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      title: tplTitle,
+                      deadline: tplDate,
+                      progress: 0.0,
+                      color: tplColor,
+                    );
+                    setState(() {
+                      _goals.add(goal);
+                    });
+                    _saveGoals();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(tplIcon, style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                tplTitle,
+                                style: AppFonts.text(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: text1,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Target: $tplDate',
+                                style: AppFonts.text(
+                                  fontSize: 11,
+                                  color: text3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: tplColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '+ Add',
+                            style: AppFonts.text(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: tplColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Add a goal to build your long-term focus list',
-              style: AppFonts.text(
-                fontSize: 13,
-                color: text3,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+            );
+          }),
+        ],
       );
     }
 
@@ -949,44 +1142,36 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
       );
     }
 
-    // Quick add card helper
+    // Quick add card helper (used when goals are present)
     Widget buildQuickAddCard() {
       return GestureDetector(
         onTap: _showAddGoalSheet,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
           decoration: BoxDecoration(
-            color: theme.isDark ? const Color(0x0AFFFFFF) : const Color(0x06000000),
+            color: emeraldColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: goldColor.withValues(alpha: 0.25),
-              width: 0.8,
+              color: emeraldColor.withValues(alpha: 0.25),
+              width: 1.0,
             ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: goldColor.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.add_rounded,
-                  size: 18,
-                  color: goldColor,
-                ),
+              Icon(
+                Icons.add_circle_outline_rounded,
+                size: 18,
+                color: emeraldColor,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Text(
                 'Add New Goal',
                 style: AppFonts.display(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: text1,
+                  color: emeraldColor,
                 ),
               ),
             ],
@@ -1002,43 +1187,44 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
-          padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'DAILY & LONG-TERM',
+                          'LONG-TERM VISION',
                           style: AppFonts.text(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 2.0,
-                            color: goldColor,
+                            letterSpacing: 1.0,
+                            color: emeraldColor,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'To Do & Goals',
+                          'Goals',
                           style: AppFonts.display(
-                            fontSize: 26,
+                            fontSize: 28,
                             fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
                             color: text1,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
-                          'Priorities & Action Items',
+                          'Milestones & aspirational focus',
                           style: AppFonts.text(
                             fontSize: 13,
-                            color: text2,
-                            fontWeight: FontWeight.w600,
+                            color: text3,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -1048,24 +1234,39 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                     GestureDetector(
                       onTap: widget.onScreenshot,
                       child: Container(
-                        width: 40,
-                        height: 40,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
                         decoration: BoxDecoration(
                           color: cardBg,
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: cardBorder, width: 0.5),
                         ),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: goldColor,
-                          size: 18,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.camera_alt_outlined,
+                              color: emeraldColor,
+                              size: 15,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Share',
+                              style: AppFonts.compact(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: text2,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
               if (_goals.isEmpty)
                 buildEmptyState()
               else ...[
@@ -1075,17 +1276,17 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                   Text(
                     'Completed',
                     style: AppFonts.text(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: text3,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   ...completedGoals.map((goal) => buildGoalCard(goal)),
                 ],
+                const SizedBox(height: 16),
+                buildQuickAddCard(),
               ],
-              const SizedBox(height: 16),
-              buildQuickAddCard(),
             ],
           ),
         ),
