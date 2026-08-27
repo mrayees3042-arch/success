@@ -76,10 +76,10 @@ ThemeColors getTheme() {
       border: Color(0xFFDDD8CC),
       divider: Color(0xFFDDD8CC),
       navBg: Color(0xFFF9F7F2),
-      text1: Color(0xFF1A1A2E),
-      text2: Color(0xFF334155),
-      text3: Color(0xFF475569),
-      text4: Color(0xFF64748B),
+      text1: Color(0xFF1E293B), // Primary / Headings (soft charcoal, not pure harsh black)
+      text2: Color(0xFF475569), // Secondary (calm slate)
+      text3: Color(0xFF64748B), // Tertiary / Captions / Metadata (neutral muted)
+      text4: Color(0xFF94A3B8), // Quaternary / Subtle details
       gold: Color(0xFFB8860B),
       teal: Color(0xFF0A7A5A),
       blue: Color(0xFF1A6FA0),
@@ -95,10 +95,10 @@ ThemeColors getTheme() {
     border: cCardBorder,
     divider: cCardBorder,
     navBg: cBg,
-    text1: cText,
-    text2: Color(0xFFA0A0B5),
-    text3: cSub,
-    text4: cSub2,
+    text1: Color(0xFFF1F5F9), // Crisp off-white for headings
+    text2: Color(0xFFCBD5E1), // Soft readable light slate
+    text3: Color(0xFF94A3B8), // Calm muted grey
+    text4: Color(0xFF64748B), // Subtle detail
     gold: cGold,
     teal: cEmerald,
     blue: cAzure,
@@ -123,10 +123,10 @@ class AppColors {
   Color get emerald2 => theme.isDark ? const Color(0x142ECC71) : const Color(0x140A7A5A);
   Color get red => theme.isDark ? const Color(0xFFE74C3C) : const Color(0xFFC0392B);
   Color get red2 => theme.isDark ? const Color(0x14E74C3C) : const Color(0x14C0392B);
-  Color get text1 => theme.isDark ? const Color(0xFFF0F0F5) : const Color(0xFF1A1A2E);
-  Color get text2 => theme.isDark ? const Color(0xFFA0A0B5) : const Color(0xFF334155);
-  Color get text3 => theme.isDark ? const Color(0xFF8E8EA8) : const Color(0xFF475569);
-  Color get text4 => theme.isDark ? const Color(0xFF75758C) : const Color(0xFF64748B);
+  Color get text1 => theme.text1;
+  Color get text2 => theme.text2;
+  Color get text3 => theme.text3;
+  Color get text4 => theme.text4;
   Color get track => theme.isDark ? const Color(0x14FFFFFF) : const Color(0x0F000000);
   Color get pink => const Color(0xFFFF007F);
 

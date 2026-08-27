@@ -2185,9 +2185,9 @@ class _TodayScreenState extends State<TodayScreen>
                 children: [
                   Text(
                     task.title,
-                    style: AppFonts.display(
+                    style: AppFonts.text(
                       fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: done ? widget.theme.text3 : widget.theme.text1,
                       decoration: done ? TextDecoration.lineThrough : null,
                     ),
@@ -2197,7 +2197,8 @@ class _TodayScreenState extends State<TodayScreen>
                     _taskSubtitle(entry),
                     style: AppFonts.text(
                       fontSize: 11,
-                      color: done ? widget.theme.text4 : widget.theme.text2,
+                      fontWeight: FontWeight.w400,
+                      color: done ? widget.theme.text4 : widget.theme.text3,
                     ),
                   ),
                 ],
@@ -2291,7 +2292,7 @@ class _TodayScreenState extends State<TodayScreen>
                       label,
                       style: AppFonts.compact(
                         fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: isDone
                             ? const Color(0xFF38BDF8)
                             : widget.theme.text1,
@@ -2304,7 +2305,7 @@ class _TodayScreenState extends State<TodayScreen>
                   subtitle,
                   style: AppFonts.compact(
                     fontSize: 10,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                     color: isDone
                         ? const Color(0xFF38BDF8)
                         : widget.theme.text3,
@@ -3320,7 +3321,7 @@ class _TodayScreenState extends State<TodayScreen>
                       label,
                       style: AppFonts.text(
                         fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: widget.theme.text1,
                       ),
                     ),
@@ -3330,7 +3331,7 @@ class _TodayScreenState extends State<TodayScreen>
                           : '${streakDays > 0 ? "$streakDays day streak · " : ""}Tap to mark clean',
                       style: AppFonts.text(
                         fontSize: 10.5,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w400,
                         color: checked ? tealColor : widget.theme.text3,
                       ),
                     ),
@@ -4046,7 +4047,7 @@ class _TodayScreenState extends State<TodayScreen>
               overflow: TextOverflow.ellipsis,
               style: AppFonts.compact(
                 fontSize: 10.5,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: done ? const Color(0xFF2DD4A8) : widget.theme.text1,
               ),
             ),
@@ -4056,7 +4057,7 @@ class _TodayScreenState extends State<TodayScreen>
               maxLines: 1,
               style: AppFonts.compact(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w400,
                 color: timeColor,
               ),
             ),
@@ -6008,19 +6009,19 @@ class _GoalsScreenState extends State<GoalsScreen> {
                             children: [
                               Text(
                                 task.title,
-                                style: TextStyle(
-                                  fontSize: 15, // Use Syne
-                                  fontWeight: FontWeight.w800,
+                                style: AppFonts.text(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600,
                                   color: theme.text1,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               Text(
                                 task.tag,
-                                style: TextStyle(
-                                  fontSize: 12, // Use DM Sans
+                                style: AppFonts.text(
+                                  fontSize: 12,
                                   color: theme.text3,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w400,
                                 ),
                               ),
                             ],

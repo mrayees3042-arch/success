@@ -814,8 +814,8 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                           child: Text(
                             goal.title,
                             style: AppFonts.text(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w600,
                               color: text1,
                               decoration: isCompleted ? TextDecoration.lineThrough : null,
                             ),
@@ -823,7 +823,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 3.5, horizontal: 9),
                           decoration: BoxDecoration(
                             color: pillBg,
                             borderRadius: BorderRadius.circular(20),
@@ -833,19 +833,19 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                width: 6,
-                                height: 6,
+                                width: 5,
+                                height: 5,
                                 decoration: BoxDecoration(
                                   color: pillText,
                                   shape: BoxShape.circle,
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 5),
                               Text(
                                 pillLabel,
-                                style: AppFonts.text(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
+                                style: AppFonts.compact(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
                                   letterSpacing: 0.5,
                                   color: pillText,
                                 ),
@@ -865,15 +865,15 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                           'Progress',
                           style: AppFonts.text(
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                             color: text3,
                           ),
                         ),
                         Text(
                           '${(progressVal * 100).round()}%',
-                          style: AppFonts.display(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
+                          style: AppFonts.compact(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
                             color: pillText,
                           ),
                         ),
