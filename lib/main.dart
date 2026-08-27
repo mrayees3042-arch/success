@@ -6459,62 +6459,37 @@ class _HabitsScreenState extends State<HabitsScreen> {
                         ),
                       ),
                     )
-                  : Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: List.generate(kTodayTasks.length, (i) {
-                        final task = kTodayTasks[i];
-                        final done =
-                            i < record.tasks.length && record.tasks[i] == true;
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: done
-                                ? const Color(0xFF2DD4A8).withValues(alpha: 0.1)
-                                : appColors.theme.isDark
-                                ? const Color(0x06FFFFFF)
-                                : appColors.theme.bg,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: done
-                                  ? const Color(0xFF2DD4A8).withValues(alpha: 0.5)
-                                  : appColors.cardBorder,
-                              width: 0.5,
+                  : Column(
+                      children: [
+                        for (int i = 0; i < kTodayTasks.length; i += 2)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              bottom: (i + 2 < kTodayTasks.length) ? 8.0 : 0.0,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _buildHabitTaskCard(
+                                    kTodayTasks[i],
+                                    i < record.tasks.length && record.tasks[i] == true,
+                                    appColors,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                if (i + 1 < kTodayTasks.length)
+                                  Expanded(
+                                    child: _buildHabitTaskCard(
+                                      kTodayTasks[i + 1],
+                                      (i + 1) < record.tasks.length && record.tasks[i + 1] == true,
+                                      appColors,
+                                    ),
+                                  )
+                                else
+                                  const Expanded(child: SizedBox.shrink()),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: done
-                                      ? const Color(0xFF2DD4A8)
-                                      : appColors.text3,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                task.title,
-                                style: AppFonts.text(
-                                  fontSize: 12,
-                                  fontWeight: done
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
-                                  color: done
-                                      ? const Color(0xFF2DD4A8)
-                                      : appColors.text2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
+                      ],
                     ),
             ),
 
@@ -7049,6 +7024,54 @@ class _HabitsScreenState extends State<HabitsScreen> {
           ),
           const SizedBox(height: 5),
           statusIcon,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHabitTaskCard(
+    TodayTask task,
+    bool done,
+    AppColors appColors,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: done
+            ? const Color(0xFF2DD4A8).withValues(alpha: 0.1)
+            : (appColors.theme.isDark
+                ? const Color(0x06FFFFFF)
+                : appColors.theme.bg),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: done
+              ? const Color(0xFF2DD4A8).withValues(alpha: 0.5)
+              : appColors.cardBorder,
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            done
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            size: 15,
+            color: done ? const Color(0xFF2DD4A8) : appColors.text3,
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              task.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppFonts.text(
+                fontSize: 11.5,
+                fontWeight: done ? FontWeight.w700 : FontWeight.w500,
+                color: done ? const Color(0xFF2DD4A8) : appColors.text1,
+              ),
+            ),
+          ),
         ],
       ),
     );
