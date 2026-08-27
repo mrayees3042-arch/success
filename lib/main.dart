@@ -12006,6 +12006,41 @@ class SavingsGoal {
   }
 }
 
+class DebtItem {
+  final String id;
+  String name;
+  int totalAmount;
+  int paidAmount;
+  DateTime createdAt;
+
+  DebtItem({
+    required this.id,
+    required this.name,
+    required this.totalAmount,
+    this.paidAmount = 0,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'totalAmount': totalAmount,
+        'paidAmount': paidAmount,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory DebtItem.fromJson(Map<String, dynamic> json) => DebtItem(
+        id: json['id'] as String? ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
+        name: json['name'] as String? ?? 'Debt Allocation',
+        totalAmount: (json['totalAmount'] as num?)?.toInt() ?? 0,
+        paidAmount: (json['paidAmount'] as num?)?.toInt() ?? 0,
+        createdAt: json['createdAt'] != null
+            ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      );
+}
+
 class _TransactionItem {
   final DateTime date;
   final int amount;
@@ -12063,9 +12098,11 @@ class _IncomeScreenState extends State<IncomeScreen>
   String _earningTip = 'Aim: ₹3,00,000/month · Target editable';
 
   // --- Debt Payoff Tracker state (persisted) ---
-  int _debtTotal = 0;
-  int _debtPaid = 0;
-  String _debtOwedTo = '';
+  List<DebtItem> _debtAllocations = [];
+  int get _debtTotal => _debtAllocations.fold(0, (s, d) => s + d.totalAmount);
+  int get _debtPaid => _debtAllocations.fold(0, (s, d) => s + d.paidAmount);
+  String get _debtOwedTo =>
+      _debtAllocations.isNotEmpty ? _debtAllocations.first.name : '';
 
   // --- Animation controllers ---
   late AnimationController _fireController;
@@ -12339,9 +12376,34 @@ class _IncomeScreenState extends State<IncomeScreen>
           prefs.getString('income_earning_tip') ??
           'Aim: ₹3,00,000/month · Long term';
 
-      _debtTotal = prefs.getInt('income_debt_total') ?? 0;
-      _debtPaid = prefs.getInt('income_debt_paid') ?? 0;
-      _debtOwedTo = prefs.getString('income_debt_owed_to') ?? '';
+      final rawDebtAllocations = prefs.getString('income_debt_allocations_list');
+      if (rawDebtAllocations != null && rawDebtAllocations.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawDebtAllocations) as List<dynamic>;
+          _debtAllocations = decoded
+              .map((d) => DebtItem.fromJson(d as Map<String, dynamic>))
+              .toList();
+        } catch (_) {
+          _debtAllocations = [];
+        }
+      } else {
+        final legacyTotal = prefs.getInt('income_debt_total') ?? 0;
+        final legacyPaid = prefs.getInt('income_debt_paid') ?? 0;
+        final legacyOwedTo = prefs.getString('income_debt_owed_to') ?? '';
+        if (legacyTotal > 0) {
+          _debtAllocations = [
+            DebtItem(
+              id: 'legacy_1',
+              name: legacyOwedTo.isNotEmpty ? legacyOwedTo : 'Primary Debt',
+              totalAmount: legacyTotal,
+              paidAmount: legacyPaid,
+              createdAt: DateTime.now(),
+            ),
+          ];
+        } else {
+          _debtAllocations = [];
+        }
+      }
 
       final rawGoals = prefs.getString('income_savings_goals_list');
       if (rawGoals != null && rawGoals.isNotEmpty) {
@@ -12390,6 +12452,9 @@ class _IncomeScreenState extends State<IncomeScreen>
 
   Future<void> _saveDebtState() async {
     final prefs = await SharedPreferences.getInstance();
+    final payload =
+        jsonEncode(_debtAllocations.map((d) => d.toJson()).toList());
+    await prefs.setString('income_debt_allocations_list', payload);
     await prefs.setInt('income_debt_total', _debtTotal);
     await prefs.setInt('income_debt_paid', _debtPaid);
     await prefs.setString('income_debt_owed_to', _debtOwedTo);
@@ -14649,11 +14714,16 @@ class _IncomeScreenState extends State<IncomeScreen>
   // DEBT PAYOFF TRACKER (LIVE 10% ALLOCATION)
   // ═══════════════════════════════════════════════
 
-  void _showAddDebtSheet() {
+  void _showAddDebtSheet({DebtItem? existing}) {
+    final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final totalCtrl = TextEditingController(
-      text: _debtTotal > 0 ? _debtTotal.toString() : '',
+      text: existing != null ? existing.totalAmount.toString() : '',
     );
-    final owedToCtrl = TextEditingController(text: _debtOwedTo);
+    final paidCtrl = TextEditingController(
+      text: existing != null && existing.paidAmount > 0
+          ? existing.paidAmount.toString()
+          : '',
+    );
     final colors = AppColors(widget.theme);
 
     showModalBottomSheet(
@@ -14673,7 +14743,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                 duration: const Duration(milliseconds: 200),
                 child: Container(
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.85,
                   ),
                   decoration: BoxDecoration(
                     color: colors.theme.isDark
@@ -14693,9 +14763,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              _debtTotal > 0
-                                  ? 'Edit Debt Details'
-                                  : 'Add Debt Amount',
+                              existing != null
+                                  ? 'Edit Debt Allocation'
+                                  : 'Add Debt Allocation',
                               style: AppFonts.display(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
@@ -14727,7 +14797,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Track total liability against your monthly 10% debt allocation.',
+                          'Track multiple debt allocations (e.g. Credit Card, Car Loan, Bank Loan) against your monthly 10% allocation.',
                           style: AppFonts.text(
                             fontSize: 12,
                             color: colors.text3,
@@ -14735,7 +14805,46 @@ class _IncomeScreenState extends State<IncomeScreen>
                         ),
                         const SizedBox(height: 20),
 
-                        // Field 1: Total Amount Owed (Required)
+                        // Field 1: Debt Name / Source
+                        Text(
+                          'DEBT NAME / SOURCE *',
+                          style: AppFonts.compact(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: colors.text3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border:
+                                Border.all(color: colors.cardBorder, width: 1),
+                          ),
+                          child: TextField(
+                            controller: nameCtrl,
+                            style: AppFonts.text(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colors.text1,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. Credit Card, Car Loan, Friend',
+                              hintStyle: AppFonts.text(
+                                fontSize: 14,
+                                color: colors.text4,
+                              ),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Field 2: Total Amount Owed
                         Text(
                           'TOTAL AMOUNT OWED *',
                           style: AppFonts.compact(
@@ -14782,9 +14891,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                         ),
                         const SizedBox(height: 16),
 
-                        // Field 2: Owed To (Optional)
+                        // Field 3: Paid So Far
                         Text(
-                          'OWED TO (OPTIONAL)',
+                          'AMOUNT ALREADY PAID (OPTIONAL)',
                           style: AppFonts.compact(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -14803,17 +14912,25 @@ class _IncomeScreenState extends State<IncomeScreen>
                                 Border.all(color: colors.cardBorder, width: 1),
                           ),
                           child: TextField(
-                            controller: owedToCtrl,
-                            style: AppFonts.text(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                            controller: paidCtrl,
+                            keyboardType: TextInputType.number,
+                            style: AppFonts.display(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                               color: colors.text1,
                             ),
                             decoration: InputDecoration(
-                              hintText: 'e.g. Brother, Bank loan, Friend',
-                              hintStyle: AppFonts.text(
-                                fontSize: 14,
+                              hintText: 'e.g. 10000',
+                              hintStyle: AppFonts.display(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
                                 color: colors.text4,
+                              ),
+                              prefixText: '₹ ',
+                              prefixStyle: AppFonts.display(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: colors.text1,
                               ),
                               border: InputBorder.none,
                             ),
@@ -14821,18 +14938,40 @@ class _IncomeScreenState extends State<IncomeScreen>
                         ),
                         const SizedBox(height: 24),
 
-                        // Save Button
+                        // Submit Button
                         GestureDetector(
                           onTap: () {
+                            final name = nameCtrl.text.trim();
                             final total =
                                 int.tryParse(totalCtrl.text.trim()) ?? 0;
+                            final paid = int.tryParse(paidCtrl.text.trim()) ?? 0;
                             if (total <= 0) return;
+                            final validName =
+                                name.isNotEmpty ? name : 'Debt Allocation';
+
                             HapticService.light();
                             setState(() {
-                              _debtTotal = total;
-                              _debtOwedTo = owedToCtrl.text.trim();
-                              if (_debtPaid > _debtTotal) {
-                                _debtPaid = _debtTotal;
+                              if (existing != null) {
+                                final idx = _debtAllocations.indexWhere(
+                                    (d) => d.id == existing.id);
+                                if (idx != -1) {
+                                  _debtAllocations[idx].name = validName;
+                                  _debtAllocations[idx].totalAmount = total;
+                                  _debtAllocations[idx].paidAmount =
+                                      paid.clamp(0, total);
+                                }
+                              } else {
+                                _debtAllocations.add(
+                                  DebtItem(
+                                    id: DateTime.now()
+                                        .millisecondsSinceEpoch
+                                        .toString(),
+                                    name: validName,
+                                    totalAmount: total,
+                                    paidAmount: paid.clamp(0, total),
+                                    createdAt: DateTime.now(),
+                                  ),
+                                );
                               }
                             });
                             _saveDebtState();
@@ -14862,9 +15001,9 @@ class _IncomeScreenState extends State<IncomeScreen>
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              _debtTotal > 0
-                                  ? 'Save Changes'
-                                  : 'Add Debt Tracker',
+                              existing != null
+                                  ? 'Save Allocation'
+                                  : 'Add Debt Allocation',
                               style: AppFonts.text(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -14885,10 +15024,12 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
-  void _showLogDebtPaymentSheet() {
+  void _showLogDebtPaymentSheet([DebtItem? targetDebt]) {
     final payCtrl = TextEditingController();
     final colors = AppColors(widget.theme);
-    final remaining = (_debtTotal - _debtPaid).clamp(0, _debtTotal);
+
+    DebtItem? selectedDebt = targetDebt ??
+        (_debtAllocations.isNotEmpty ? _debtAllocations.first : null);
 
     showModalBottomSheet(
       context: context,
@@ -14900,6 +15041,11 @@ class _IncomeScreenState extends State<IncomeScreen>
           filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: StatefulBuilder(
             builder: (ctx, setSheetState) {
+              final remaining = selectedDebt != null
+                  ? (selectedDebt!.totalAmount - selectedDebt!.paidAmount)
+                      .clamp(0, selectedDebt!.totalAmount)
+                  : 0;
+
               return AnimatedPadding(
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -14954,17 +15100,56 @@ class _IncomeScreenState extends State<IncomeScreen>
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Current Remaining: ${_money(remaining)}${_debtOwedTo.isNotEmpty ? " · Owed to $_debtOwedTo" : ""}',
-                          style: AppFonts.text(
-                            fontSize: 12,
-                            color: colors.emerald,
-                            fontWeight: FontWeight.w600,
+                        const SizedBox(height: 12),
+                        if (_debtAllocations.length > 1) ...[
+                          Text(
+                            'SELECT DEBT ALLOCATION',
+                            style: AppFonts.compact(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                              color: colors.text3,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: colors.card,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: colors.cardBorder, width: 1),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<DebtItem>(
+                                value: selectedDebt,
+                                isExpanded: true,
+                                dropdownColor: colors.card,
+                                items: _debtAllocations.map((d) {
+                                  final rem = (d.totalAmount - d.paidAmount)
+                                      .clamp(0, d.totalAmount);
+                                  return DropdownMenuItem<DebtItem>(
+                                    value: d,
+                                    child: Text(
+                                      '${d.name} (${_money(rem)} remaining)',
+                                      style: AppFonts.text(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.text1,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setSheetState(() => selectedDebt = val);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         Text(
                           'PAYMENT AMOUNT *',
                           style: AppFonts.compact(
@@ -14981,8 +15166,8 @@ class _IncomeScreenState extends State<IncomeScreen>
                           decoration: BoxDecoration(
                             color: colors.card,
                             borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: colors.cardBorder, width: 1),
+                            border: Border.all(
+                                color: colors.cardBorder, width: 1),
                           ),
                           child: TextField(
                             controller: payCtrl,
@@ -15010,18 +15195,32 @@ class _IncomeScreenState extends State<IncomeScreen>
                             ),
                           ),
                         ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Remaining balance on "${selectedDebt?.name ?? 'Debt'}": ${_money(remaining)}',
+                          style: AppFonts.text(
+                            fontSize: 11,
+                            color: colors.text3,
+                          ),
+                        ),
                         const SizedBox(height: 22),
 
-                        // Submit Payment
                         GestureDetector(
                           onTap: () {
                             final payAmt =
                                 int.tryParse(payCtrl.text.trim()) ?? 0;
-                            if (payAmt <= 0) return;
+                            if (payAmt <= 0 || selectedDebt == null) return;
                             HapticService.light();
                             setState(() {
-                              _debtPaid =
-                                  (_debtPaid + payAmt).clamp(0, _debtTotal);
+                              final idx = _debtAllocations.indexWhere(
+                                  (d) => d.id == selectedDebt!.id);
+                              if (idx != -1) {
+                                final currentPaid =
+                                    _debtAllocations[idx].paidAmount;
+                                final total = _debtAllocations[idx].totalAmount;
+                                _debtAllocations[idx].paidAmount =
+                                    (currentPaid + payAmt).clamp(0, total);
+                              }
                             });
                             _saveDebtState();
                             Navigator.pop(ctx);
@@ -15079,63 +15278,6 @@ class _IncomeScreenState extends State<IncomeScreen>
     );
   }
 
-  void _showDebtOptionsMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final colors = AppColors(widget.theme);
-        return Container(
-          decoration: BoxDecoration(
-            color: colors.theme.isDark ? const Color(0xFF14141E) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.edit_outlined, color: colors.text1),
-                title: Text(
-                  'Edit Debt Details',
-                  style: AppFonts.text(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colors.text1,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showAddDebtSheet();
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.delete_outline, color: colors.red),
-                title: Text(
-                  'Clear Debt / Reset',
-                  style: AppFonts.text(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colors.red,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  setState(() {
-                    _debtTotal = 0;
-                    _debtPaid = 0;
-                    _debtOwedTo = '';
-                  });
-                  _saveDebtState();
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildDebtPayoffCard(AppColors colors, int totalEarned) {
     final isDark = colors.theme.isDark;
     final cardBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
@@ -15149,8 +15291,8 @@ class _IncomeScreenState extends State<IncomeScreen>
     final progress =
         _debtTotal > 0 ? (_debtPaid / _debtTotal).clamp(0.0, 1.0) : 0.0;
 
-    // Step 1: When no debt is on file
-    if (_debtTotal == 0) {
+    // Step 1: When no debt allocations are logged
+    if (_debtAllocations.isEmpty) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
         padding: const EdgeInsets.all(20),
@@ -15186,7 +15328,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          'DEBT PAYOFF ALLOCATION',
+                          'DEBT PAYOFF ALLOCATIONS',
                           style: AppFonts.text(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -15222,7 +15364,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             ),
             const SizedBox(height: 14),
             Text(
-              'No active debt logged on file.',
+              'No active debt allocations logged.',
               style: AppFonts.text(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
@@ -15231,7 +15373,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              'Your 55/5/10/15/15 allocation reserves 10% for debt payoff. When debt is ₹0, this 10% slot automatically converts into Short-term save (15% → 25%).',
+              'Your 55/5/10/15/15 allocation reserves 10% for debt payoff. Tap below to add multiple debt allocations (e.g. Credit Card, Car Loan, Bank Loan).',
               style: AppFonts.text(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w400,
@@ -15241,7 +15383,7 @@ class _IncomeScreenState extends State<IncomeScreen>
             ),
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: _showAddDebtSheet,
+              onTap: () => _showAddDebtSheet(),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -15264,7 +15406,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        'Add Debt Amount',
+                        'Add Debt Allocation',
                         style: AppFonts.text(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -15282,11 +15424,11 @@ class _IncomeScreenState extends State<IncomeScreen>
       );
     }
 
-    // Step 3: Active Debt Tracker
+    // Step 2: Active Debt Tracker (Multiple Allocations List)
     String etaText;
     if (isDebtFree) {
       etaText =
-          'Debt cleared! 10% slot rolled into Short-Term Save (Now 25%)';
+          'All debts cleared! 10% slot rolled into Short-Term Save (Now 25%)';
     } else if (monthlyDebtAlloc > 0) {
       final months = (remainingDebt / monthlyDebtAlloc).ceil();
       etaText =
@@ -15320,11 +15462,11 @@ class _IncomeScreenState extends State<IncomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Header
+          // Header
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                flex: 3,
                 child: Row(
                   children: [
                     Icon(
@@ -15339,9 +15481,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _debtOwedTo.isNotEmpty
-                            ? 'DEBT PAYOFF · ${_debtOwedTo.toUpperCase()}'
-                            : 'DEBT PAYOFF TRACKER',
+                        'DEBT PAYOFF ALLOCATIONS',
                         style: AppFonts.text(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -15357,49 +15497,36 @@ class _IncomeScreenState extends State<IncomeScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(
-                flex: 2,
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: (isDebtFree
-                                    ? const Color(0xFF00C896)
-                                    : const Color(0xFF7E8694))
-                                .withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            isDebtFree
-                                ? 'DEBT FREE 🏆'
-                                : '${(progress * 100).toStringAsFixed(0)}% PAID',
-                            style: AppFonts.compact(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: isDebtFree
-                                  ? const Color(0xFF00C896)
-                                  : const Color(0xFF7E8694),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: _showDebtOptionsMenu,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.more_vert_rounded,
-                                size: 18, color: colors.text3),
-                          ),
-                        ),
-                      ],
+              GestureDetector(
+                onTap: () {
+                  HapticService.light();
+                  _showAddDebtSheet();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7E8694).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF7E8694).withValues(alpha: 0.3),
+                      width: 0.5,
                     ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add, size: 12, color: Color(0xFF7E8694)),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Add Debt',
+                        style: AppFonts.compact(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF7E8694),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -15407,7 +15534,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           ),
           const SizedBox(height: 16),
 
-          // 2. Three Key Figures Row
+          // Three Key Figures Summary Row
           Row(
             children: [
               Expanded(
@@ -15529,7 +15656,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           ),
           const SizedBox(height: 14),
 
-          // 3. Progress Bar
+          // Total Progress Bar
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
             child: Container(
@@ -15557,7 +15684,7 @@ class _IncomeScreenState extends State<IncomeScreen>
           ),
           const SizedBox(height: 12),
 
-          // 4. Monthly Contribution & ETA Box
+          // Monthly Allocation & ETA Box
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -15606,116 +15733,203 @@ class _IncomeScreenState extends State<IncomeScreen>
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
 
-          // 5. Plain language advice note
+          // Sub-Header for Debt Breakdown List
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.lightbulb_outline_rounded,
-                  size: 13, color: colors.gold),
-              const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Keep debt at 10% unless high-interest. Borrowing a few points temporarily from Fun (5%→2%) or Long-term (15%→10%) accelerates payoff without touching Essentials.',
-                  style: AppFonts.text(
-                    fontSize: 10.5,
+                  'YOUR DEBT ALLOCATIONS (${_debtAllocations.length})',
+                  style: AppFonts.compact(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
                     color: colors.text3,
-                    height: 1.35,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _showLogDebtPaymentSheet(),
+                child: Text(
+                  '＋ Log Payment',
+                  style: AppFonts.compact(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF00C896),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          // 6. Automatic conversion rule note
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: (isDebtFree ? const Color(0xFF00C896) : colors.gold)
-                  .withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isDebtFree
-                      ? Icons.check_circle_rounded
-                      : Icons.info_outline_rounded,
-                  size: 13,
-                  color: isDebtFree ? const Color(0xFF00C896) : colors.gold,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    isDebtFree
-                        ? '10% debt slot is now converted to Short-Term Save (25% total).'
-                        : 'Once debt hits ₹0, the 10% slot automatically converts to Short-term save (15% → 25%).',
-                    style: AppFonts.text(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w500,
-                      color: isDebtFree
-                          ? const Color(0xFF00C896)
-                          : (isDark
-                              ? colors.text2
-                              : const Color(0xFF7C5E10)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
+          // Individual Debt Allocations List
+          ...List.generate(_debtAllocations.length, (i) {
+            final debt = _debtAllocations[i];
+            final itemTotal = debt.totalAmount;
+            final itemPaid = debt.paidAmount;
+            final itemRem = (itemTotal - itemPaid).clamp(0, itemTotal);
+            final itemProgress =
+                itemTotal > 0 ? (itemPaid / itemTotal).clamp(0.0, 1.0) : 0.0;
+            final isItemPaidOff = itemTotal > 0 && itemRem == 0;
 
-          // 7. Action Button: ＋ Log a Payment
-          if (!isDebtFree)
-            GestureDetector(
-              onTap: _showLogDebtPaymentSheet,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF7E8694),
-                      isDark
-                          ? const Color(0xFF5A6270)
-                          : const Color(0xFF475569),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF7E8694).withValues(alpha: 0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                alignment: Alignment.center,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.add_circle_outline_rounded,
-                        size: 16, color: Colors.white),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        'Log a Payment',
-                        style: AppFonts.text(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF24242A) : const Color(0xFFF7F7FA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isItemPaidOff
+                      ? const Color(0xFF00C896).withValues(alpha: 0.3)
+                      : cardBorder,
+                  width: 0.5,
                 ),
               ),
-            ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(
+                              isItemPaidOff
+                                  ? Icons.check_circle_rounded
+                                  : Icons.credit_card_rounded,
+                              size: 14,
+                              color: isItemPaidOff
+                                  ? const Color(0xFF00C896)
+                                  : colors.text2,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                debt.name,
+                                style: AppFonts.text(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.text1,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _showLogDebtPaymentSheet(debt),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00C896)
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Pay',
+                                style: AppFonts.compact(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF00C896),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () => _showAddDebtSheet(existing: debt),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(Icons.edit_outlined,
+                                  size: 14, color: colors.text3),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              HapticService.light();
+                              setState(() {
+                                _debtAllocations
+                                    .removeWhere((d) => d.id == debt.id);
+                              });
+                              _saveDebtState();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(Icons.delete_outline,
+                                  size: 14, color: colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Paid: ${_money(itemPaid)} / ${_money(itemTotal)}',
+                          style: AppFonts.compact(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: colors.text3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isItemPaidOff
+                            ? 'PAID OFF 🎉'
+                            : 'Rem: ${_money(itemRem)}',
+                        style: AppFonts.compact(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: isItemPaidOff
+                              ? const Color(0xFF00C896)
+                              : colors.gold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: Container(
+                      height: 4,
+                      width: double.infinity,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.06),
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: itemProgress,
+                        child: Container(
+                          color: isItemPaidOff
+                              ? const Color(0xFF00C896)
+                              : const Color(0xFF7E8694),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
