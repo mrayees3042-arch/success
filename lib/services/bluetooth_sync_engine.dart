@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/todo_task.dart';
 
 class BluetoothSyncEngine {
   static final BluetoothSyncEngine instance = BluetoothSyncEngine._internal();
@@ -17,12 +18,16 @@ class BluetoothSyncEngine {
 
     final Map<String, dynamic> hiveData = {};
     if (Hive.isBoxOpen('todosBox')) {
-      final box = Hive.box('todosBox');
-      final Map<String, dynamic> todos = {};
-      for (var key in box.keys) {
-        todos[key.toString()] = box.get(key);
+      final box = Hive.box<TodoTask>('todosBox');
+      final List<Map<String, dynamic>> todosList = [];
+      for (var task in box.values) {
+        todosList.add({
+          'title': task.title,
+          'isCompleted': task.isCompleted,
+          'createdAt': task.createdAt.toUtc().toIso8601String(),
+        });
       }
-      hiveData['todosBox'] = todos;
+      hiveData['todosBox'] = todosList;
     }
 
     final payloadMap = {
@@ -43,49 +48,58 @@ class BluetoothSyncEngine {
 
       final prefs = await SharedPreferences.getInstance();
       
-      final backupMap = {};
-      for (String k in prefs.getKeys()) {
-        backupMap[k] = prefs.get(k);
-      }
+      // Save local backup timestamp
       await prefs.setString('bluetooth_last_backup_at', DateTime.now().toUtc().toIso8601String());
 
+      // 1. Merge SharedPreferences (100% coverage across all user data)
       if (payload.containsKey('shared_preferences')) {
-        final Map<String, dynamic> incomingPrefs = payload['shared_preferences'];
+        final Map<String, dynamic> incomingPrefs = Map<String, dynamic>.from(payload['shared_preferences']);
         
         incomingPrefs.forEach((key, incomingVal) {
           if (incomingVal == null) return;
-
-          final existingVal = prefs.get(key);
-          if (existingVal == null) {
-            _setPrefValue(prefs, key, incomingVal);
-          } else if (key.endsWith('_updated_at')) {
-            _setPrefValue(prefs, key, incomingVal);
-          } else {
-            final String timeKey = '${key}_updated_at';
-            final incomingTime = incomingPrefs[timeKey] as String?;
-            final existingTime = prefs.getString(timeKey);
-
-            if (incomingTime != null && existingTime != null) {
-              final incDT = DateTime.tryParse(incomingTime);
-              final exDT = DateTime.tryParse(existingTime);
-              if (incDT != null && exDT != null && incDT.isAfter(exDT)) {
-                _setPrefValue(prefs, key, incomingVal);
-              }
-            } else {
-              _setPrefValue(prefs, key, incomingVal);
-            }
-          }
+          _setPrefValue(prefs, key, incomingVal);
         });
       }
 
+      // 2. Merge Hive todosBox (100% coverage across all todo tasks)
       if (payload.containsKey('hive_boxes')) {
-        final Map<String, dynamic> hiveBoxes = payload['hive_boxes'];
+        final Map<String, dynamic> hiveBoxes = Map<String, dynamic>.from(payload['hive_boxes']);
         if (hiveBoxes.containsKey('todosBox') && Hive.isBoxOpen('todosBox')) {
-          final box = Hive.box('todosBox');
-          final Map<String, dynamic> incomingTodos = hiveBoxes['todosBox'];
-          incomingTodos.forEach((k, v) {
-            box.put(k, v);
-          });
+          final box = Hive.box<TodoTask>('todosBox');
+          final List incomingTodos = hiveBoxes['todosBox'] as List;
+
+          final existingTasksMap = <String, TodoTask>{};
+          for (var t in box.values) {
+            final key = '${t.title}_${t.createdAt.toUtc().toIso8601String()}';
+            existingTasksMap[key] = t;
+          }
+
+          for (var item in incomingTodos) {
+            if (item is Map) {
+              final Map<String, dynamic> taskMap = Map<String, dynamic>.from(item);
+              final String title = taskMap['title'] ?? '';
+              final bool isCompleted = taskMap['isCompleted'] ?? false;
+              final String createdAtStr = taskMap['createdAt'] ?? '';
+              final DateTime createdAt = DateTime.tryParse(createdAtStr) ?? DateTime.now();
+
+              final taskKey = '${title}_${createdAt.toUtc().toIso8601String()}';
+
+              if (title.isNotEmpty) {
+                if (existingTasksMap.containsKey(taskKey)) {
+                  final existing = existingTasksMap[taskKey]!;
+                  existing.isCompleted = isCompleted;
+                  await existing.save();
+                } else {
+                  final newTask = TodoTask(
+                    title: title,
+                    isCompleted: isCompleted,
+                    createdAt: createdAt,
+                  );
+                  await box.add(newTask);
+                }
+              }
+            }
+          }
         }
       }
 
