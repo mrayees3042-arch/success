@@ -15044,7 +15044,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         size: 16, color: Color(0xFF7E8694)),
                     const SizedBox(width: 6),
                     Text(
-                      '＋ Add Debt Amount',
+                      'Add Debt Amount',
                       style: AppFonts.text(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -15454,7 +15454,7 @@ class _IncomeScreenState extends State<IncomeScreen>
                         size: 16, color: Colors.white),
                     const SizedBox(width: 6),
                     Text(
-                      '＋ Log a Payment',
+                      'Log a Payment',
                       style: AppFonts.text(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
