@@ -7,6 +7,88 @@ import 'package:success/core/app_fonts.dart';
 import 'package:success/services/bluetooth_service.dart';
 import 'package:success/services/bluetooth_sync_engine.dart';
 
+class BlinkingGreenDot extends StatefulWidget {
+  final String label;
+  const BlinkingGreenDot({super.key, this.label = "Paired Link Active"});
+
+  @override
+  State<BlinkingGreenDot> createState() => _BlinkingGreenDotState();
+}
+
+class _BlinkingGreenDotState extends State<BlinkingGreenDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 750),
+    )..repeat(reverse: true);
+    _opacityAnimation = Tween<double>(begin: 0.25, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const greenColor = Color(0xFF00FF66);
+    return AnimatedBuilder(
+      animation: _opacityAnimation,
+      builder: (context, child) {
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: greenColor.withOpacity(0.12 * _opacityAnimation.value),
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(
+              color: greenColor.withOpacity(0.6 * _opacityAnimation.value),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8.r,
+                height: 8.r,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: greenColor.withOpacity(_opacityAnimation.value),
+                  boxShadow: [
+                    BoxShadow(
+                      color: greenColor.withOpacity(0.8 * _opacityAnimation.value),
+                      blurRadius: 6,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 6.w),
+              Text(
+                widget.label,
+                style: AppFonts.compact(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: greenColor.withOpacity(_opacityAnimation.value),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class BluetoothSyncSheet extends StatefulWidget {
   const BluetoothSyncSheet({super.key});
 
@@ -224,9 +306,15 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
                   ),
                 ],
               ),
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.white54),
-                onPressed: () => Navigator.pop(context),
+              Row(
+                children: [
+                  if (_pairedDevices.isNotEmpty || _isSyncing)
+                    const BlinkingGreenDot(label: "PAIRED LINK"),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white54),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
             ],
           ),
@@ -387,12 +475,19 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
                       dense: true,
                       leading: const Icon(Icons.phone_android,
                           color: accentColor),
-                      title: Text(
-                        device.name ?? "Unknown Device",
-                        style: AppFonts.text(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              device.name ?? "Unknown Device",
+                              style: AppFonts.text(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white),
+                            ),
+                          ),
+                          const BlinkingGreenDot(label: "CONNECTED"),
+                        ],
                       ),
                       subtitle: Text(
                         device.address,
