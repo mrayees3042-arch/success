@@ -1,8 +1,22 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'bluetooth_sync_engine.dart';
+
+class BluetoothLogger {
+  static void log(String stage, {String? deviceAddress, String? details, Object? error}) {
+    if (!kDebugMode) return;
+    final timestamp = DateTime.now().toIso8601String();
+    final maskedAddress = (deviceAddress != null && deviceAddress.length >= 8)
+        ? "${deviceAddress.substring(0, 5)}***"
+        : "N/A";
+    final message = "🔵 [BT_SYNC][$timestamp] STAGE: $stage | DEVICE: $maskedAddress | DETAILS: ${details ?? 'N/A'}"
+        "${error != null ? ' | ERROR: $error' : ''}";
+    debugPrint(message);
+  }
+}
 
 class BluetoothServiceManager {
   static final BluetoothServiceManager instance = BluetoothServiceManager._internal();
@@ -12,6 +26,7 @@ class BluetoothServiceManager {
   bool get isConnected => _connection != null && _connection!.isConnected;
 
   Future<bool> requestPermissions() async {
+    BluetoothLogger.log("PERMISSION_CHECK_START");
     Map<Permission, PermissionStatus> statuses = await [
       Permission.bluetooth,
       Permission.bluetoothScan,
@@ -20,7 +35,9 @@ class BluetoothServiceManager {
       Permission.locationWhenInUse,
     ].request();
 
-    return statuses.values.every((status) => status.isGranted || status.isLimited);
+    final allGranted = statuses.values.every((status) => status.isGranted || status.isLimited);
+    BluetoothLogger.log("PERMISSION_CHECK_RESULT", details: "All Granted: $allGranted");
+    return allGranted;
   }
 
   Future<bool> isBluetoothEnabled() async {
@@ -66,21 +83,25 @@ class BluetoothServiceManager {
   }
 
   Future<bool> connectToDevice(BluetoothDevice device, {int maxAttempts = 3}) async {
+    BluetoothLogger.log("CONNECT_ATTEMPT_START", deviceAddress: device.address, details: "Max attempts: $maxAttempts");
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         await disconnect();
         await Future.delayed(const Duration(milliseconds: 300));
         _connection = await BluetoothConnection.toAddress(device.address);
         if (_connection != null && _connection!.isConnected) {
+          BluetoothLogger.log("CONNECT_SUCCESS", deviceAddress: device.address, details: "Attempt: $attempt");
           return true;
         }
-      } catch (_) {
+      } catch (e) {
         _connection = null;
+        BluetoothLogger.log("CONNECT_ATTEMPT_FAILED", deviceAddress: device.address, details: "Attempt: $attempt", error: e);
       }
       if (attempt < maxAttempts) {
         await Future.delayed(const Duration(milliseconds: 1200));
       }
     }
+    BluetoothLogger.log("CONNECT_FAILED_ALL_ATTEMPTS", deviceAddress: device.address);
     return false;
   }
 
