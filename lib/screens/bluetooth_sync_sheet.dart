@@ -14,19 +14,17 @@ class BluetoothSyncSheet extends StatefulWidget {
   State<BluetoothSyncSheet> createState() => _BluetoothSyncSheetState();
 }
 
-enum SyncRole { auto, host, receiver }
+enum SyncRole { none, host, receiver }
 
 class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
-  SyncRole _role = SyncRole.auto;
+  SyncRole _role = SyncRole.none;
   bool _isPermissionGranted = false;
   bool _isBluetoothEnabled = false;
   List<BluetoothDevice> _pairedDevices = [];
   BluetoothDevice? _selectedDevice;
   bool _isSyncing = false;
   double _progress = 0.0;
-  String _statusMessage = "⚡ Auto-Sync Active: Scanning for paired devices...";
-  Timer? _autoSyncTimer;
-  DateTime? _lastAutoSyncTime;
+  String _statusMessage = "Select Host or Receiver mode to begin.";
 
   @override
   void initState() {
@@ -36,7 +34,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
 
   @override
   void dispose() {
-    _autoSyncTimer?.cancel();
+    BluetoothServiceManager.instance.disconnect();
     super.dispose();
   }
 
@@ -52,7 +50,6 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
 
     if (granted && enabled) {
       await _loadPairedDevices();
-      _startAutoSyncLoop();
     }
   }
 
@@ -64,85 +61,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
     });
   }
 
-  void _startAutoSyncLoop() {
-    _autoSyncTimer?.cancel();
-    BluetoothServiceManager.instance.makeDiscoverable(300);
-
-    // Initial check right away
-    _runAutoSyncCheck();
-
-    // Periodic check every 5 seconds
-    _autoSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted) return;
-      if (_role == SyncRole.auto && !_isSyncing && _isBluetoothEnabled) {
-        _runAutoSyncCheck();
-      }
-    });
-  }
-
-  Future<void> _runAutoSyncCheck() async {
-    if (_pairedDevices.isEmpty) {
-      await _loadPairedDevices();
-    }
-
-    if (_pairedDevices.isEmpty || _isSyncing) return;
-
-    // Cooldown check (don't auto-sync if we auto-synced within last 12 seconds)
-    if (_lastAutoSyncTime != null &&
-        DateTime.now().difference(_lastAutoSyncTime!).inSeconds < 12) {
-      return;
-    }
-
-    for (var device in _pairedDevices) {
-      if (_role != SyncRole.auto || !mounted) break;
-
-      setState(() {
-        _isSyncing = true;
-        _selectedDevice = device;
-        _progress = 0.1;
-        _statusMessage = "⚡ Auto-Syncing with ${device.name ?? 'Device'}...";
-      });
-
-      final success = await BluetoothServiceManager.instance.performTwoWayAutoSync(
-        device,
-        (msg, prog) {
-          if (mounted) {
-            setState(() {
-              _statusMessage = msg;
-              _progress = prog;
-            });
-          }
-        },
-      );
-
-      if (success) {
-        _lastAutoSyncTime = DateTime.now();
-        final formattedTime =
-            "${_lastAutoSyncTime!.hour % 12 == 0 ? 12 : _lastAutoSyncTime!.hour % 12}:${_lastAutoSyncTime!.minute.toString().padLeft(2, '0')} ${_lastAutoSyncTime!.hour >= 12 ? 'PM' : 'AM'}";
-        if (mounted) {
-          setState(() {
-            _isSyncing = false;
-            _progress = 1.0;
-            _statusMessage =
-                "✅ Auto-Synced with ${device.name ?? 'Device'} at $formattedTime! (100% Data Parity)";
-          });
-        }
-        break;
-      } else {
-        if (mounted) {
-          setState(() {
-            _isSyncing = false;
-            _progress = 0.0;
-            _statusMessage =
-                "⚡ Auto-Sync Listening: Searching for ${device.name ?? 'paired device'} in range...";
-          });
-        }
-      }
-    }
-  }
-
   Future<void> _startHostMode() async {
-    _autoSyncTimer?.cancel();
     setState(() {
       _role = SyncRole.host;
       _isSyncing = true;
@@ -152,6 +71,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
 
     final success = await BluetoothServiceManager.instance.startServer(
       (Uint8List payload) async {
+        if (!mounted) return;
         setState(() {
           _statusMessage = "Receiving incoming sync bundle...";
         });
@@ -159,21 +79,23 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
         if (merged) {
           final replyPayload = await BluetoothSyncEngine.instance.exportSyncBundle();
           await BluetoothServiceManager.instance.sendPayload(replyPayload, (p) {
-            setState(() => _progress = p);
+            if (mounted) setState(() => _progress = p);
           });
-          setState(() {
-            _isSyncing = false;
-            _progress = 1.0;
-            _statusMessage = "✅ Offline Sync Complete! All data synchronized.";
-          });
+          if (mounted) {
+            setState(() {
+              _isSyncing = false;
+              _progress = 1.0;
+              _statusMessage = "✅ Offline Sync Complete! All data synchronized.";
+            });
+          }
         }
       },
       (double p) {
-        setState(() => _progress = p);
+        if (mounted) setState(() => _progress = p);
       },
     );
 
-    if (!success) {
+    if (!success && mounted) {
       setState(() {
         _isSyncing = false;
         _statusMessage = "Failed to start Bluetooth host discoverability.";
@@ -182,73 +104,90 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
   }
 
   Future<void> _startReceiverMode(BluetoothDevice device) async {
-    _autoSyncTimer?.cancel();
     setState(() {
       _role = SyncRole.receiver;
       _selectedDevice = device;
       _isSyncing = true;
       _progress = 0.05;
-      _statusMessage = "Connecting to ${device.name ?? 'Device'} (Attempting 1 of 3)...";
+      _statusMessage = "Connecting to ${device.name ?? 'Device'}...";
     });
 
-    final connected = await BluetoothServiceManager.instance.connectToDevice(device, maxAttempts: 3);
-    if (!connected) {
-      setState(() {
-        _isSyncing = false;
-        _statusMessage = "❌ Could not connect to ${device.name ?? 'Device'}. Ensure ${device.name ?? 'Device'} Bluetooth is ON.";
-      });
-      return;
-    }
-
-    setState(() {
-      _progress = 0.25;
-      _statusMessage = "Packaging local application data...";
-    });
-
-    final localPayload = await BluetoothSyncEngine.instance.exportSyncBundle();
-    
-    setState(() {
-      _progress = 0.45;
-      _statusMessage = "Transferring data over Bluetooth...";
-    });
-
-    await BluetoothServiceManager.instance.sendPayload(localPayload, (p) {
-      setState(() {
-        _progress = 0.45 + (p * 0.35);
-      });
-    });
-
-    setState(() {
-      _progress = 0.85;
-      _statusMessage = "Receiving response and merging latest records...";
-    });
-
-    final stream = BluetoothServiceManager.instance.receivePayloadStream((p) {
-      setState(() {
-        _progress = 0.85 + (p * 0.15);
-      });
-    });
-
-    if (stream != null) {
-      stream.listen((incomingPayload) async {
-        await BluetoothSyncEngine.instance.importAndMergeSyncBundle(incomingPayload);
+    try {
+      final connected = await BluetoothServiceManager.instance.connectToDevice(device, maxAttempts: 2);
+      if (!connected) {
+        if (!mounted) return;
         setState(() {
           _isSyncing = false;
-          _progress = 1.0;
-          _statusMessage = "✅ Both devices synced successfully!";
+          _statusMessage = "❌ Could not connect to ${device.name ?? 'Device'}. Ensure Bluetooth is ON and Host Mode is active.";
         });
-      }, onError: (e) {
-        setState(() {
-          _isSyncing = false;
-          _statusMessage = "Sync error: $e";
-        });
-      });
-    } else {
+        return;
+      }
+
+      if (!mounted) return;
       setState(() {
-        _isSyncing = false;
-        _progress = 1.0;
-        _statusMessage = "✅ Transfer complete!";
+        _progress = 0.25;
+        _statusMessage = "Packaging local application data...";
       });
+
+      final localPayload = await BluetoothSyncEngine.instance.exportSyncBundle();
+      
+      if (!mounted) return;
+      setState(() {
+        _progress = 0.45;
+        _statusMessage = "Transferring data over Bluetooth...";
+      });
+
+      await BluetoothServiceManager.instance.sendPayload(localPayload, (p) {
+        if (mounted) {
+          setState(() {
+            _progress = 0.45 + (p * 0.35);
+          });
+        }
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _progress = 0.85;
+        _statusMessage = "Receiving response and merging latest records...";
+      });
+
+      final stream = BluetoothServiceManager.instance.receivePayloadStream((p) {
+        if (mounted) {
+          setState(() {
+            _progress = 0.85 + (p * 0.15);
+          });
+        }
+      });
+
+      if (stream != null) {
+        stream.listen((incomingPayload) async {
+          await BluetoothSyncEngine.instance.importAndMergeSyncBundle(incomingPayload);
+          if (mounted) {
+            setState(() {
+              _isSyncing = false;
+              _progress = 1.0;
+              _statusMessage = "✅ Both devices synced successfully!";
+            });
+          }
+        }, onError: (e) {
+          if (mounted) {
+            setState(() {
+              _isSyncing = false;
+              _statusMessage = "Sync error: $e";
+            });
+          }
+        });
+      } else {
+        if (mounted) {
+          setState(() {
+            _isSyncing = false;
+            _progress = 1.0;
+            _statusMessage = "✅ Transfer complete!";
+          });
+        }
+      }
+    } finally {
+      await BluetoothServiceManager.instance.disconnect();
     }
   }
 
@@ -334,66 +273,41 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
               ),
             ),
 
-          // Three Role Selector Buttons: Auto Sync (Default) | Host | Connect
+          // Two Role Selector Buttons: Host / Share | Connect & Sync
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _role == SyncRole.auto ? accentColor : Colors.white10,
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _role = SyncRole.auto;
-                      _statusMessage = "⚡ Auto-Sync Active: Scanning for paired devices...";
-                    });
-                    _startAutoSyncLoop();
-                  },
-                  icon: Icon(Icons.bolt_rounded,
-                      color: _role == SyncRole.auto ? Colors.black : Colors.white, size: 16.sp),
-                  label: Text("⚡ Auto Sync",
-                      style: AppFonts.text(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: _role == SyncRole.auto ? Colors.black : Colors.white)),
-                ),
-              ),
-              SizedBox(width: 6.w),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
                     backgroundColor: _role == SyncRole.host ? accentColor : Colors.white10,
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
                   ),
                   onPressed: _isSyncing ? null : _startHostMode,
-                  icon: const Icon(Icons.cell_tower, color: Colors.white, size: 16),
-                  label: Text("Host",
-                      style: AppFonts.text(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                  icon: const Icon(Icons.cell_tower, color: Colors.white),
+                  label: Text("Host / Share",
+                      style: AppFonts.text(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ),
-              SizedBox(width: 6.w),
+              SizedBox(width: 12.w),
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _role == SyncRole.receiver ? accentColor : Colors.white10,
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
                   ),
                   onPressed: _isSyncing
                       ? null
                       : () {
-                          _autoSyncTimer?.cancel();
                           setState(() {
                             _role = SyncRole.receiver;
                             _loadPairedDevices();
                           });
                         },
-                  icon: const Icon(Icons.sync_alt, color: Colors.white, size: 16),
-                  label: Text("Connect",
-                      style: AppFonts.text(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                  icon: const Icon(Icons.sync_alt, color: Colors.white),
+                  label: Text("Connect & Sync",
+                      style: AppFonts.text(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ),
             ],
@@ -481,9 +395,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
                             color: Colors.white),
                       ),
                       subtitle: Text(
-                        _role == SyncRole.auto
-                            ? "Auto-Sync Enabled · Proximity Scan"
-                            : device.address,
+                        device.address,
                         style: AppFonts.text(
                             fontSize: 10.5, color: Colors.white54),
                       ),
@@ -499,7 +411,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
                             ? null
                             : () => _startReceiverMode(device),
                         child: Text(
-                          _role == SyncRole.auto ? "SYNC NOW" : "SYNC",
+                          "SYNC",
                           style: AppFonts.compact(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
