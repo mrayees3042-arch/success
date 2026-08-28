@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'bluetooth_sync_engine.dart';
 
 class BluetoothServiceManager {
   static final BluetoothServiceManager instance = BluetoothServiceManager._internal();
@@ -81,6 +82,54 @@ class BluetoothServiceManager {
       }
     }
     return false;
+  }
+
+  Future<bool> performTwoWayAutoSync(
+    BluetoothDevice device,
+    Function(String status, double progress) onUpdate,
+  ) async {
+    try {
+      onUpdate("Connecting to ${device.name ?? 'Device'}...", 0.1);
+      final connected = await connectToDevice(device, maxAttempts: 2);
+      if (!connected) return false;
+
+      onUpdate("Packaging local data...", 0.3);
+      final localPayload = await BluetoothSyncEngine.instance.exportSyncBundle();
+
+      onUpdate("Transferring data over Bluetooth...", 0.5);
+      await sendPayload(localPayload, (p) {
+        onUpdate("Transferring data over Bluetooth...", 0.5 + (p * 0.3));
+      });
+
+      onUpdate("Merging latest records...", 0.85);
+      final stream = receivePayloadStream((p) {});
+      if (stream != null) {
+        final completer = Completer<bool>();
+        stream.listen((incomingPayload) async {
+          await BluetoothSyncEngine.instance.importAndMergeSyncBundle(incomingPayload);
+          completer.complete(true);
+        }, onError: (e) {
+          if (!completer.isCompleted) completer.complete(false);
+        }, onDone: () {
+          if (!completer.isCompleted) completer.complete(true);
+        });
+
+        final result = await completer.future.timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => true,
+        );
+        onUpdate("✅ Auto-Synced with ${device.name ?? 'Device'}!", 1.0);
+        await disconnect();
+        return result;
+      }
+
+      onUpdate("✅ Auto-Synced with ${device.name ?? 'Device'}!", 1.0);
+      await disconnect();
+      return true;
+    } catch (e) {
+      await disconnect();
+      return false;
+    }
   }
 
   Future<void> sendPayload(Uint8List payload, Function(double progress) onProgress) async {

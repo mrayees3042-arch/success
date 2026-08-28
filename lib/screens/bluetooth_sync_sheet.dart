@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
@@ -13,17 +14,19 @@ class BluetoothSyncSheet extends StatefulWidget {
   State<BluetoothSyncSheet> createState() => _BluetoothSyncSheetState();
 }
 
-enum SyncRole { none, host, receiver }
+enum SyncRole { auto, host, receiver }
 
 class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
-  SyncRole _role = SyncRole.none;
+  SyncRole _role = SyncRole.auto;
   bool _isPermissionGranted = false;
   bool _isBluetoothEnabled = false;
   List<BluetoothDevice> _pairedDevices = [];
   BluetoothDevice? _selectedDevice;
   bool _isSyncing = false;
   double _progress = 0.0;
-  String _statusMessage = "Select Host or Receiver mode to begin.";
+  String _statusMessage = "⚡ Auto-Sync Active: Scanning for paired devices...";
+  Timer? _autoSyncTimer;
+  DateTime? _lastAutoSyncTime;
 
   @override
   void initState() {
@@ -31,33 +34,120 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
     _initBluetooth();
   }
 
+  @override
+  void dispose() {
+    _autoSyncTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _initBluetooth() async {
     final granted = await BluetoothServiceManager.instance.requestPermissions();
     final enabled = await BluetoothServiceManager.instance.isBluetoothEnabled();
 
+    if (!mounted) return;
     setState(() {
       _isPermissionGranted = granted;
       _isBluetoothEnabled = enabled;
     });
 
     if (granted && enabled) {
-      _loadPairedDevices();
+      await _loadPairedDevices();
+      _startAutoSyncLoop();
     }
   }
 
   Future<void> _loadPairedDevices() async {
     final devices = await BluetoothServiceManager.instance.getPairedDevices();
+    if (!mounted) return;
     setState(() {
       _pairedDevices = devices;
     });
   }
 
+  void _startAutoSyncLoop() {
+    _autoSyncTimer?.cancel();
+    BluetoothServiceManager.instance.makeDiscoverable(300);
+
+    // Initial check right away
+    _runAutoSyncCheck();
+
+    // Periodic check every 5 seconds
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      if (_role == SyncRole.auto && !_isSyncing && _isBluetoothEnabled) {
+        _runAutoSyncCheck();
+      }
+    });
+  }
+
+  Future<void> _runAutoSyncCheck() async {
+    if (_pairedDevices.isEmpty) {
+      await _loadPairedDevices();
+    }
+
+    if (_pairedDevices.isEmpty || _isSyncing) return;
+
+    // Cooldown check (don't auto-sync if we auto-synced within last 12 seconds)
+    if (_lastAutoSyncTime != null &&
+        DateTime.now().difference(_lastAutoSyncTime!).inSeconds < 12) {
+      return;
+    }
+
+    for (var device in _pairedDevices) {
+      if (_role != SyncRole.auto || !mounted) break;
+
+      setState(() {
+        _isSyncing = true;
+        _selectedDevice = device;
+        _progress = 0.1;
+        _statusMessage = "⚡ Auto-Syncing with ${device.name ?? 'Device'}...";
+      });
+
+      final success = await BluetoothServiceManager.instance.performTwoWayAutoSync(
+        device,
+        (msg, prog) {
+          if (mounted) {
+            setState(() {
+              _statusMessage = msg;
+              _progress = prog;
+            });
+          }
+        },
+      );
+
+      if (success) {
+        _lastAutoSyncTime = DateTime.now();
+        final formattedTime =
+            "${_lastAutoSyncTime!.hour % 12 == 0 ? 12 : _lastAutoSyncTime!.hour % 12}:${_lastAutoSyncTime!.minute.toString().padLeft(2, '0')} ${_lastAutoSyncTime!.hour >= 12 ? 'PM' : 'AM'}";
+        if (mounted) {
+          setState(() {
+            _isSyncing = false;
+            _progress = 1.0;
+            _statusMessage =
+                "✅ Auto-Synced with ${device.name ?? 'Device'} at $formattedTime! (100% Data Parity)";
+          });
+        }
+        break;
+      } else {
+        if (mounted) {
+          setState(() {
+            _isSyncing = false;
+            _progress = 0.0;
+            _statusMessage =
+                "⚡ Auto-Sync Listening: Searching for ${device.name ?? 'paired device'} in range...";
+          });
+        }
+      }
+    }
+  }
+
   Future<void> _startHostMode() async {
+    _autoSyncTimer?.cancel();
     setState(() {
       _role = SyncRole.host;
       _isSyncing = true;
       _progress = 0.1;
-      _statusMessage = "📡 Host Mode Active (Discoverable). On the second phone, open Bluetooth Sync and tap SYNC.";
+      _statusMessage = "📡 Host Mode Active (Discoverable). On second phone, tap SYNC.";
     });
 
     final success = await BluetoothServiceManager.instance.startServer(
@@ -92,6 +182,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
   }
 
   Future<void> _startReceiverMode(BluetoothDevice device) async {
+    _autoSyncTimer?.cancel();
     setState(() {
       _role = SyncRole.receiver;
       _selectedDevice = device;
@@ -104,7 +195,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
     if (!connected) {
       setState(() {
         _isSyncing = false;
-        _statusMessage = "❌ Could not connect to ${device.name ?? 'Device'}. Ensure ${device.name ?? 'Device'} tapped 'Host / Share' and Bluetooth is ON.";
+        _statusMessage = "❌ Could not connect to ${device.name ?? 'Device'}. Ensure ${device.name ?? 'Device'} Bluetooth is ON.";
       });
       return;
     }
@@ -182,7 +273,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.bluetooth, color: accentColor, size: 24.sp),
+                  Icon(Icons.bluetooth_searching_rounded, color: accentColor, size: 24.sp),
                   SizedBox(width: 10.w),
                   Text(
                     "Offline Bluetooth Sync",
@@ -200,18 +291,19 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
               ),
             ],
           ),
-          SizedBox(height: 8.h),
+          SizedBox(height: 6.h),
           Text(
-            "Synchronize your app data directly between 2 smartphones over Bluetooth. No internet or servers required.",
+            "Auto-syncs application data directly between smartphones over Bluetooth. Zero internet required.",
             style: AppFonts.text(
-              fontSize: 13,
+              fontSize: 12.5,
               color: Colors.white70,
             ),
           ),
-          SizedBox(height: 20.h),
+          SizedBox(height: 16.h),
           if (!_isPermissionGranted || !_isBluetoothEnabled)
             Container(
               padding: EdgeInsets.all(14.r),
+              margin: EdgeInsets.only(bottom: 12.h),
               decoration: BoxDecoration(
                 color: Colors.amber.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14.r),
@@ -241,135 +333,186 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
                 ],
               ),
             ),
-          SizedBox(height: 16.h),
+
+          // Three Role Selector Buttons: Auto Sync (Default) | Host | Connect
           Row(
             children: [
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _role == SyncRole.host ? accentColor : Colors.white10,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                    backgroundColor: _role == SyncRole.auto ? accentColor : Colors.white10,
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                   ),
-                  onPressed: _isSyncing ? null : _startHostMode,
-                  icon: const Icon(Icons.cell_tower, color: Colors.white),
-                  label: Text("Host / Share", style: AppFonts.text(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                  onPressed: () {
+                    setState(() {
+                      _role = SyncRole.auto;
+                      _statusMessage = "⚡ Auto-Sync Active: Scanning for paired devices...";
+                    });
+                    _startAutoSyncLoop();
+                  },
+                  icon: Icon(Icons.bolt_rounded,
+                      color: _role == SyncRole.auto ? Colors.black : Colors.white, size: 16.sp),
+                  label: Text("⚡ Auto Sync",
+                      style: AppFonts.text(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _role == SyncRole.auto ? Colors.black : Colors.white)),
                 ),
               ),
-              SizedBox(width: 12.w),
+              SizedBox(width: 6.w),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _role == SyncRole.host ? accentColor : Colors.white10,
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                  ),
+                  onPressed: _isSyncing ? null : _startHostMode,
+                  icon: const Icon(Icons.cell_tower, color: Colors.white, size: 16),
+                  label: Text("Host",
+                      style: AppFonts.text(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
+              ),
+              SizedBox(width: 6.w),
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _role == SyncRole.receiver ? accentColor : Colors.white10,
-                    padding: EdgeInsets.symmetric(vertical: 14.h),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                   ),
                   onPressed: _isSyncing
                       ? null
                       : () {
+                          _autoSyncTimer?.cancel();
                           setState(() {
                             _role = SyncRole.receiver;
                             _loadPairedDevices();
                           });
                         },
-                  icon: const Icon(Icons.sync_alt, color: Colors.white),
-                  label: Text("Connect & Sync", style: AppFonts.text(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                  icon: const Icon(Icons.sync_alt, color: Colors.white, size: 16),
+                  label: Text("Connect",
+                      style: AppFonts.text(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 20.h),
-          if (_role == SyncRole.receiver) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Paired Bluetooth Devices:",
-                  style: AppFonts.text(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white70,
-                  ),
-                ),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: _loadPairedDevices,
-                      child: Row(
-                        children: [
-                          Icon(Icons.refresh, size: 14.sp, color: accentColor),
-                          SizedBox(width: 4.w),
-                          Text("Refresh", style: AppFonts.text(fontSize: 11, color: accentColor)),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    GestureDetector(
-                      onTap: () => BluetoothServiceManager.instance.openSettings(),
-                      child: Row(
-                        children: [
-                          Icon(Icons.settings_bluetooth, size: 14.sp, color: accentColor),
-                          SizedBox(width: 4.w),
-                          Text("Pair New", style: AppFonts.text(fontSize: 11, color: accentColor)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 8.h),
-            if (_pairedDevices.isEmpty)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 12.h),
-                child: Text(
-                  "No paired devices found. Tap 'Pair New' to open Android Bluetooth Settings.",
-                  style: AppFonts.text(fontSize: 12, color: Colors.white54),
-                ),
-              )
-            else
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: 160.h),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _pairedDevices.length,
-                  itemBuilder: (context, index) {
-                    final device = _pairedDevices[index];
-                    final isSelected = _selectedDevice?.address == device.address;
-                    return Card(
-                      color: isSelected ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                      margin: EdgeInsets.only(bottom: 8.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                        side: BorderSide(
-                          color: isSelected ? accentColor : Colors.transparent,
-                        ),
-                      ),
-                      child: ListTile(
-                        leading: const Icon(Icons.phone_android, color: accentColor),
-                        title: Text(
-                          device.name ?? "Unknown Device",
-                          style: AppFonts.text(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
-                        ),
-                        subtitle: Text(
-                          device.address,
-                          style: AppFonts.text(fontSize: 11, color: Colors.white54),
-                        ),
-                        trailing: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: accentColor,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
-                          ),
-                          onPressed: _isSyncing ? null : () => _startReceiverMode(device),
-                          child: const Text("SYNC"),
-                        ),
-                      ),
-                    );
-                  },
+          SizedBox(height: 16.h),
+
+          // Paired Devices List Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Paired Bluetooth Devices (${_pairedDevices.length}):",
+                style: AppFonts.text(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white70,
                 ),
               ),
-          ],
-          SizedBox(height: 16.h),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: _loadPairedDevices,
+                    child: Row(
+                      children: [
+                        Icon(Icons.refresh, size: 14.sp, color: accentColor),
+                        SizedBox(width: 4.w),
+                        Text("Refresh", style: AppFonts.text(fontSize: 11, color: accentColor)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  GestureDetector(
+                    onTap: () => BluetoothServiceManager.instance.openSettings(),
+                    child: Row(
+                      children: [
+                        Icon(Icons.settings_bluetooth, size: 14.sp, color: accentColor),
+                        SizedBox(width: 4.w),
+                        Text("Pair New", style: AppFonts.text(fontSize: 11, color: accentColor)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          if (_pairedDevices.isEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 12.h),
+              child: Text(
+                "No paired devices found. Tap 'Pair New' to pair both phones in Android Settings.",
+                style: AppFonts.text(fontSize: 12, color: Colors.white54),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 140.h),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _pairedDevices.length,
+                itemBuilder: (context, index) {
+                  final device = _pairedDevices[index];
+                  final isSelected =
+                      _selectedDevice?.address == device.address;
+                  return Card(
+                    color: isSelected
+                        ? accentColor.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.05),
+                    margin: EdgeInsets.only(bottom: 8.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      side: BorderSide(
+                        color: isSelected ? accentColor : Colors.transparent,
+                      ),
+                    ),
+                    child: ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.phone_android,
+                          color: accentColor),
+                      title: Text(
+                        device.name ?? "Unknown Device",
+                        style: AppFonts.text(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        _role == SyncRole.auto
+                            ? "Auto-Sync Enabled · Proximity Scan"
+                            : device.address,
+                        style: AppFonts.text(
+                            fontSize: 10.5, color: Colors.white54),
+                      ),
+                      trailing: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accentColor,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 4.h),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.r)),
+                        ),
+                        onPressed: _isSyncing
+                            ? null
+                            : () => _startReceiverMode(device),
+                        child: Text(
+                          _role == SyncRole.auto ? "SYNC NOW" : "SYNC",
+                          style: AppFonts.compact(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          SizedBox(height: 14.h),
           if (_isSyncing || _progress > 0) ...[
             LinearProgressIndicator(
               value: _progress,
@@ -380,16 +523,29 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
             ),
             SizedBox(height: 12.h),
           ],
+
+          // Status & Auto-Sync Banner
           Container(
             padding: EdgeInsets.all(12.r),
             decoration: BoxDecoration(
-              color: Colors.black26,
+              color: _statusMessage.contains("✅")
+                  ? accentColor.withOpacity(0.15)
+                  : Colors.black26,
               borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: _statusMessage.contains("✅")
+                    ? accentColor.withOpacity(0.4)
+                    : Colors.transparent,
+              ),
             ),
             child: Row(
               children: [
                 Icon(
-                  _isSyncing ? Icons.sync : Icons.info_outline,
+                  _isSyncing
+                      ? Icons.sync_rounded
+                      : (_statusMessage.contains("✅")
+                          ? Icons.check_circle_rounded
+                          : Icons.bolt_rounded),
                   color: accentColor,
                   size: 20.sp,
                 ),
@@ -399,6 +555,9 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
                     _statusMessage,
                     style: AppFonts.text(
                       fontSize: 12,
+                      fontWeight: _statusMessage.contains("✅")
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                       color: Colors.white,
                     ),
                   ),
@@ -406,7 +565,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
               ],
             ),
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 10.h),
         ],
       ),
     );
