@@ -1,12 +1,54 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:hive/hive.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/todo_task.dart';
 
 class BluetoothSyncEngine {
   static final BluetoothSyncEngine instance = BluetoothSyncEngine._internal();
   BluetoothSyncEngine._internal();
+
+  /// Export all application data to a shareable JSON backup file and open Android System Share (Bluetooth/Nearby)
+  Future<bool> exportAndShareDataFile() async {
+    try {
+      final rawBytes = await exportSyncBundle();
+      final tempDir = await getTemporaryDirectory();
+      final filePath = '${tempDir.path}/muttaqin_data_backup.json';
+      final file = File(filePath);
+      await file.writeAsBytes(rawBytes);
+
+      await Share.shareXFiles(
+        [XFile(filePath, mimeType: 'application/json')],
+        text: 'Muttaqin App Data File Backup (Send via Bluetooth / Nearby)',
+        subject: 'Muttaqin Data Backup',
+      );
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Let user pick a received data backup file (.json) and merge into local database
+  Future<bool> importDataFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final rawBytes = await file.readAsBytes();
+        return await importAndMergeSyncBundle(rawBytes);
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
 
   Future<Uint8List> exportSyncBundle() async {
     final prefs = await SharedPreferences.getInstance();

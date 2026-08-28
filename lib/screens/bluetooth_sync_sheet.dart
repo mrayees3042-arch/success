@@ -290,40 +290,118 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.bluetooth_searching_rounded, color: accentColor, size: 24.sp),
-                  SizedBox(width: 10.w),
-                  Text(
-                    "Offline Bluetooth Sync",
-                    style: AppFonts.display(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+              Icon(Icons.bluetooth_searching_rounded, color: accentColor, size: 22.sp),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  "Offline Bluetooth Sync",
+                  style: AppFonts.display(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                ],
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              Row(
-                children: [
-                  if (_pairedDevices.isNotEmpty || _isSyncing)
-                    const BlinkingGreenDot(label: "PAIRED LINK"),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white54),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white54),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
             ],
           ),
           SizedBox(height: 6.h),
           Text(
-            "Auto-syncs application data directly between smartphones over Bluetooth. Zero internet required.",
+            "Synchronize application data directly between smartphones over Bluetooth. Zero internet required.",
             style: AppFonts.text(
-              fontSize: 12.5,
+              fontSize: 12,
               color: Colors.white70,
+            ),
+          ),
+          SizedBox(height: 14.h),
+
+          // System Bluetooth File Share / Backup Options
+          Container(
+            padding: EdgeInsets.all(12.r),
+            margin: EdgeInsets.only(bottom: 14.h),
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(16.r),
+              border: Border.all(color: accentColor.withOpacity(0.25)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.folder_zip_rounded, color: accentColor, size: 18.sp),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        "Bluetooth File Share (100% Reliable)",
+                        style: AppFonts.text(fontSize: 12, fontWeight: FontWeight.bold, color: accentColor),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  "Packages all habits, workouts, debts, & settings into a file. Send over Bluetooth just like a photo or video!",
+                  style: AppFonts.text(fontSize: 11, color: Colors.white70),
+                ),
+                SizedBox(height: 10.h),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accentColor,
+                          padding: EdgeInsets.symmetric(vertical: 10.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                        ),
+                        onPressed: () async {
+                          final ok = await BluetoothSyncEngine.instance.exportAndShareDataFile();
+                          if (mounted) {
+                            setState(() {
+                              _statusMessage = ok
+                                  ? "📤 Backup file generated! Select Bluetooth to send."
+                                  : "Data file export ready.";
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.share, color: Colors.black, size: 14),
+                        label: Text("SEND VIA BLUETOOTH",
+                            style: AppFonts.compact(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.black)),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: accentColor),
+                          padding: EdgeInsets.symmetric(vertical: 10.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                        ),
+                        onPressed: () async {
+                          final ok = await BluetoothSyncEngine.instance.importDataFile();
+                          if (mounted) {
+                            setState(() {
+                              _statusMessage = ok
+                                  ? "✅ Restored all application data from backup file!"
+                                  : "No file imported or import cancelled.";
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.download, color: accentColor, size: 14),
+                        label: Text("IMPORT FILE",
+                            style: AppFonts.compact(fontSize: 9.5, fontWeight: FontWeight.bold, color: accentColor)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           SizedBox(height: 16.h),
@@ -486,7 +564,7 @@ class _BluetoothSyncSheetState extends State<BluetoothSyncSheet> {
                                   color: Colors.white),
                             ),
                           ),
-                          const BlinkingGreenDot(label: "CONNECTED"),
+                          const BlinkingGreenDot(label: "PAIRED"),
                         ],
                       ),
                       subtitle: Text(
