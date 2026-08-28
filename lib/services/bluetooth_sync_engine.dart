@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,9 +10,27 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/todo_task.dart';
 
+class ImportResult {
+  final bool success;
+  final String message;
+  final int prefsCount;
+  final int nativeStorageCount;
+  final int todosCount;
+
+  ImportResult({
+    required this.success,
+    required this.message,
+    this.prefsCount = 0,
+    this.nativeStorageCount = 0,
+    this.todosCount = 0,
+  });
+}
+
 class BluetoothSyncEngine {
   static final BluetoothSyncEngine instance = BluetoothSyncEngine._internal();
   BluetoothSyncEngine._internal();
+
+  static const MethodChannel _nativeChannel = MethodChannel('rayees.history/storage');
 
   /// Export all application data to a shareable JSON backup file and open Android System Share (Bluetooth/Nearby)
   Future<bool> exportAndShareDataFile() async {
@@ -33,7 +53,7 @@ class BluetoothSyncEngine {
   }
 
   /// Let user pick a received data backup file (.json) and merge into local database
-  Future<bool> importDataFile() async {
+  Future<ImportResult> importDataFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.any,
@@ -44,9 +64,15 @@ class BluetoothSyncEngine {
         final rawBytes = await file.readAsBytes();
         return await importAndMergeSyncBundle(rawBytes);
       }
-      return false;
+      return ImportResult(
+        success: false,
+        message: "No file selected or import cancelled.",
+      );
     } catch (e) {
-      return false;
+      return ImportResult(
+        success: false,
+        message: "Import error: ${e.toString()}",
+      );
     }
   }
 
@@ -58,6 +84,20 @@ class BluetoothSyncEngine {
       prefData[key] = prefs.get(key);
     }
 
+    // Export Native Android Storage (rayees_history: history_v2, income_log_v1, expense_log_v1, water_*)
+    final Map<String, dynamic> nativeStorageData = {};
+    try {
+      final Map<dynamic, dynamic>? nativeAll = await _nativeChannel.invokeMethod('getAll');
+      if (nativeAll != null) {
+        nativeAll.forEach((key, value) {
+          if (key != null && value != null) {
+            nativeStorageData[key.toString()] = value.toString();
+          }
+        });
+      }
+    } catch (_) {}
+
+    // Export Hive todosBox
     final Map<String, dynamic> hiveData = {};
     if (Hive.isBoxOpen('todosBox')) {
       final box = Hive.box<TodoTask>('todosBox');
@@ -74,36 +114,82 @@ class BluetoothSyncEngine {
 
     final payloadMap = {
       'schema_version': 1,
+      'app_name': 'Muttaqin',
       'exported_at': DateTime.now().toUtc().toIso8601String(),
       'shared_preferences': prefData,
+      'native_storage': nativeStorageData,
       'hive_boxes': hiveData,
     };
 
-    final jsonString = jsonEncode(payloadMap);
+    // Offload JSON serialization to background isolate via compute
+    final jsonString = await compute(_encodeJsonIso, payloadMap);
     return Uint8List.fromList(utf8.encode(jsonString));
   }
 
-  Future<bool> importAndMergeSyncBundle(Uint8List rawPayload) async {
+  Future<ImportResult> importAndMergeSyncBundle(Uint8List rawPayload) async {
+    if (rawPayload.isEmpty) {
+      return ImportResult(
+        success: false,
+        message: "Failed: Received data file is empty (0 bytes).",
+      );
+    }
+
     try {
       final jsonString = utf8.decode(rawPayload);
-      final Map<String, dynamic> payload = jsonDecode(jsonString);
+      // Offload JSON parsing to background isolate via compute
+      final Map<String, dynamic> payload = await compute(_decodeJsonIso, jsonString);
+
+      if (!payload.containsKey('schema_version')) {
+        return ImportResult(
+          success: false,
+          message: "Failed: Invalid or corrupt backup file schema.",
+        );
+      }
+
+      int prefCount = 0;
+      int nativeCount = 0;
+      int todoCount = 0;
 
       final prefs = await SharedPreferences.getInstance();
-      
+
+      // 1. Merge Standard SharedPreferences with strict async writes
+      if (payload.containsKey('shared_preferences')) {
+        final Map<String, dynamic> incomingPrefs = Map<String, dynamic>.from(payload['shared_preferences']);
+
+        for (var entry in incomingPrefs.entries) {
+          if (entry.value != null) {
+            final ok = await _setPrefValue(prefs, entry.key, entry.value);
+            if (ok) prefCount++;
+          }
+        }
+        await prefs.reload();
+      }
+
       // Save local backup timestamp
       await prefs.setString('bluetooth_last_backup_at', DateTime.now().toUtc().toIso8601String());
 
-      // 1. Merge SharedPreferences (100% coverage across all user data)
-      if (payload.containsKey('shared_preferences')) {
-        final Map<String, dynamic> incomingPrefs = Map<String, dynamic>.from(payload['shared_preferences']);
-        
-        incomingPrefs.forEach((key, incomingVal) {
-          if (incomingVal == null) return;
-          _setPrefValue(prefs, key, incomingVal);
+      // 2. Merge Native Android Storage (history_v2, income_log_v1, expense_log_v1, water_*)
+      if (payload.containsKey('native_storage')) {
+        final Map<String, dynamic> incomingNative = Map<String, dynamic>.from(payload['native_storage']);
+        final Map<String, String> nativePayload = {};
+
+        incomingNative.forEach((key, val) {
+          if (val != null) {
+            nativePayload[key] = val.toString();
+          }
         });
+
+        if (nativePayload.isNotEmpty) {
+          try {
+            final bool? ok = await _nativeChannel.invokeMethod('setAll', nativePayload);
+            if (ok == true) {
+              nativeCount = nativePayload.length;
+            }
+          } catch (_) {}
+        }
       }
 
-      // 2. Merge Hive todosBox (100% coverage across all todo tasks)
+      // 3. Merge Hive todosBox
       if (payload.containsKey('hive_boxes')) {
         final Map<String, dynamic> hiveBoxes = Map<String, dynamic>.from(payload['hive_boxes']);
         if (hiveBoxes.containsKey('todosBox') && Hive.isBoxOpen('todosBox')) {
@@ -131,6 +217,7 @@ class BluetoothSyncEngine {
                   final existing = existingTasksMap[taskKey]!;
                   existing.isCompleted = isCompleted;
                   await existing.save();
+                  todoCount++;
                 } else {
                   final newTask = TodoTask(
                     title: title,
@@ -138,6 +225,7 @@ class BluetoothSyncEngine {
                     createdAt: createdAt,
                   );
                   await box.add(newTask);
+                  todoCount++;
                 }
               }
             }
@@ -145,23 +233,37 @@ class BluetoothSyncEngine {
         }
       }
 
-      return true;
+      return ImportResult(
+        success: true,
+        message: "Data was received and imported successfully! ($prefCount settings, $nativeCount logs, $todoCount tasks committed)",
+        prefsCount: prefCount,
+        nativeStorageCount: nativeCount,
+        todosCount: todoCount,
+      );
     } catch (e) {
-      return false;
+      return ImportResult(
+        success: false,
+        message: "Data import failed: ${e.toString()}",
+      );
     }
   }
 
-  void _setPrefValue(SharedPreferences prefs, String key, dynamic value) {
+  Future<bool> _setPrefValue(SharedPreferences prefs, String key, dynamic value) async {
     if (value is bool) {
-      prefs.setBool(key, value);
+      return await prefs.setBool(key, value);
     } else if (value is int) {
-      prefs.setInt(key, value);
+      return await prefs.setInt(key, value);
     } else if (value is double) {
-      prefs.setDouble(key, value);
+      return await prefs.setDouble(key, value);
     } else if (value is String) {
-      prefs.setString(key, value);
+      return await prefs.setString(key, value);
     } else if (value is List) {
-      prefs.setStringList(key, value.cast<String>());
+      return await prefs.setStringList(key, value.cast<String>());
     }
+    return false;
   }
 }
+
+// Global top-level functions for compute isolates
+String _encodeJsonIso(Map<String, dynamic> data) => jsonEncode(data);
+Map<String, dynamic> _decodeJsonIso(String jsonStr) => jsonDecode(jsonStr) as Map<String, dynamic>;

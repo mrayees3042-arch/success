@@ -92,6 +92,22 @@ List<TodayTask> kTodayTasks = List<TodayTask>.from(kDefaultTodayTasks);
 
 const kPrayerNames = ['Tahajjud', 'Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
+String getPrayerDisplayName(String prayerName, [DateTime? date]) {
+  final d = date ?? DateTime.now();
+  if (prayerName == 'Dhuhr' && d.weekday == DateTime.friday) {
+    return 'Jumu\'ah';
+  }
+  return prayerName;
+}
+
+String getPrayerArabicName(String prayerName, [DateTime? date]) {
+  final d = date ?? DateTime.now();
+  if (prayerName == 'Dhuhr' && d.weekday == DateTime.friday) {
+    return '\u0627\u0644\u062c\u0645\u0639\u0629';
+  }
+  return _TodayScreenState.arabicNames[prayerName] ?? '';
+}
+
 String dayKey(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
@@ -1218,6 +1234,14 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           userDob: _userDob,
           onProfileChanged: _updateProfile,
           onResetToday: () => _resetDayData(DateTime.now()),
+          onDataRestored: () async {
+            await _loadUserProfile();
+            await _loadAppData();
+            await _loadIncome();
+            await _loadExpenses();
+            await _loadWater();
+            if (mounted) setState(() {});
+          },
         ),
       ),
       SizedBox.expand(
@@ -1710,10 +1734,12 @@ class _TaskEditSheetState extends State<_TaskEditSheet> {
         top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Text(
             isEditing ? 'Edit daily task' : 'Add daily task',
             style: AppFonts.display(
@@ -1778,6 +1804,7 @@ class _TaskEditSheetState extends State<_TaskEditSheet> {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -1807,10 +1834,12 @@ class TodayScreen extends StatefulWidget {
     required this.userDob,
     this.onProfileChanged,
     this.onResetToday,
+    this.onDataRestored,
   });
 
   final Function(String, int, int, int, String)? onProfileChanged;
   final VoidCallback? onResetToday;
+  final VoidCallback? onDataRestored;
 
   final ThemeColors theme;
   final DayRecord record;
@@ -1915,6 +1944,7 @@ class _TodayScreenState extends State<TodayScreen>
         userDob: widget.userDob,
         onProfileChanged: widget.onProfileChanged,
         onResetToday: widget.onResetToday,
+        onDataRestored: widget.onDataRestored,
         onSaved: () {
           if (mounted) {
             setState(() {});
@@ -3079,7 +3109,7 @@ class _TodayScreenState extends State<TodayScreen>
         'quote': 'The feet of a servant will not move on the Day of Judgment until he is asked about his life and how he spent it.',
         'source': '— Tirmidhi',
         'action': "Review today's prayers ›",
-        'period': 'After Dhuhr',
+        'period': now.weekday == DateTime.friday ? 'After Jumu\'ah' : 'After Dhuhr',
       };
     } else {
       return {
@@ -4023,13 +4053,15 @@ class _TodayScreenState extends State<TodayScreen>
   Widget _prayerTile(String prayer, String arabic) {
     final done = widget.record.prayers[prayer] ?? false;
     final missed = !done && isPrayerPassed(prayer);
-    final isNext = !done && !missed && _getNextPrayer()['name'] == prayer;
+    final isNext = !done && !missed && _getNextPrayer()['rawName'] == prayer;
 
     final tod = _prayerTimes[prayer] ?? const TimeOfDay(hour: 0, minute: 0);
     final hour12 = tod.hour == 0
         ? 12
         : (tod.hour > 12 ? tod.hour - 12 : tod.hour);
     final timeStr = '$hour12:${tod.minute.toString().padLeft(2, '0')}';
+
+    final displayName = getPrayerDisplayName(prayer, DateTime.now());
 
     Color borderColor;
     Color timeColor;
@@ -4068,7 +4100,7 @@ class _TodayScreenState extends State<TodayScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              prayer,
+              displayName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppFonts.compact(
@@ -4149,14 +4181,15 @@ class _TodayScreenState extends State<TodayScreen>
         final timeStr =
             '$hour12:${time.minute.toString().padLeft(2, '0')} $ampm';
         final inStr = 'in ${hours > 0 ? '${hours}h ' : ''}${minutes}m';
-        return {'name': prayer, 'time': timeStr, 'in': inStr};
+        final displayName = getPrayerDisplayName(prayer, now);
+        return {'name': displayName, 'rawName': prayer, 'time': timeStr, 'in': inStr};
       }
     }
     final completedCount = widget.record.prayers.entries
         .where((e) => e.key != 'Tahajjud' && e.value == true)
         .length;
     if (completedCount >= 5) {
-      return {'name': 'All Done', 'time': '5/5 prayed', 'in': '✓'};
+      return {'name': 'All Done', 'rawName': 'All Done', 'time': '5/5 prayed', 'in': '✓'};
     }
 
     // After Isha: Next upcoming prayer is Tomorrow's Fajr
@@ -5109,7 +5142,10 @@ class _TodayScreenState extends State<TodayScreen>
                 (p) => Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                    child: _prayerTile(p, _TodayScreenState.arabicNames[p]!),
+                    child: _prayerTile(
+                      p,
+                      getPrayerArabicName(p, DateTime.now()),
+                    ),
                   ),
                 ),
               )
@@ -7825,7 +7861,7 @@ class DayHistoryCard extends StatelessWidget {
               for (final prayer in kPrayerNames)
                 StatusChip(
                   theme: theme,
-                  label: prayer,
+                  label: getPrayerDisplayName(prayer, date),
                   done: record.prayers[prayer] ?? false,
                   color: prayerColor(prayer, theme),
                 ),
@@ -20436,6 +20472,7 @@ class _SettingsSheet extends StatefulWidget {
   final Function(String, int, int, int, String)? onProfileChanged;
   final VoidCallback onSaved;
   final VoidCallback? onResetToday;
+  final VoidCallback? onDataRestored;
 
   const _SettingsSheet({
     required this.theme,
@@ -20447,6 +20484,7 @@ class _SettingsSheet extends StatefulWidget {
     this.onProfileChanged,
     required this.onSaved,
     this.onResetToday,
+    this.onDataRestored,
   });
 
   @override
@@ -20971,7 +21009,7 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                   Divider(color: theme.border, height: 0.5, thickness: 0.5),
                   ListTile(
                     title: Text(
-                      'Offline Bluetooth Sync',
+                      'Transfer App Data',
                       style: AppFonts.text(
                         color: theme.text1,
                         fontSize: 13,
@@ -20979,17 +21017,22 @@ class _SettingsSheetState extends State<_SettingsSheet> {
                       ),
                     ),
                     subtitle: Text(
-                      'Sync data directly between 2 devices over Bluetooth',
+                      'Export or import your habits, workouts, debts, and settings',
                       style: AppFonts.text(color: theme.text3, fontSize: 11),
                     ),
-                    trailing: const Icon(Icons.bluetooth_searching, color: Color(0xFF2DD4A8), size: 20),
+                    trailing: const Icon(Icons.swap_vert_rounded, color: Color(0xFF2DD4A8), size: 20),
                     onTap: () {
                       Navigator.of(context).pop();
                       showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
-                        builder: (_) => const BluetoothSyncSheet(),
+                        builder: (_) => BluetoothSyncSheet(
+                          onDataRestored: () {
+                            widget.onSaved();
+                            widget.onDataRestored?.call();
+                          },
+                        ),
                       );
                     },
                   ),

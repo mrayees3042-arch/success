@@ -33,6 +33,21 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                 }
+                "getAll" -> {
+                    val allEntries = prefs.all.mapValues { it.value?.toString() ?: "" }
+                    result.success(allEntries)
+                }
+                "setAll" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val editor = prefs.edit()
+                    args?.forEach { (k, v) ->
+                        if (k is String && v is String) {
+                            editor.putString(k, v)
+                        }
+                    }
+                    val committed = editor.commit()
+                    result.success(committed)
+                }
                 "savePdfToDownloads" -> {
                     val args = call.arguments as? Map<*, *>
                     val fileName = args?.get("fileName") as? String

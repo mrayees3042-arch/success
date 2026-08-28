@@ -1,13 +1,11 @@
 import '../core/app_fonts.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:success/main.dart';
 import 'package:success/providers/theme_provider.dart';
 import 'package:success/services/haptic_service.dart';
 import 'package:success/services/sound_manager.dart';
-import 'package:success/widgets/pulse_m_logo.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -146,6 +144,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
           children: [
@@ -221,7 +220,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
             // Bottom Action Button
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: GestureDetector(
                 onTap: _nextPage,
                 child: Container(
@@ -268,8 +267,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     Color borderColor,
     bool isDark,
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -351,11 +351,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ? _nameController.text.trim().toUpperCase()
         : 'YOUR NAME';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             'What is your name?',
@@ -370,7 +370,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'This will personalize your splash screen and dashboard experience.',
             style: AppFonts.text(fontSize: 14, color: textMuted),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
 
           // Name Input Field
           Container(
@@ -401,7 +401,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
 
           // Live Preview Card
           Container(
@@ -466,11 +466,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final formattedDob =
         '${_selectedDob.day} ${monthNames[_selectedDob.month - 1]} ${_selectedDob.year}';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             'When were you born?',
@@ -485,7 +485,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'Your Date of Birth powers the exact Life Odometer countdown.',
             style: AppFonts.text(fontSize: 14, color: textMuted),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
 
           // Date Picker Button Trigger
           GestureDetector(
@@ -531,7 +531,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // Calculated Age Card
           Container(
@@ -590,11 +590,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ) {
     final years = [2027, 2028, 2030];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             'Target Horizon',
@@ -609,7 +609,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'Choose your primary milestone year for daily progress tracking.',
             style: AppFonts.text(fontSize: 14, color: textMuted),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
 
           Column(
             children: years.map((year) {
