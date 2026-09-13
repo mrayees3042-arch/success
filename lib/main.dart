@@ -8302,7 +8302,7 @@ Future<void> detectLocationByIp() async {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.containsKey('prayer_latitude')) return;
 
-    final client = HttpClient();
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
     final request = await client.getUrl(Uri.parse('http://ip-api.com/json'));
     final response = await request.close();
     if (response.statusCode == 200) {
