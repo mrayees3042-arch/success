@@ -38,6 +38,7 @@ class LifeGoal {
   double progress;
   Color color;
   bool isDone;
+  String section; // 'left' (Out of My Control / Let Go) or 'right' (In My Control / I Can Do)
   List<SubTask> subTasks;
 
   LifeGoal({
@@ -47,6 +48,7 @@ class LifeGoal {
     required this.progress,
     required this.color,
     this.isDone = false,
+    this.section = 'right',
     List<SubTask>? subTasks,
   }) : subTasks = subTasks ?? [];
 
@@ -57,6 +59,7 @@ class LifeGoal {
     'progress': progress,
     'color': color.toARGB32(),
     'isDone': isDone,
+    'section': section,
     'subTasks': subTasks.map((t) => t.toJson()).toList(),
   };
 
@@ -67,6 +70,7 @@ class LifeGoal {
     progress: (json['progress'] as num).toDouble(),
     color: Color(json['color'] as int),
     isDone: json['isDone'] as bool? ?? false,
+    section: (json['section'] as String?) ?? 'right',
     subTasks: (json['subTasks'] as List?)
         ?.map((t) => SubTask.fromJson(t as Map<String, dynamic>))
         .toList() ?? [],
@@ -91,6 +95,7 @@ class LifePlanScreen extends StatefulWidget {
 class _LifePlanScreenState extends State<LifePlanScreen> {
   List<LifeGoal> _goals = [];
   bool _isLoading = true;
+  String _selectedSection = 'right'; // 'left' = Out of Control (Let Go), 'right' = In My Control (I Can Do)
   final Set<String> _expandedGoalIds = {};
 
   void _toggleGoalCompletion(LifeGoal goal) {
@@ -159,6 +164,29 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     _saveGoals();
   }
 
+  void _moveGoalSection(LifeGoal goal, String targetSection) {
+    HapticService.medium();
+    AudioService.playHabitComplete();
+    setState(() {
+      goal.section = targetSection;
+    });
+    _saveGoals();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          targetSection == 'left'
+              ? 'Moved to Left Section (Out of Control — Let Go) 🍃'
+              : 'Moved to Right Section (In My Control — Actionable) ⚡',
+          style: AppFonts.text(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: targetSection == 'left' ? const Color(0xFF334155) : const Color(0xFF059669),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -217,8 +245,6 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     await prefs.setString('life_plan_goals', encoded);
   }
 
-
-
   void _deleteGoal(LifeGoal goal) {
     setState(() {
       _goals.remove(goal);
@@ -226,11 +252,12 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     _saveGoals();
   }
 
-  void _showAddGoalSheet() {
+  void _showAddGoalSheet({String? defaultSection}) {
     final titleCtrl = TextEditingController();
     final dateCtrl = TextEditingController();
+    String section = defaultSection ?? _selectedSection;
     double progressVal = 0.0;
-    Color selectedColor = kBlue;
+    Color selectedColor = section == 'left' ? const Color(0xFF38BDF8) : kBlue;
 
     showModalBottomSheet(
       context: context,
@@ -242,6 +269,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
       builder: (BuildContext sheetContext) {
         return StatefulBuilder(
           builder: (BuildContext sheetContext, setSheetState) {
+            final isLeft = section == 'left';
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
@@ -253,20 +281,120 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Add New Goal',
-                    style: AppFonts.display(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: widget.theme.text1,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isLeft ? 'Dump Idea / Thought 🍃' : 'Add Actionable Goal ⚡',
+                        style: AppFonts.display(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: widget.theme.text1,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isLeft
+                              ? const Color(0xFF38BDF8).withValues(alpha: 0.15)
+                              : const Color(0xFF00C896).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          isLeft ? 'Left Section' : 'Right Section',
+                          style: AppFonts.text(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isLeft ? const Color(0xFF38BDF8) : const Color(0xFF00C896),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Section Choice Switcher
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: widget.theme.isDark ? const Color(0xFF131320) : const Color(0xFFE5E0D8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setSheetState(() {
+                                section = 'left';
+                                selectedColor = const Color(0xFF38BDF8);
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isLeft
+                                    ? (widget.theme.isDark ? const Color(0xFF1E293B) : Colors.white)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '🍃 Left (Out of Control)',
+                                  style: AppFonts.text(
+                                    fontSize: 12,
+                                    fontWeight: isLeft ? FontWeight.w700 : FontWeight.w500,
+                                    color: isLeft ? widget.theme.text1 : widget.theme.text3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setSheetState(() {
+                                section = 'right';
+                                selectedColor = kBlue;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: !isLeft
+                                    ? (widget.theme.isDark ? const Color(0xFF1E293B) : Colors.white)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '⚡ Right (I Can Do)',
+                                  style: AppFonts.text(
+                                    fontSize: 12,
+                                    fontWeight: !isLeft ? FontWeight.w700 : FontWeight.w500,
+                                    color: !isLeft ? widget.theme.text1 : widget.theme.text3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
+
                   TextField(
                     controller: titleCtrl,
+                    autofocus: true,
                     style: AppFonts.text(color: widget.theme.text1, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
-                      labelText: 'Goal Title',
+                      labelText: isLeft ? 'Idea / Thought to dump' : 'Goal Title',
+                      hintText: isLeft
+                          ? 'e.g. Market trend, someone\'s reaction, future uncertainty...'
+                          : 'e.g. Master Flutter, build app feature...',
+                      hintStyle: AppFonts.text(color: widget.theme.text3.withValues(alpha: 0.6), fontSize: 13),
                       labelStyle: AppFonts.text(color: widget.theme.text3),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -274,16 +402,19 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: kGold, width: 1.5),
+                        borderSide: BorderSide(
+                          color: isLeft ? const Color(0xFF38BDF8) : kGold,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   TextField(
                     controller: dateCtrl,
                     style: AppFonts.text(color: widget.theme.text1, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
-                      labelText: 'Target Date (e.g. Dec 2025)',
+                      labelText: isLeft ? 'Optional Note / Context' : 'Target Date (e.g. Dec 2026)',
                       labelStyle: AppFonts.text(color: widget.theme.text3),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -291,51 +422,53 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: kGold, width: 1.5),
+                        borderSide: BorderSide(
+                          color: isLeft ? const Color(0xFF38BDF8) : kGold,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children:
-                        [
-                          kBlue,
-                          kGold,
-                          kGreen,
-                          kTeal,
-                          const Color(0xFFf97316),
-                          kRed,
-                        ].map((c) {
-                          return GestureDetector(
-                            onTap: () {
-                              if (mounted) {
-                                setSheetState(() => selectedColor = c);
-                              }
-                            },
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: c,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: selectedColor == c
-                                      ? widget.theme.text1
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                              ),
+                    children: [
+                      kBlue,
+                      kGold,
+                      kGreen,
+                      kTeal,
+                      const Color(0xFFf97316),
+                      kRed,
+                    ].map((c) {
+                      return GestureDetector(
+                        onTap: () {
+                          if (mounted) {
+                            setSheetState(() => selectedColor = c);
+                          }
+                        },
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: c,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selectedColor == c
+                                  ? widget.theme.text1
+                                  : Colors.transparent,
+                              width: 2,
                             ),
-                          );
-                        }).toList(),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: kGold,
+                        backgroundColor: isLeft ? const Color(0xFF38BDF8) : kGold,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -344,7 +477,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       onPressed: () {
                         final title = titleCtrl.text.trim();
                         final deadline = dateCtrl.text.trim().isEmpty
-                            ? 'Ongoing'
+                            ? (isLeft ? 'Let Go & Parked' : 'Ongoing')
                             : dateCtrl.text.trim();
                         if (title.isEmpty) return;
                         final goal = LifeGoal(
@@ -353,6 +486,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                           deadline: deadline,
                           progress: progressVal,
                           color: selectedColor,
+                          section: section,
                         );
 
                         FocusScope.of(sheetContext).unfocus();
@@ -366,22 +500,23 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                           if (mounted) {
                             setState(() {
                               _goals.add(goal);
+                              _selectedSection = section;
                             });
                             _saveGoals();
                           }
                         });
                       },
                       child: Text(
-                        'Add Goal',
+                        isLeft ? 'Dump to Left Section 🍃' : 'Add to Right Section ⚡',
                         style: AppFonts.display(
                           color: Colors.black,
                           fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                          fontSize: 15,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                 ],
               ),
             );
@@ -398,21 +533,12 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final now = DateTime.now();
-    final yearStart = DateTime(now.year, 1, 1);
-    final yearEnd = DateTime(now.year + 1, 1, 1);
-    final totalDays = yearEnd.difference(yearStart).inDays;
-    final daysPassed = now.difference(yearStart).inDays + 1;
-    final daysRemaining = totalDays - daysPassed;
-    final progressPercent = daysPassed / totalDays;
-
     final isDark = theme.isDark;
     final bgColor = isDark ? const Color(0xFF06060F) : const Color(0xFFF5F0E8);
     final cardBg = isDark ? const Color(0x0AFFFFFF) : const Color(0xFFFFFFFF);
     final cardBorder = isDark ? const Color(0x14FFFFFF) : const Color(0x12000000);
 
     final goldColor = isDark ? const Color(0xFFE8B84B) : const Color(0xFFA0720A);
-    final gold2Color = isDark ? const Color(0xFFFFD573) : const Color(0xFFD49C24);
     final emeraldColor = isDark ? const Color(0xFF00C896) : const Color(0xFF0A7A5A);
     final azureColor = isDark ? const Color(0xFF38BDF8) : const Color(0xFF1565A0);
     final purpleColor = isDark ? const Color(0xFFA855F7) : const Color(0xFF7C3AED);
@@ -422,242 +548,335 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     final text2 = theme.text2;
     final text3 = theme.text3;
 
-    final activeGoals = _goals.where((g) => !g.isDone).toList();
-    final completedGoals = _goals.where((g) => g.isDone).toList();
+    final leftGoals = _goals.where((g) => g.section == 'left').toList();
+    final rightGoals = _goals.where((g) => g.section != 'left').toList();
 
-    // Year progress card helper
-    Widget buildYearProgressCard() {
+    final currentSectionGoals = _selectedSection == 'left' ? leftGoals : rightGoals;
+    final activeGoals = currentSectionGoals.where((g) => !g.isDone).toList();
+    final completedGoals = currentSectionGoals.where((g) => g.isDone).toList();
+
+    // Section Selector Widget
+    Widget buildSectionSwitcher() {
+      final isLeft = _selectedSection == 'left';
       return Container(
+        padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(20),
+          color: isDark ? const Color(0xFF131320) : const Color(0xFFE8E2D8),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: cardBorder, width: 0.5),
         ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'YEAR PROGRESS',
-                  style: AppFonts.text(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: text3,
-                    letterSpacing: 1,
+            // Left Section Tab (Out of Control / Let Go)
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  HapticService.selection();
+                  setState(() => _selectedSection = 'left');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isLeft
+                        ? (isDark ? const Color(0xFF1E293B) : Colors.white)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: isLeft
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            )
+                          ]
+                        : null,
                   ),
-                ),
-                Text(
-                  '${(progressPercent * 100).round()}%',
-                  style: AppFonts.display(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: goldColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: Container(
-                height: 6,
-                width: double.infinity,
-                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: progressPercent,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [goldColor, gold2Color],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('🍃', style: TextStyle(fontSize: 14)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Left (Let Go)',
+                          style: AppFonts.text(
+                            fontSize: 12.5,
+                            fontWeight: isLeft ? FontWeight.w700 : FontWeight.w500,
+                            color: isLeft ? text1 : text3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
+                      if (leftGoals.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: azureColor.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${leftGoals.length}',
+                            style: AppFonts.compact(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: azureColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Day $daysPassed of $totalDays',
-                  style: AppFonts.text(
-                    fontSize: 11,
-                    color: text3,
+            // Right Section Tab (In My Control / I Can Do)
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  HapticService.selection();
+                  setState(() => _selectedSection = 'right');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: !isLeft
+                        ? (isDark ? const Color(0xFF1E293B) : Colors.white)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: !isLeft
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            )
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('⚡', style: TextStyle(fontSize: 14)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Right (I Can Do)',
+                          style: AppFonts.text(
+                            fontSize: 12.5,
+                            fontWeight: !isLeft ? FontWeight.w700 : FontWeight.w500,
+                            color: !isLeft ? text1 : text3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (rightGoals.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: emeraldColor.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${rightGoals.length}',
+                            style: AppFonts.compact(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: emeraldColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                Text(
-                  '$daysRemaining days left',
-                  style: AppFonts.text(
-                    fontSize: 11,
-                    color: text3,
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
       );
     }
 
-    // Empty state helper with suggestions to eliminate dead space below fold
-    Widget buildEmptyState() {
-      final templates = [
-        {
-          'title': 'Launch Freelance Project',
-          'date': '3 Months',
-          'color': emeraldColor,
-          'icon': '💼',
-        },
-        {
-          'title': 'Master Flutter & AI Architecture',
-          'date': '6 Months',
-          'color': azureColor,
-          'icon': '🚀',
-        },
-        {
-          'title': 'Complete Quran Reading (Khatam)',
-          'date': '1 Year',
-          'color': goldColor,
-          'icon': '🕌',
-        },
-        {
-          'title': 'Achieve Target Savings Fund',
-          'date': 'Ongoing',
-          'color': purpleColor,
-          'icon': '🎯',
-        },
-      ];
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: cardBorder, width: 0.5),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Ambient illustration separated from actionable CTA
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: emeraldColor.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: emeraldColor.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.flag_rounded,
-                    size: 30,
-                    color: emeraldColor,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No goals set yet',
-                  style: AppFonts.display(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: text1,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Define your key milestones to stay aligned with your vision.',
-                  style: AppFonts.text(
-                    fontSize: 13,
-                    color: text3,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 22),
-                // High-Affordance High-Contrast Primary CTA Button
-                GestureDetector(
-                  onTap: _showAddGoalSheet,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          emeraldColor,
-                          isDark
-                              ? const Color(0xFF059669)
-                              : const Color(0xFF047857),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: emeraldColor.withValues(alpha: 0.28),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.add_rounded,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Add New Goal',
-                            style: AppFonts.text(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    // Explanatory Section Banner
+    Widget buildSectionBanner() {
+      final isLeft = _selectedSection == 'left';
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isLeft
+              ? (isDark ? const Color(0xFF0F172A).withValues(alpha: 0.7) : const Color(0xFFE2E8F0))
+              : emeraldColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isLeft ? azureColor.withValues(alpha: 0.25) : emeraldColor.withValues(alpha: 0.25),
+            width: 0.5,
           ),
-        ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(isLeft ? '🍃' : '⚡', style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isLeft
+                        ? 'OUT OF MY CONTROL (PARKED & LET GO)'
+                        : 'IN MY CONTROL (ACTIONABLE GOALS)',
+                    style: AppFonts.text(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: isLeft ? azureColor : emeraldColor,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    isLeft
+                        ? 'Dump ideas, thoughts, and external outcomes here. You cannot control them, so zero stress — no need to worry.'
+                        : 'Things you can do yourself. Focus your daily energy, steps, and execution here.',
+                    style: AppFonts.text(
+                      fontSize: 12.5,
+                      color: text2,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       );
     }
 
-    // Focus card helper
+    // Empty state helper
+    Widget buildEmptyState() {
+      final isLeft = _selectedSection == 'left';
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cardBorder, width: 0.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.2),
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                isLeft ? Icons.spa_rounded : Icons.flag_rounded,
+                size: 30,
+                color: isLeft ? azureColor : emeraldColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isLeft ? 'Left Section is Clear' : 'No Actionable Goals Yet',
+              style: AppFonts.display(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: text1,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isLeft
+                  ? 'Have worries, external factors, or uncontrollable thoughts? Dump them here to free your mind.'
+                  : 'Add goals and milestones that you can take action on yourself.',
+              style: AppFonts.text(
+                fontSize: 13,
+                color: text3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 22),
+            GestureDetector(
+              onTap: () => _showAddGoalSheet(defaultSection: _selectedSection),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isLeft
+                        ? [azureColor, const Color(0xFF0284C7)]
+                        : [emeraldColor, const Color(0xFF059669)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.28),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        isLeft ? 'Dump to Left Section' : 'Add to Right Section',
+                        style: AppFonts.text(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Goal / Dump Card Builder
     Widget buildGoalCard(LifeGoal goal) {
       final isCompleted = goal.isDone;
       final expanded = _expandedGoalIds.contains(goal.id);
+      final isLeft = goal.section == 'left';
 
-      final accentGradient = isCompleted
-          ? LinearGradient(colors: [emeraldColor, goldColor])
-          : LinearGradient(colors: [azureColor, purpleColor]);
+      final accentGradient = isLeft
+          ? LinearGradient(colors: [azureColor, const Color(0xFF64748B)])
+          : (isCompleted
+              ? LinearGradient(colors: [emeraldColor, goldColor])
+              : LinearGradient(colors: [emeraldColor, purpleColor]));
 
       final progressGradient = isCompleted
           ? LinearGradient(colors: [emeraldColor, goldColor])
-          : LinearGradient(colors: [azureColor, purpleColor]);
+          : LinearGradient(colors: [isLeft ? azureColor : emeraldColor, purpleColor]);
 
-      final pillBg = isCompleted ? emeraldColor.withValues(alpha: 0.12) : azureColor.withValues(alpha: 0.12);
-      final pillBorder = isCompleted ? emeraldColor.withValues(alpha: 0.3) : azureColor.withValues(alpha: 0.3);
-      final pillText = isCompleted ? emeraldColor : azureColor;
-      final pillLabel = isCompleted ? 'DONE' : 'ONGOING';
+      final pillBg = isLeft
+          ? azureColor.withValues(alpha: 0.12)
+          : (isCompleted ? emeraldColor.withValues(alpha: 0.12) : goldColor.withValues(alpha: 0.12));
+      final pillBorder = isLeft
+          ? azureColor.withValues(alpha: 0.3)
+          : (isCompleted ? emeraldColor.withValues(alpha: 0.3) : goldColor.withValues(alpha: 0.3));
+      final pillText = isLeft ? azureColor : (isCompleted ? emeraldColor : goldColor);
+      final pillLabel = isLeft ? 'LET GO' : (isCompleted ? 'DONE' : 'ACTIONABLE');
 
-      // Calculate progress dynamically
       double progressVal = 0.0;
       int doneCount = 0;
       if (goal.subTasks.isNotEmpty) {
@@ -681,14 +900,11 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (isCompleted)
-                Container(
-                  height: 3,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: accentGradient,
-                  ),
-                ),
+              Container(
+                height: 3,
+                width: double.infinity,
+                decoration: BoxDecoration(gradient: accentGradient),
+              ),
               Padding(
                 padding: const EdgeInsets.all(18),
                 child: Column(
@@ -700,14 +916,30 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            goal.title,
-                            style: AppFonts.text(
-                              fontSize: 15.5,
-                              fontWeight: FontWeight.w600,
-                              color: text1,
-                              decoration: isCompleted ? TextDecoration.lineThrough : null,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                goal.title,
+                                style: AppFonts.text(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: text1,
+                                  decoration: isCompleted ? TextDecoration.lineThrough : null,
+                                ),
+                              ),
+                              if (goal.deadline.isNotEmpty && goal.deadline != 'Ongoing') ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  goal.deadline,
+                                  style: AppFonts.text(
+                                    fontSize: 11.5,
+                                    color: text3,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -746,117 +978,150 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Progress Section (Header label and bar)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Progress',
-                          style: AppFonts.text(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: text3,
+                    // Progress Section (for Right Section or when subtasks exist)
+                    if (!isLeft || goal.subTasks.isNotEmpty) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Progress',
+                            style: AppFonts.text(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: text3,
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${(progressVal * 100).round()}%',
-                          style: AppFonts.compact(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: pillText,
+                          Text(
+                            '${(progressVal * 100).round()}%',
+                            style: AppFonts.compact(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: pillText,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: Container(
-                        height: 5,
-                        width: double.infinity,
-                        color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
-                        alignment: Alignment.centerLeft,
-                        child: FractionallySizedBox(
-                          widthFactor: progressVal,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: progressGradient,
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: Container(
+                          height: 5,
+                          width: double.infinity,
+                          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
+                          alignment: Alignment.centerLeft,
+                          child: FractionallySizedBox(
+                            widthFactor: progressVal,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: progressGradient,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
 
-                    // Info row: "X of Y steps completed" & 3 action buttons
+                    // Action buttons row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          goal.subTasks.isEmpty
-                              ? (isCompleted ? 'Goal completed' : 'No subtasks')
-                              : '$doneCount of ${goal.subTasks.length} steps completed',
-                          style: AppFonts.text(
-                            fontSize: 12,
-                            color: text3,
+                        // Move button between Left <-> Right
+                        GestureDetector(
+                          onTap: () {
+                            _moveGoalSection(goal, isLeft ? 'right' : 'left');
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.04),
+                              border: Border.all(color: cardBorder, width: 0.5),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isLeft ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded,
+                                  size: 13,
+                                  color: isLeft ? emeraldColor : azureColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  isLeft ? 'Move to I Can Do ⚡' : 'Move to Let Go 🍃',
+                                  style: AppFonts.text(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: isLeft ? emeraldColor : azureColor,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
+
                         Row(
                           children: [
-                            // 1. Check Button (toggles complete/ongoing)
-                            GestureDetector(
-                              onTap: () => _toggleGoalCompletion(goal),
-                              child: Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  color: isCompleted ? emeraldColor.withValues(alpha: 0.12) : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03)),
-                                  border: Border.all(
-                                    color: isCompleted ? emeraldColor.withValues(alpha: 0.3) : cardBorder,
-                                    width: 1,
+                            // Check button (Complete)
+                            if (!isLeft) ...[
+                              GestureDetector(
+                                onTap: () => _toggleGoalCompletion(goal),
+                                child: Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: isCompleted
+                                        ? emeraldColor.withValues(alpha: 0.12)
+                                        : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03)),
+                                    border: Border.all(
+                                      color: isCompleted ? emeraldColor.withValues(alpha: 0.3) : cardBorder,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: isCompleted ? emeraldColor : text3,
                                   ),
                                 ),
-                                child: Icon(
-                                  Icons.check,
-                                  size: 16,
-                                  color: isCompleted ? emeraldColor : text3,
-                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            // 2. Checklist Button (expand list of subtasks)
-                            GestureDetector(
-                              onTap: () {
-                                HapticService.selection();
-                                setState(() {
-                                  if (expanded) {
-                                    _expandedGoalIds.remove(goal.id);
-                                  } else {
-                                    _expandedGoalIds.add(goal.id);
-                                  }
-                                });
-                              },
-                              child: Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  color: expanded ? azureColor.withValues(alpha: 0.12) : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03)),
-                                  border: Border.all(
-                                    color: expanded ? azureColor.withValues(alpha: 0.3) : cardBorder,
-                                    width: 1,
+                              const SizedBox(width: 8),
+                              // Checklist button (Subtasks)
+                              GestureDetector(
+                                onTap: () {
+                                  HapticService.selection();
+                                  setState(() {
+                                    if (expanded) {
+                                      _expandedGoalIds.remove(goal.id);
+                                    } else {
+                                      _expandedGoalIds.add(goal.id);
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: expanded
+                                        ? azureColor.withValues(alpha: 0.12)
+                                        : (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.03)),
+                                    border: Border.all(
+                                      color: expanded ? azureColor.withValues(alpha: 0.3) : cardBorder,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.list_alt_rounded,
+                                    size: 16,
+                                    color: expanded ? azureColor : text3,
                                   ),
                                 ),
-                                child: Icon(
-                                  Icons.list_alt_rounded,
-                                  size: 16,
-                                  color: expanded ? azureColor : text3,
-                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            // 3. Delete button
+                              const SizedBox(width: 8),
+                            ],
+                            // Delete button
                             GestureDetector(
                               onTap: () {
                                 showDialog(
@@ -868,14 +1133,14 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                       side: BorderSide(color: cardBorder, width: 0.5),
                                     ),
                                     title: Text(
-                                      'Delete Task',
+                                      isLeft ? 'Delete Thought' : 'Delete Goal',
                                       style: AppFonts.display(
                                         fontWeight: FontWeight.w800,
                                         color: text1,
                                       ),
                                     ),
                                     content: Text(
-                                      'Are you sure you want to delete this task?',
+                                      'Are you sure you want to remove this item?',
                                       style: AppFonts.text(color: text3),
                                     ),
                                     actions: [
@@ -936,7 +1201,6 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       const SizedBox(height: 16),
                       const Divider(height: 1, thickness: 0.5),
                       const SizedBox(height: 14),
-                      // List of subtasks
                       if (goal.subTasks.isNotEmpty)
                         ListView.builder(
                           shrinkWrap: true,
@@ -948,7 +1212,6 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                               margin: const EdgeInsets.only(bottom: 10),
                               child: Row(
                                 children: [
-                                  // Subtask checkbox
                                   GestureDetector(
                                     onTap: () => _toggleSubTask(goal, sub),
                                     child: AnimatedContainer(
@@ -969,7 +1232,6 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  // Subtask Title
                                   Expanded(
                                     child: Text(
                                       sub.title,
@@ -980,7 +1242,6 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                       ),
                                     ),
                                   ),
-                                  // Subtask delete button
                                   GestureDetector(
                                     onTap: () => _deleteSubTask(goal, sub),
                                     child: Icon(
@@ -994,7 +1255,6 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                             );
                           },
                         ),
-                      // Add subtask input field at the bottom
                       Container(
                         height: 38,
                         alignment: Alignment.center,
@@ -1031,18 +1291,19 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
       );
     }
 
-    // Quick add card helper (used when goals are present)
+    // Quick add button helper
     Widget buildQuickAddCard() {
+      final isLeft = _selectedSection == 'left';
       return GestureDetector(
-        onTap: _showAddGoalSheet,
+        onTap: () => _showAddGoalSheet(defaultSection: _selectedSection),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
           decoration: BoxDecoration(
-            color: emeraldColor.withValues(alpha: 0.08),
+            color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: emeraldColor.withValues(alpha: 0.25),
+              color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.25),
               width: 1.0,
             ),
           ),
@@ -1050,17 +1311,20 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.add_circle_outline_rounded,
+                isLeft ? Icons.spa_outlined : Icons.add_circle_outline_rounded,
                 size: 18,
-                color: emeraldColor,
+                color: isLeft ? azureColor : emeraldColor,
               ),
-              const SizedBox(width: 8),
-              Text(
-                'Add New Goal',
-                style: AppFonts.display(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: emeraldColor,
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  isLeft ? '+ Dump to Left Section 🍃' : '+ Add Actionable Goal ⚡',
+                  style: AppFonts.display(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: isLeft ? azureColor : emeraldColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -1080,6 +1344,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Screen Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -1089,7 +1354,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'LONG-TERM VISION',
+                          'MIND DUMP & VISION',
                           style: AppFonts.text(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -1109,7 +1374,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Milestones & aspirational focus',
+                          'Left: Out of control • Right: In my control',
                           style: AppFonts.text(
                             fontSize: 13,
                             color: text3,
@@ -1155,8 +1420,18 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 22),
-              if (_goals.isEmpty)
+              const SizedBox(height: 18),
+
+              // Dual-Section Switcher (Left vs Right)
+              buildSectionSwitcher(),
+              const SizedBox(height: 14),
+
+              // Contextual Banner Explaining Section
+              buildSectionBanner(),
+              const SizedBox(height: 16),
+
+              // Section Content
+              if (currentSectionGoals.isEmpty)
                 buildEmptyState()
               else ...[
                 ...activeGoals.map((goal) => buildGoalCard(goal)),
