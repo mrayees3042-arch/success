@@ -8924,8 +8924,54 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     await prefs.setInt('workout_body_weight', _bodyWeight);
   }
 
+  static const _prefsCustomPlanKey = 'workout_custom_plan_v2';
+
+  Future<void> _saveCustomPlan() async {
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    final data = _plan.map((d) => {
+      'title': d.title,
+      'freq': d.freq,
+      'exercises': d.exercises,
+    }).toList();
+    await prefs.setString(_prefsCustomPlanKey, jsonEncode(data));
+  }
+
+  void _loadCustomPlan(SharedPreferences prefs) {
+    final raw = prefs.getString(_prefsCustomPlanKey);
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final List<dynamic> list = jsonDecode(raw);
+        final Map<String, List<List<String>>> loadedExercises = {};
+        for (final item in list) {
+          if (item is Map<String, dynamic>) {
+            final title = item['title'] as String?;
+            final exList = (item['exercises'] as List?)
+                ?.map((e) => (e as List).map((s) => s.toString()).toList())
+                .toList();
+            if (title != null && exList != null) {
+              loadedExercises[title] = exList;
+            }
+          }
+        }
+        for (int i = 0; i < _plan.length; i++) {
+          final custom = loadedExercises[_plan[i].title];
+          if (custom != null && custom.isNotEmpty) {
+            _plan[i] = WorkoutDay(
+              title: _plan[i].title,
+              freq: _plan[i].freq,
+              icon: _plan[i].icon,
+              color: _plan[i].color,
+              exercises: custom,
+            );
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    _loadCustomPlan(prefs);
     final expanded = _decodeBoolMap(prefs.getString(_prefsExpandedKey));
     final loadedWeight = prefs.getInt('workout_body_weight') ?? 68;
     var activeDayTitle = prefs.getString(_prefsWorkoutActiveDayKey);
@@ -9332,6 +9378,214 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     });
   }
 
+  void _addNewWorkoutExercise(String dayTitle, String name, int sets, int reps, String muscle) async {
+    HapticService.medium();
+    SoundManager.playTapClick();
+
+    final targetDayIndex = _plan.indexWhere((p) => p.title == dayTitle);
+    if (targetDayIndex == -1) return;
+
+    final targetDay = _plan[targetDayIndex];
+    final newExercises = List<List<String>>.from(targetDay.exercises)
+      ..add([name, '$sets x $reps reps', muscle]);
+
+    final updatedDay = WorkoutDay(
+      title: targetDay.title,
+      freq: targetDay.freq,
+      icon: targetDay.icon,
+      color: targetDay.color,
+      exercises: newExercises,
+    );
+
+    _plan[targetDayIndex] = updatedDay;
+    if (_selectedSplit.title == dayTitle) {
+      _selectedSplit = updatedDay;
+    }
+
+    final key = '$dayTitle|$name';
+    _exerciseStates[key] = WorkoutExerciseState.initial(key, sets, reps);
+
+    setState(() {
+      _recalculateStats();
+    });
+
+    await _saveCustomPlan();
+    await _savePreferences();
+    await _saveWorkoutProgress(_selectedSplit);
+  }
+
+  void _showAddNewWorkoutModal(ThemeColors theme) {
+    final nameCtrl = TextEditingController();
+    final setsCtrl = TextEditingController(text: '3');
+    final repsCtrl = TextEditingController(text: '5');
+    final muscleCtrl = TextEditingController(text: 'Full Body');
+    String selectedDayTitle = _selectedSplit.title;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.isDark ? const Color(0xFF1C1C1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                left: 20,
+                right: 20,
+                top: 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: theme.text3.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Add New Workout Exercise',
+                    style: AppFonts.display(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: theme.text1,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Select split/day
+                  Row(
+                    children: _plan.map((day) {
+                      final isSelected = day.title == selectedDayTitle;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setSheetState(() => selectedDayTitle = day.title);
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? (theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488))
+                                  : (theme.isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              day.title,
+                              style: AppFonts.text(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected ? (theme.isDark ? Colors.black : Colors.white) : theme.text2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: nameCtrl,
+                    autofocus: true,
+                    style: AppFonts.text(color: theme.text1),
+                    decoration: InputDecoration(
+                      labelText: 'Exercise Name',
+                      hintText: 'e.g. Pull-ups, Dips, Burpees...',
+                      labelStyle: AppFonts.text(color: theme.text3),
+                      hintStyle: AppFonts.text(color: theme.text3.withValues(alpha: 0.6)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: setsCtrl,
+                          keyboardType: TextInputType.number,
+                          style: AppFonts.text(color: theme.text1),
+                          decoration: InputDecoration(
+                            labelText: 'Sets',
+                            labelStyle: AppFonts.text(color: theme.text3),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: repsCtrl,
+                          keyboardType: TextInputType.number,
+                          style: AppFonts.text(color: theme.text1),
+                          decoration: InputDecoration(
+                            labelText: 'Reps',
+                            labelStyle: AppFonts.text(color: theme.text3),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: muscleCtrl,
+                    style: AppFonts.text(color: theme.text1),
+                    decoration: InputDecoration(
+                      labelText: 'Target Muscle / Focus',
+                      hintText: 'e.g. Back, Chest, Core, Legs',
+                      labelStyle: AppFonts.text(color: theme.text3),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        final name = nameCtrl.text.trim();
+                        final sets = int.tryParse(setsCtrl.text.trim()) ?? 3;
+                        final reps = int.tryParse(repsCtrl.text.trim()) ?? 5;
+                        final muscle = muscleCtrl.text.trim().isEmpty ? 'Full Body' : muscleCtrl.text.trim();
+                        if (name.isEmpty) return;
+
+                        Navigator.pop(ctx);
+                        _addNewWorkoutExercise(selectedDayTitle, name, sets, reps, muscle);
+                      },
+                      child: Text(
+                        'Add to Routine',
+                        style: AppFonts.display(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: theme.isDark ? Colors.black : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     try {
@@ -9705,6 +9959,50 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               ),
                             );
                           }),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Add Workout Exercise Button
+                      GestureDetector(
+                        onTap: () => _showAddNewWorkoutModal(theme),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: theme.isDark
+                                ? const Color(0xFF2DD4A8).withValues(alpha: 0.1)
+                                : const Color(0xFF0D9488).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: theme.isDark
+                                  ? const Color(0xFF2DD4A8).withValues(alpha: 0.3)
+                                  : const Color(0xFF0D9488).withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_rounded,
+                                size: 18,
+                                color: theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Add Exercise to ${_selectedSplit.title}',
+                                  style: AppFonts.text(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.isDark ? const Color(0xFF2DD4A8) : const Color(0xFF0D9488),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 40),
