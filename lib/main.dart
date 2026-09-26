@@ -8671,31 +8671,39 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
   List<WorkoutDay> _plan = [
     WorkoutDay(
-      title: 'Upper Body',
-      freq: 'Mon / Wed / Sat',
+      title: 'Day 1',
+      freq: 'Mon / Thu',
       icon: Icons.fitness_center,
       color: Colors.teal,
       exercises: [
         ['Push-ups', '3 x 5 reps', 'Chest'],
         ['Incline Push-ups', '3 x 5 reps', 'Incline'],
         ['Pike Push-ups', '3 x 5 reps', 'Shoulders'],
-        ['Door Rows', '3 x 5 reps', 'Back'],
-        ['Arm Circles', '3 x 5 reps', 'Shoulders'],
-        ['Plank Hold', '3 x 30 sec', 'Core'],
+        ['Arm Circles', '3 x 5 reps', 'Shoulders & Arms'],
       ],
     ),
     WorkoutDay(
-      title: 'Lower Body',
-      freq: 'Tue / Thu / Fri',
+      title: 'Day 2',
+      freq: 'Tue / Fri',
+      icon: Icons.accessibility_new_rounded,
+      color: Colors.teal,
+      exercises: [
+        ['Door Rows', '3 x 5 reps', 'Back'],
+        ['Plank Hold', '3 x 30 sec', 'Core'],
+        ['Leg Raises', '3 x 5 reps', 'Lower abs'],
+        ['Glute Bridges', '3 x 5 reps', 'Posterior chain'],
+      ],
+    ),
+    WorkoutDay(
+      title: 'Day 3',
+      freq: 'Wed / Sat',
       icon: Icons.directions_run,
       color: Colors.teal,
       exercises: [
         ['Bodyweight Squats', '3 x 5 reps', 'Full depth'],
         ['Jump Squats', '3 x 5 reps', 'Explosive'],
         ['Lunges', '3 x 5 reps', 'Each leg'],
-        ['Glute Bridges', '3 x 5 reps', 'Posterior chain'],
         ['Calf Raises', '3 x 5 reps', 'Calves'],
-        ['Leg Raises', '3 x 5 reps', 'Lower abs'],
       ],
     ),
   ];
@@ -9475,7 +9483,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Widget _buildRoutineConfirmationBar(ThemeColors theme) {
-    final otherSplit = _selectedSplit.title == _plan[0].title ? _plan[1] : _plan[0];
+    final currentIndex = _plan.indexWhere((p) => p.title == _selectedSplit.title);
+    final nextIndex = (currentIndex == -1 ? 0 : currentIndex + 1) % _plan.length;
+    final nextSplit = _plan[nextIndex];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: Row(
@@ -9518,14 +9528,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   HapticService.tapFeedback();
                   SoundManager.playTapClick();
                   setState(() {
-                    _selectedSplit = otherSplit;
+                    _selectedSplit = nextSplit;
                     _recalculateStats();
                   });
                 },
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    'Tomorrow: ${otherSplit.title} ›',
+                    'Next: ${nextSplit.title} ›',
                     style: AppFonts.text(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -10062,7 +10072,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Widget _splitSelector(ThemeColors theme) {
-    final otherSplit = _selectedSplit.title == _plan[0].title ? _plan[1] : _plan[0];
+    final currentIndex = _plan.indexWhere((p) => p.title == _selectedSplit.title);
+    final nextIndex = (currentIndex == -1 ? 0 : currentIndex + 1) % _plan.length;
+    final nextSplit = _plan[nextIndex];
     return Container(
       margin: const EdgeInsets.only(top: 14),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -10109,12 +10121,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               HapticService.tapFeedback();
               SoundManager.playTapClick();
               setState(() {
-                _selectedSplit = otherSplit;
+                _selectedSplit = nextSplit;
                 _recalculateStats();
               });
             },
             child: Text(
-              'Switch to ${otherSplit.title} →',
+              'Switch to ${nextSplit.title} →',
               style: AppFonts.text(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
