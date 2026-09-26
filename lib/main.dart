@@ -847,8 +847,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       if (mounted) {
         setState(() {
           kTodayTasks.add(task);
+          _recordFor(DateTime.now());
           for (final record in _history.values) {
-            record.tasks.add(false);
+            record.syncTaskCount();
           }
         });
         _saveTaskDefinitions();
@@ -867,6 +868,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             if (record.tasks.length > index) {
               record.tasks.removeAt(index);
             }
+            record.syncTaskCount();
           }
         });
         _saveTaskDefinitions();
@@ -3378,6 +3380,25 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+            // Explicit Reset Action Button
+            GestureDetector(
+              onTap: () => _showHabitResetDialog(label, resetKey),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: widget.theme.isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.04),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.restart_alt_rounded,
+                  size: 16,
+                  color: widget.theme.text3,
                 ),
               ),
             ),
@@ -8197,7 +8218,14 @@ class MonitorRow extends StatelessWidget {
 }
 
 DayRecord recordFor(Map<String, DayRecord> history, DateTime date) {
-  final record = history[dayKey(date)] ?? DayRecord.empty();
+  final k = dayKey(date);
+  DayRecord? record = history[k];
+  if (record == null) {
+    record = DayRecord.empty();
+    try {
+      history[k] = record;
+    } catch (_) {}
+  }
   record.syncTaskCount();
   return record;
 }
@@ -14054,8 +14082,7 @@ class _IncomeScreenState extends State<IncomeScreen>
     final now = DateTime.now();
     final isCurrentMonth =
         _selectedMonth == now.month && _selectedYear == now.year;
-    final daysSoFar = isCurrentMonth ? now.day : daysInMonth;
-    final dailyAvg = daysSoFar > 0 ? (totalEarned / daysSoFar).round() : 0;
+    final dailyAvg = (totalEarned / 31).round();
     final todayEarned = isCurrentMonth ? (widget.incomeLog[dayKey(now)] ?? 0) : 0;
 
     // Derived directly from the 10-tier Milestone roadmap
@@ -14247,16 +14274,13 @@ class _IncomeScreenState extends State<IncomeScreen>
 
   Widget _buildHeroCard(AppColors colors, int totalEarned, int daysInMonth) {
     final now = DateTime.now();
-    final isCurrentMonth =
-        _selectedMonth == now.month && _selectedYear == now.year;
-    final daysSoFar = isCurrentMonth ? now.day : daysInMonth;
-    final dailyAvg = daysSoFar > 0 ? (totalEarned / daysSoFar).round() : 0;
+    final dailyAvg = (totalEarned / 31).round();
     final projected = (dailyAvg * daysInMonth);
 
     final ref = DateTime(_selectedYear, _selectedMonth, 1);
     final totalSpent = _monthTotal(widget.expenseLog, ref);
     final netBalance = totalEarned - totalSpent;
-    final dailyAvgSpent = daysSoFar > 0 ? (totalSpent / daysSoFar).round() : 0;
+    final dailyAvgSpent = (totalSpent / 31).round();
 
     // Count actual days logged
     int daysLogged = 0;
@@ -16266,14 +16290,9 @@ class _IncomeScreenState extends State<IncomeScreen>
   bool _showAllMilestones = false;
 
   Widget _buildEarningPotential(AppColors colors) {
-    final now = DateTime.now();
     final monthRef = DateTime(_selectedYear, _selectedMonth, 1);
     final totalEarned = _monthTotal(widget.incomeLog, monthRef);
-    final isCurrentMonth =
-        _selectedMonth == now.month && _selectedYear == now.year;
-    final daysInMonth = DateTime(_selectedYear, _selectedMonth + 1, 0).day;
-    final daysSoFar = isCurrentMonth ? now.day : daysInMonth;
-    final dailyAvg = daysSoFar > 0 ? (totalEarned / daysSoFar).round() : 0;
+    final dailyAvg = (totalEarned / 31).round();
 
     final isDark = colors.theme.isDark;
     final cardBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
@@ -16952,8 +16971,7 @@ class _IncomeScreenState extends State<IncomeScreen>
         daysLogged++;
       }
     }
-    final daysSoFar = isCurrentMonth ? now.day : daysInMonth;
-    final dailyAvg = daysSoFar > 0 ? (monthEarned / daysSoFar).round() : 0;
+    final dailyAvg = (monthEarned / 31).round();
 
     const weekdayShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 

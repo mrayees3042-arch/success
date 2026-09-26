@@ -175,8 +175,8 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
       SnackBar(
         content: Text(
           targetSection == 'left'
-              ? 'Moved to Left Section (Out of Control — Let Go) 🍃'
-              : 'Moved to Right Section (In My Control — Actionable) ⚡',
+              ? 'Moved to Parked (Out of Control — Let Go)'
+              : 'Moved to Action (In My Control — Actionable)',
           style: AppFonts.text(color: Colors.white, fontWeight: FontWeight.w600),
         ),
         duration: const Duration(seconds: 2),
@@ -257,7 +257,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     final dateCtrl = TextEditingController();
     String section = defaultSection ?? _selectedSection;
     double progressVal = 0.0;
-    Color selectedColor = section == 'left' ? const Color(0xFF38BDF8) : kBlue;
+    Color selectedColor = section == 'left' ? const Color(0xFF64748B) : kBlue;
 
     showModalBottomSheet(
       context: context,
@@ -281,35 +281,13 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        isLeft ? 'Dump Idea / Thought 🍃' : 'Add Actionable Goal ⚡',
-                        style: AppFonts.display(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: widget.theme.text1,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: isLeft
-                              ? const Color(0xFF38BDF8).withValues(alpha: 0.15)
-                              : const Color(0xFF00C896).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          isLeft ? 'Left Section' : 'Right Section',
-                          style: AppFonts.text(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isLeft ? const Color(0xFF38BDF8) : const Color(0xFF00C896),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    isLeft ? 'Add to Parked' : 'Add Action Goal',
+                    style: AppFonts.display(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: widget.theme.text1,
+                    ),
                   ),
                   const SizedBox(height: 14),
 
@@ -327,7 +305,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                             onTap: () {
                               setSheetState(() {
                                 section = 'left';
-                                selectedColor = const Color(0xFF38BDF8);
+                                selectedColor = const Color(0xFF64748B);
                               });
                             },
                             child: Container(
@@ -338,15 +316,24 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Center(
-                                child: Text(
-                                  '🍃 Left (Out of Control)',
-                                  style: AppFonts.text(
-                                    fontSize: 12,
-                                    fontWeight: isLeft ? FontWeight.w700 : FontWeight.w500,
-                                    color: isLeft ? widget.theme.text1 : widget.theme.text3,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.pause_circle_outline_rounded,
+                                    size: 14,
+                                    color: isLeft ? const Color(0xFF94A3B8) : widget.theme.text2,
                                   ),
-                                ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Parked (Out of Control)',
+                                    style: AppFonts.text(
+                                      fontSize: 11.5,
+                                      fontWeight: isLeft ? FontWeight.w700 : FontWeight.w600,
+                                      color: isLeft ? widget.theme.text1 : widget.theme.text2,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -367,15 +354,24 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Center(
-                                child: Text(
-                                  '⚡ Right (I Can Do)',
-                                  style: AppFonts.text(
-                                    fontSize: 12,
-                                    fontWeight: !isLeft ? FontWeight.w700 : FontWeight.w500,
-                                    color: !isLeft ? widget.theme.text1 : widget.theme.text3,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.bolt_rounded,
+                                    size: 14,
+                                    color: !isLeft ? const Color(0xFF00C896) : widget.theme.text2,
                                   ),
-                                ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Action (In My Control)',
+                                    style: AppFonts.text(
+                                      fontSize: 11.5,
+                                      fontWeight: !isLeft ? FontWeight.w700 : FontWeight.w600,
+                                      color: !isLeft ? widget.theme.text1 : widget.theme.text2,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -390,7 +386,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                     autofocus: true,
                     style: AppFonts.text(color: widget.theme.text1, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
-                      labelText: isLeft ? 'Idea / Thought to dump' : 'Goal Title',
+                      labelText: isLeft ? 'Thought / Factor to park' : 'Goal Title',
                       hintText: isLeft
                           ? 'e.g. Market trend, someone\'s reaction, future uncertainty...'
                           : 'e.g. Master Flutter, build app feature...',
@@ -403,7 +399,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color: isLeft ? const Color(0xFF38BDF8) : kGold,
+                          color: isLeft ? const Color(0xFF64748B) : const Color(0xFF00C896),
                           width: 1.5,
                         ),
                       ),
@@ -423,7 +419,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color: isLeft ? const Color(0xFF38BDF8) : kGold,
+                          color: isLeft ? const Color(0xFF64748B) : const Color(0xFF00C896),
                           width: 1.5,
                         ),
                       ),
@@ -468,7 +464,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isLeft ? const Color(0xFF38BDF8) : kGold,
+                        backgroundColor: isLeft ? const Color(0xFF64748B) : const Color(0xFF00C896),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -507,9 +503,9 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         });
                       },
                       child: Text(
-                        isLeft ? 'Dump to Left Section 🍃' : 'Add to Right Section ⚡',
+                        isLeft ? 'Add to Parked' : 'Add to Action',
                         style: AppFonts.display(
-                          color: Colors.black,
+                          color: Colors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                         ),
@@ -540,6 +536,8 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
 
     final goldColor = isDark ? const Color(0xFFE8B84B) : const Color(0xFFA0720A);
     final emeraldColor = isDark ? const Color(0xFF00C896) : const Color(0xFF0A7A5A);
+    final parkedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final actionColor = emeraldColor;
     final azureColor = isDark ? const Color(0xFF38BDF8) : const Color(0xFF1565A0);
     final purpleColor = isDark ? const Color(0xFFA855F7) : const Color(0xFF7C3AED);
     final redColor = isDark ? const Color(0xFFFF6B6B) : const Color(0xFFC0392B);
@@ -567,7 +565,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
         ),
         child: Row(
           children: [
-            // Left Section Tab (Out of Control / Let Go)
+            // Left Section Tab (Parked / Out of Control)
             Expanded(
               child: GestureDetector(
                 onTap: () {
@@ -594,15 +592,19 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('🍃', style: TextStyle(fontSize: 14)),
-                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.pause_circle_outline_rounded,
+                        size: 15,
+                        color: isLeft ? parkedColor : text2,
+                      ),
+                      const SizedBox(width: 5),
                       Flexible(
                         child: Text(
-                          'Left (Let Go)',
+                          'Parked (Out of Control)',
                           style: AppFonts.text(
-                            fontSize: 12.5,
-                            fontWeight: isLeft ? FontWeight.w700 : FontWeight.w500,
-                            color: isLeft ? text1 : text3,
+                            fontSize: 11.5,
+                            fontWeight: isLeft ? FontWeight.w700 : FontWeight.w600,
+                            color: isLeft ? text1 : text2,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -612,7 +614,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: azureColor.withValues(alpha: 0.2),
+                            color: parkedColor.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -620,7 +622,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                             style: AppFonts.compact(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
-                              color: azureColor,
+                              color: parkedColor,
                             ),
                           ),
                         ),
@@ -630,7 +632,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 ),
               ),
             ),
-            // Right Section Tab (In My Control / I Can Do)
+            // Right Section Tab (Action / In My Control)
             Expanded(
               child: GestureDetector(
                 onTap: () {
@@ -657,15 +659,19 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('⚡', style: TextStyle(fontSize: 14)),
-                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.bolt_rounded,
+                        size: 15,
+                        color: !isLeft ? actionColor : text2,
+                      ),
+                      const SizedBox(width: 5),
                       Flexible(
                         child: Text(
-                          'Right (I Can Do)',
+                          'Action (In My Control)',
                           style: AppFonts.text(
-                            fontSize: 12.5,
-                            fontWeight: !isLeft ? FontWeight.w700 : FontWeight.w500,
-                            color: !isLeft ? text1 : text3,
+                            fontSize: 11.5,
+                            fontWeight: !isLeft ? FontWeight.w700 : FontWeight.w600,
+                            color: !isLeft ? text1 : text2,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -675,7 +681,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: emeraldColor.withValues(alpha: 0.2),
+                            color: actionColor.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -683,7 +689,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                             style: AppFonts.compact(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w700,
-                              color: emeraldColor,
+                              color: actionColor,
                             ),
                           ),
                         ),
@@ -701,22 +707,27 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     // Explanatory Section Banner
     Widget buildSectionBanner() {
       final isLeft = _selectedSection == 'left';
+      final activeColor = isLeft ? parkedColor : actionColor;
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isLeft
               ? (isDark ? const Color(0xFF0F172A).withValues(alpha: 0.7) : const Color(0xFFE2E8F0))
-              : emeraldColor.withValues(alpha: 0.08),
+              : actionColor.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isLeft ? azureColor.withValues(alpha: 0.25) : emeraldColor.withValues(alpha: 0.25),
+            color: activeColor.withValues(alpha: 0.25),
             width: 0.5,
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(isLeft ? '🍃' : '⚡', style: const TextStyle(fontSize: 18)),
+            Icon(
+              isLeft ? Icons.pause_circle_outline_rounded : Icons.bolt_rounded,
+              size: 20,
+              color: activeColor,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -730,7 +741,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
-                      color: isLeft ? azureColor : emeraldColor,
+                      color: activeColor,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -755,6 +766,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     // Empty state helper
     Widget buildEmptyState() {
       final isLeft = _selectedSection == 'left';
+      final activeColor = isLeft ? parkedColor : actionColor;
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
         width: double.infinity,
@@ -770,22 +782,22 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.08),
+                color: activeColor.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.2),
+                  color: activeColor.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
               child: Icon(
-                isLeft ? Icons.spa_rounded : Icons.flag_rounded,
+                isLeft ? Icons.pause_circle_outline_rounded : Icons.bolt_rounded,
                 size: 30,
-                color: isLeft ? azureColor : emeraldColor,
+                color: activeColor,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              isLeft ? 'Left Section is Clear' : 'No Actionable Goals Yet',
+              isLeft ? 'Parked Section is Clear' : 'No Action Goals Yet',
               style: AppFonts.display(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -811,13 +823,13 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isLeft
-                        ? [azureColor, const Color(0xFF0284C7)]
-                        : [emeraldColor, const Color(0xFF059669)],
+                        ? [parkedColor, const Color(0xFF475569)]
+                        : [actionColor, const Color(0xFF059669)],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.28),
+                      color: activeColor.withValues(alpha: 0.28),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -834,7 +846,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                        isLeft ? 'Dump to Left Section' : 'Add to Right Section',
+                        isLeft ? '+ Add to Parked' : '+ Add to Action',
                         style: AppFonts.text(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w700,
@@ -859,23 +871,23 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
       final isLeft = goal.section == 'left';
 
       final accentGradient = isLeft
-          ? LinearGradient(colors: [azureColor, const Color(0xFF64748B)])
+          ? LinearGradient(colors: [parkedColor, const Color(0xFF475569)])
           : (isCompleted
               ? LinearGradient(colors: [emeraldColor, goldColor])
               : LinearGradient(colors: [emeraldColor, purpleColor]));
 
       final progressGradient = isCompleted
           ? LinearGradient(colors: [emeraldColor, goldColor])
-          : LinearGradient(colors: [isLeft ? azureColor : emeraldColor, purpleColor]);
+          : LinearGradient(colors: [isLeft ? parkedColor : emeraldColor, purpleColor]);
 
       final pillBg = isLeft
-          ? azureColor.withValues(alpha: 0.12)
+          ? parkedColor.withValues(alpha: 0.12)
           : (isCompleted ? emeraldColor.withValues(alpha: 0.12) : goldColor.withValues(alpha: 0.12));
       final pillBorder = isLeft
-          ? azureColor.withValues(alpha: 0.3)
+          ? parkedColor.withValues(alpha: 0.3)
           : (isCompleted ? emeraldColor.withValues(alpha: 0.3) : goldColor.withValues(alpha: 0.3));
-      final pillText = isLeft ? azureColor : (isCompleted ? emeraldColor : goldColor);
-      final pillLabel = isLeft ? 'LET GO' : (isCompleted ? 'DONE' : 'ACTIONABLE');
+      final pillText = isLeft ? parkedColor : (isCompleted ? emeraldColor : goldColor);
+      final pillLabel = isLeft ? 'PARKED' : (isCompleted ? 'DONE' : 'ACTION');
 
       double progressVal = 0.0;
       int doneCount = 0;
@@ -1044,15 +1056,15 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                                 Icon(
                                   isLeft ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded,
                                   size: 13,
-                                  color: isLeft ? emeraldColor : azureColor,
+                                  color: isLeft ? actionColor : parkedColor,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  isLeft ? 'Move to I Can Do ⚡' : 'Move to Let Go 🍃',
+                                  isLeft ? 'Move to Action' : 'Move to Parked',
                                   style: AppFonts.text(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
-                                    color: isLeft ? emeraldColor : azureColor,
+                                    color: isLeft ? actionColor : parkedColor,
                                   ),
                                 ),
                               ],
@@ -1294,16 +1306,17 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
     // Quick add button helper
     Widget buildQuickAddCard() {
       final isLeft = _selectedSection == 'left';
+      final activeColor = isLeft ? parkedColor : actionColor;
       return GestureDetector(
         onTap: () => _showAddGoalSheet(defaultSection: _selectedSection),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
           decoration: BoxDecoration(
-            color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.08),
+            color: activeColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: (isLeft ? azureColor : emeraldColor).withValues(alpha: 0.25),
+              color: activeColor.withValues(alpha: 0.25),
               width: 1.0,
             ),
           ),
@@ -1311,18 +1324,18 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                isLeft ? Icons.spa_outlined : Icons.add_circle_outline_rounded,
+                isLeft ? Icons.pause_circle_outline_rounded : Icons.bolt_rounded,
                 size: 18,
-                color: isLeft ? azureColor : emeraldColor,
+                color: activeColor,
               ),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  isLeft ? '+ Dump to Left Section 🍃' : '+ Add Actionable Goal ⚡',
+                  isLeft ? '+ Add to Parked' : '+ Add to Action',
                   style: AppFonts.display(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
-                    color: isLeft ? azureColor : emeraldColor,
+                    color: activeColor,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1374,7 +1387,7 @@ class _LifePlanScreenState extends State<LifePlanScreen> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'Left: Out of control • Right: In my control',
+                          'Parked: Out of control • Action: In my control',
                           style: AppFonts.text(
                             fontSize: 13,
                             color: text3,
