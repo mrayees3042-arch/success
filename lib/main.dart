@@ -8622,14 +8622,14 @@ int parseSets(String description) {
 
 int parseReps(String description) {
   if (description.toLowerCase().contains('max')) {
-    return 10;
+    return 15;
   }
   final match = RegExp(r'x\s*([0-9]+)').firstMatch(description);
   if (match != null) {
-    return int.tryParse(match.group(1) ?? '') ?? 5;
+    return int.tryParse(match.group(1) ?? '') ?? 15;
   }
   final anyNumber = RegExp(r'([0-9]+)').firstMatch(description);
-  return int.tryParse(anyNumber?.group(1) ?? '') ?? 5;
+  return int.tryParse(anyNumber?.group(1) ?? '') ?? 15;
 }
 
 class WorkoutScreen extends StatefulWidget {
@@ -8676,10 +8676,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       icon: Icons.fitness_center,
       color: Colors.teal,
       exercises: [
-        ['Push-ups', '3 x 5 reps', 'Chest'],
-        ['Incline Push-ups', '3 x 5 reps', 'Incline'],
-        ['Pike Push-ups', '3 x 5 reps', 'Shoulders'],
-        ['Arm Circles', '3 x 5 reps', 'Shoulders & Arms'],
+        ['Push-ups', '3 x 15 reps', 'Chest'],
+        ['Incline Push-ups', '3 x 15 reps', 'Incline'],
+        ['Pike Push-ups', '3 x 15 reps', 'Shoulders'],
+        ['Arm Circles', '3 x 15 reps', 'Shoulders & Arms'],
       ],
     ),
     WorkoutDay(
@@ -8688,10 +8688,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       icon: Icons.accessibility_new_rounded,
       color: Colors.teal,
       exercises: [
-        ['Door Rows', '3 x 5 reps', 'Back'],
+        ['Door Rows', '3 x 15 reps', 'Back'],
         ['Plank Hold', '3 x 30 sec', 'Core'],
-        ['Leg Raises', '3 x 5 reps', 'Lower abs'],
-        ['Glute Bridges', '3 x 5 reps', 'Posterior chain'],
+        ['Leg Raises', '3 x 15 reps', 'Lower abs'],
+        ['Glute Bridges', '3 x 15 reps', 'Posterior chain'],
       ],
     ),
     WorkoutDay(
@@ -8700,10 +8700,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       icon: Icons.directions_run,
       color: Colors.teal,
       exercises: [
-        ['Bodyweight Squats', '3 x 5 reps', 'Full depth'],
-        ['Jump Squats', '3 x 5 reps', 'Explosive'],
-        ['Lunges', '3 x 5 reps', 'Each leg'],
-        ['Calf Raises', '3 x 5 reps', 'Calves'],
+        ['Bodyweight Squats', '3 x 15 reps', 'Full depth'],
+        ['Jump Squats', '3 x 15 reps', 'Explosive'],
+        ['Lunges', '3 x 15 reps', 'Each leg'],
+        ['Calf Raises', '3 x 15 reps', 'Calves'],
       ],
     ),
   ];
@@ -8712,12 +8712,12 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   final Map<String, bool> _expandedCards = {};
   final ScrollController _scrollController = ScrollController();
   final List<List<String>> _libraryExercises = const [
-    ['Lying Leg Curls', '3 x 5 reps', 'Hamstrings'],
-    ['Leg Extensions', '3 x 5 reps', 'Quads'],
-    ['Dumbbell Lunges', '3 x 5 reps', 'Legs & Glutes'],
-    ['Lat Pulldown', '3 x 5 reps', 'Back & Biceps'],
-    ['Cable Crossover', '3 x 5 reps', 'Chest & Shoulders'],
-    ['Dumbbell Shrugs', '3 x 5 reps', 'Shoulders & Neck'],
+    ['Lying Leg Curls', '3 x 15 reps', 'Hamstrings'],
+    ['Leg Extensions', '3 x 15 reps', 'Quads'],
+    ['Dumbbell Lunges', '3 x 15 reps', 'Legs & Glutes'],
+    ['Lat Pulldown', '3 x 15 reps', 'Back & Biceps'],
+    ['Cable Crossover', '3 x 15 reps', 'Chest & Shoulders'],
+    ['Dumbbell Shrugs', '3 x 15 reps', 'Shoulders & Neck'],
   ];
   SharedPreferences? _prefs;
   String? _activeDayTitle;
@@ -9417,7 +9417,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   void _showAddNewWorkoutModal(ThemeColors theme) {
     final nameCtrl = TextEditingController();
     final setsCtrl = TextEditingController(text: '3');
-    final repsCtrl = TextEditingController(text: '5');
+    final repsCtrl = TextEditingController(text: '15');
     final muscleCtrl = TextEditingController(text: 'Full Body');
     String selectedDayTitle = _selectedSplit.title;
 
@@ -11921,7 +11921,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 children: [
                                   GestureDetector(
                                     onTap: () {
-                                      final cur = int.tryParse(_editRepsController.text) ?? 5;
+                                      final cur = int.tryParse(_editRepsController.text) ?? 15;
                                       if (cur > 1) {
                                         HapticService.selection();
                                         _editRepsController.text = '${cur - 1}';
@@ -11954,7 +11954,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                   ),
                                   GestureDetector(
                                     onTap: () {
-                                      final cur = int.tryParse(_editRepsController.text) ?? 5;
+                                      final cur = int.tryParse(_editRepsController.text) ?? 15;
                                       HapticService.selection();
                                       _editRepsController.text = '${cur + 1}';
                                       setState(() {});
@@ -12065,7 +12065,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                     onTap: () {
                       final newRoutineTitle = _editWorkoutTitleController.text.trim();
                       final newExerciseName = _editExerciseNameController.text.trim();
-                      final reps = int.tryParse(_editRepsController.text.trim()) ?? 5;
+                      final reps = int.tryParse(_editRepsController.text.trim()) ?? 15;
                       final sets = int.tryParse(_editSetsController.text.trim()) ?? 3;
 
                       if (newExerciseName.isNotEmpty && reps > 0 && sets > 0) {
